@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.705
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29926.136
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BrowlerEngine", "BrowlerEngine\BrowlerEngine.vcxproj", "{CC33E0EC-8950-47F0-B1FC-08B22EF98AB5}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Renderer", "Renderer\Renderer.vcxproj", "{4E480767-B556-4A96-94A7-2197C922EEB0}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Common", "Common\Common.vcxproj", "{ABD45FC6-AED5-41F1-8895-8BA12B1367C4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Core", "Core\Core.vcxproj", "{8D16DF7D-5843-4BCC-80FE-B71E4C1AE6D9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,6 +43,14 @@ Global
 		{ABD45FC6-AED5-41F1-8895-8BA12B1367C4}.Release|x64.Build.0 = Release|x64
 		{ABD45FC6-AED5-41F1-8895-8BA12B1367C4}.Release|x86.ActiveCfg = Release|Win32
 		{ABD45FC6-AED5-41F1-8895-8BA12B1367C4}.Release|x86.Build.0 = Release|Win32
+		{8D16DF7D-5843-4BCC-80FE-B71E4C1AE6D9}.Debug|x64.ActiveCfg = Debug|x64
+		{8D16DF7D-5843-4BCC-80FE-B71E4C1AE6D9}.Debug|x64.Build.0 = Debug|x64
+		{8D16DF7D-5843-4BCC-80FE-B71E4C1AE6D9}.Debug|x86.ActiveCfg = Debug|Win32
+		{8D16DF7D-5843-4BCC-80FE-B71E4C1AE6D9}.Debug|x86.Build.0 = Debug|Win32
+		{8D16DF7D-5843-4BCC-80FE-B71E4C1AE6D9}.Release|x64.ActiveCfg = Release|x64
+		{8D16DF7D-5843-4BCC-80FE-B71E4C1AE6D9}.Release|x64.Build.0 = Release|x64
+		{8D16DF7D-5843-4BCC-80FE-B71E4C1AE6D9}.Release|x86.ActiveCfg = Release|Win32
+		{8D16DF7D-5843-4BCC-80FE-B71E4C1AE6D9}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

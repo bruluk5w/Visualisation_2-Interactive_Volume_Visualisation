@@ -24,4 +24,3 @@
 
 
 // reference additional headers your program requires here
-#include "Common_Precomp.h"

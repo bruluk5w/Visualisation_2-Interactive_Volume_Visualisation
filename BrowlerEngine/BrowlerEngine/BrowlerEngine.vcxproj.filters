@@ -33,13 +33,28 @@
     <ClInclude Include="Include\BrowlerEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\PAL\WinMain.h">
-      <Filter>Header Files\PAL</Filter>
-    </ClInclude>
     <ClInclude Include="Include\HostSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\main.h">
+    <ClInclude Include="Include\Timer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\PAL\BrowlerWindowsInclude.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\PAL\WinGlobals.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Globals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Thread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\PAL\WinThread.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ThreadState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -56,6 +71,15 @@
     <ClCompile Include="Source\HostSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\PAL\WinTickProvider.cpp">
+      <Filter>Source Files\PAL</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\MetaEngine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\PAL\WinGlobals.cpp">
+      <Filter>Source Files\PAL</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="BrowlerEngine.rc">
@@ -69,5 +93,8 @@
     <Image Include="BrowlerEngine_small.ico">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

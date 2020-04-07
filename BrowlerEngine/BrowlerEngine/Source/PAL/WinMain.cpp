@@ -1,6 +1,9 @@
 #ifdef BRWL_PLATFORM_WINDOWS
 
-#include "PAL/WinMain.h"
+#include "PAL/WinGlobals.h"
+
+#include "Timer.h"
+#include "BrowlerEngine.h"
 
 // Forward declarations of functions included in this code module:
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -17,10 +20,12 @@ int APIENTRY wWinMain(
 		nCmdShow
 	);
 
-	BRWL::PAL::WinGlobalsAccessor globalsAcc(globals);
-	
-	
+	BRWL::PAL::ReadOnlyWinGlobals readOnlyGlobals(globals);
+
+	BRWL::MetaEngine metaEngine(&readOnlyGlobals);
+
 	// enter the main loop:
+	metaEngine.initialize();
 
 	// this struct holds Windows event messages
 	MSG msg = { 0 };
@@ -41,9 +46,7 @@ int APIENTRY wWinMain(
 		}
 		else
 		{
-			// Run game code here
-			// ...
-			// ...
+			metaEngine.update();
 		}
 	}
 	
