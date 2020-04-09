@@ -23,13 +23,14 @@ template<class returnType>
 class Thread : public PAL::PlatformThread<returnType>
 {
 	using PlatformImpl = PAL::PlatformThread<returnType>;
-
+	static inline unsigned int hardwareConcurrency = std::thread::hardware_concurrency();
 public:
-	static int hardwareConcurrency = [] { return std::thread::hardware_concurrency(); }();
 
 	Thread(PlatformImpl::ThreadTarget target, PlatformImpl::ReturnType* returnValue) :
 		PlatformImpl(std::move(target), returnValue)
 	{ }
+
+	static unsigned int getHardwareConcurrency() { return hardwareConcurrency; }
 };
 
 

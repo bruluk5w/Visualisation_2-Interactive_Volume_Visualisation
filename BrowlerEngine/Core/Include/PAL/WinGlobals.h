@@ -2,14 +2,17 @@
 
 #ifdef BRWL_PLATFORM_WINDOWS
 
+#ifndef _WINDEF_
+struct HINSTANCE__;
+typedef HINSTANCE__* HINSTANCE;
+typedef wchar_t WCHAR;
+typedef WCHAR* LPWSTR;
+
+#endif
 BRWL_PAL_NS
 
 class ReadOnlyWinGlobals;
-#ifndef _WINDEF_
-class HINSTANCE__;
-typedef HINSTANCE__* HINSTANCE;
-//typedef wchar_t WCHAR;
-#endif
+
 
 class WinGlobals BRWL_FINAL
 {

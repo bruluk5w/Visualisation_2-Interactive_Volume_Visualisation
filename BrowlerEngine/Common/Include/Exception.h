@@ -12,10 +12,10 @@ void exception(const char* const test, const char* const msg, const bool mayIgno
 
 std::string getExceptionString(const char* const test, const char* const  msg);
 
-#define BRWL_EXCEPTION(test, msg) do { if (!(test)) exception(#test, (msg), false);} while(0)
+#define BRWL_EXCEPTION(test, msg) do { if (!(test)) BRWL::exception(#test, (msg), false);} while(0)
 #define BRWL_VERIFY(test, msg) ([&] () -> bool { \
 	if (!(test)) { \
-		exception(#test, #msg, true); \
+		BRWL::exception(#test, #msg, true); \
 		return false; \
 	} else { \
 		return true;\

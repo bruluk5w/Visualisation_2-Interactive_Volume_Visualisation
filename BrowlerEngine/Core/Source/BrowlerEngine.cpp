@@ -2,10 +2,12 @@
 
 #include "Timer.h"
 
+#include <iostream>
+
 BRWL_NS
 
 
-Engine::Engine(TickProvider* tickProvider, PlatformGlobalsPtr globals) :
+Engine::Engine( TickProvider* tickProvider, PlatformGlobals* globals) :
 	isInitialized(false),
 	tickProvider(tickProvider),
 	globals(nullptr),
@@ -13,8 +15,7 @@ Engine::Engine(TickProvider* tickProvider, PlatformGlobalsPtr globals) :
 { }
 
 Engine::~Engine()
-{
-}
+{ }
 
 bool Engine::init(const char* settingsFile)
 {
@@ -32,7 +33,7 @@ bool Engine::init(const char* settingsFile)
 
 void Engine::update()
 {
-
+	std::cout << time->getDeltaTimeF();
 }
 
 void Engine::shutdown()

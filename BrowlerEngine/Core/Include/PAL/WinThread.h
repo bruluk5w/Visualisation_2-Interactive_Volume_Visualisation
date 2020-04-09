@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef BRWL_PLATFORM_WINDOWS
+
 #include "PAL/BrowlerWindowsInclude.h"
 
 #include <functional>
@@ -107,3 +109,5 @@ protected:
 
 
 BRWL_PAL_NS_END
+
+#endif // BRWL_PLATFORM_WINDOWS

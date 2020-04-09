@@ -2,7 +2,6 @@
 
 #include "PAL/BrowlerWindowsInclude.h"
 
-
 BRWL_PAL_NS
 
 

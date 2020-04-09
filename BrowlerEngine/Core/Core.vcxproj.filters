@@ -16,24 +16,75 @@
     <Filter Include="Source Files\PAL">
       <UniqueIdentifier>{40f8129f-460d-4dad-aaa2-b5def7d89dd3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\PAL">
+      <UniqueIdentifier>{eda694c4-ff15-4c4a-95bc-0a8167d35fc1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Core_Precomp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\BrowlerEngine\Source\PAL\WinMain.cpp">
+    <ClCompile Include="Source\BrowlerEngine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\MetaEngine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\PAL\WinGlobals.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
-    <ClCompile Include="..\BrowlerEngine\Source\PAL\WinTickProvider.cpp">
+    <ClCompile Include="Source\PAL\WinTickProvider.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
-    <ClCompile Include="..\BrowlerEngine\Source\PAL\WinGlobals.cpp">
+    <ClCompile Include="Source\EventBus.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Window.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\PAL\WinWindow.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Core_Precomp.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\PAL\BrowlerWindowsInclude.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\PAL\WinGlobals.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\PAL\WinThread.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Globals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Thread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ThreadState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Timer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\BrowlerEngine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Events.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\EventBus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\PAL\WinWindow.h">
+      <Filter>Header Files\PAL</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

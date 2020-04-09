@@ -3,17 +3,17 @@
 #include <mutex>
 #include "Thread.h"
 
-BRWL_NS
-
 #include "Globals.h"
+
+BRWL_NS
 
 
 class Engine;
-class TickProvider;
 class Timer;
+class TickProvider;
 
 
-class MetaEngine 
+class MetaEngine BRWL_FINAL
 {
 public:
 	typedef uint8_t EngineHandle;
@@ -25,25 +25,39 @@ public:
 		DETATCHED,
 	};
 
-	MetaEngine(TickProvider* tickProvider, PlatformGlobalsPtr globals);
+	MetaEngine(PlatformGlobalsPtr globals);
+	~MetaEngine();
 
 	void initialize();
 
 	// Run a single step of each engine in which is not in DETACHED mode
 	void update();
+private:
 	// Runs an independent loop for engines which are in DETACHED mode
 	void detachedRun();
 
+public:
 	bool createEngine(EngineHandle& handle, const char* settingsFile = nullptr);
-	void SetEngineRunMode(EngineHandle handle, EngineRunMode runMode);
+	void setEngineRunMode(EngineHandle handle, EngineRunMode runMode);
 	EngineHandle getDefaultEngineHandle() { return defaultEngineHandle; }
+
+	void shutDown();
 
 private:
 	bool isInitialized;
-	std::mutex metaEngineLock;
-	std::unique_ptr<TickProvider> tickProvider;
+	std::recursive_mutex metaEngineLock;
 	EngineHandle defaultEngineHandle;
-	std::unique_ptr<Engine> engines[maxEngine];
+	
+	struct EngineData {
+		EngineData(std::unique_ptr<TickProvider>& tickProvider, PlatformGlobalsPtr globals, bool threaded);
+
+		std::unique_ptr<TickProvider> tickProvider;
+		std::unique_ptr<Engine> engine;
+		bool threaded;
+
+	};
+
+	std::unique_ptr<EngineData> engines[maxEngine];
 	std::unique_ptr<Thread<void>> frameThreads[maxEngine];
 	
 	PlatformGlobalsPtr globals;
