@@ -23,7 +23,7 @@ MetaEngine::~MetaEngine()
 	{
 		if (frameThreads[i] != nullptr)
 		{
-			BRWL_EXCEPTION(frameThreads[i]->getState() != ThreadState::RUNNING, "MetaEngine delte when engines are still running!");
+			BRWL_EXCEPTION(frameThreads[i]->getState() != ThreadState::RUNNING, BRWL_CHAR_LITERAL("MetaEngine delete when engines are still running!"));
 		}
 	}
 }
@@ -45,7 +45,7 @@ void MetaEngine::shutDown() {
 
 void MetaEngine::update()
 {
-	BRWL_EXCEPTION(isInitialized, "\"initialize\" has to be called before \"update\"!");
+	BRWL_EXCEPTION(isInitialized, BRWL_CHAR_LITERAL("\"initialize\" has to be called before \"update\"!"));
 	std::lock_guard<decltype(metaEngineLock)> guard(metaEngineLock);
 	// here run the main loops of the single engines in parallel threads 
 	for (unsigned int i = 0; i < countof(engines) && engines[i] != nullptr; ++i)
@@ -62,10 +62,10 @@ void MetaEngine::update()
 				}, nullptr);
 			}
 
-			BRWL_EXCEPTION(frameThreads[i]->getState() == ThreadState::READY, "Something is fishy, the thread is RUNNING but it should be set to READY");
+			BRWL_EXCEPTION(frameThreads[i]->getState() == ThreadState::READY, BRWL_CHAR_LITERAL("Something is fishy, the thread is RUNNING but it should be set to READY"));
 
 			bool successDispatch = frameThreads[i]->run();
-			BRWL_EXCEPTION(successDispatch, "Failed to start frame thread!");
+			BRWL_EXCEPTION(successDispatch, BRWL_CHAR_LITERAL("Failed to start frame thread!"));
 		}
 		else if (mode == EngineRunMode::DETATCHED)
 		{
@@ -102,10 +102,10 @@ void MetaEngine::detachedRun()
 
 bool MetaEngine::createEngine(EngineHandle& handle, const char* settingsFile/* = nullptr*/)
 {
-	BRWL_EXCEPTION(isInitialized, "\"initialize\" has to be called before \"createEngine\"!");
+	BRWL_EXCEPTION(isInitialized, BRWL_CHAR_LITERAL("\"initialize\" has to be called before \"createEngine\"!"));
 	std::lock_guard<decltype(metaEngineLock)> guard(metaEngineLock);
 	std::unique_ptr<EngineData>* nextEnginePtr = std::find(engines, engines + countof(engines), nullptr);
-	if (!BRWL_VERIFY(nextEnginePtr < engines + countof(engines), "Max number of engines exceeded!"))
+	if (!BRWL_VERIFY(nextEnginePtr < engines + countof(engines), BRWL_CHAR_LITERAL("Max number of engines exceeded!")))
 	{
 		handle = maxEngine;
 		return false;
@@ -123,8 +123,8 @@ bool MetaEngine::createEngine(EngineHandle& handle, const char* settingsFile/* =
 
 void MetaEngine::setEngineRunMode(EngineHandle handle, EngineRunMode runMode)
 {
-	BRWL_EXCEPTION(handle < maxEngine, "Invalid engine handle");
-	BRWL_EXCEPTION(engines[handle] != nullptr, "Invalid engine handle");
+	BRWL_EXCEPTION(handle < maxEngine, BRWL_CHAR_LITERAL("Invalid engine handle"));
+	BRWL_EXCEPTION(engines[handle] != nullptr, BRWL_CHAR_LITERAL("Invalid engine handle"));
 	engines[handle]->engine->writeAccessMetaEngine().setRunMode(runMode);
 }
 

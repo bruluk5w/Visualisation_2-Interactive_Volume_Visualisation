@@ -50,9 +50,6 @@
     <ClInclude Include="Include\Core_Precomp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\PAL\BrowlerWindowsInclude.h">
-      <Filter>Header Files\PAL</Filter>
-    </ClInclude>
     <ClInclude Include="Include\PAL\WinGlobals.h">
       <Filter>Header Files\PAL</Filter>
     </ClInclude>
@@ -85,6 +82,9 @@
     </ClInclude>
     <ClInclude Include="Include\PAL\WinWindow.h">
       <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ApplicationEndoints.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

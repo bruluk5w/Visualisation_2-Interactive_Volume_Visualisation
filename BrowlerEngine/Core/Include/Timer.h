@@ -29,8 +29,8 @@ public:
 		gameTime(0),
 		tickProvider(tickProvider)
 	{
-		BRWL_EXCEPTION(tickProvider != nullptr, "tickProvider may not be null");
-		BRWL_EXCEPTION(tickProvider->timer == nullptr, "tickProvider may not be null");
+		BRWL_EXCEPTION(tickProvider != nullptr, BRWL_CHAR_LITERAL("tickProvider may not be null"));
+		BRWL_EXCEPTION(tickProvider->timer == nullptr, BRWL_CHAR_LITERAL("tickProvider may not be null"));
 		tickProvider->timer = this;
 	}
 

@@ -11,7 +11,42 @@
 #include "PAL/WinGlobals.h"
 #include "Timer.h"
 #include "BrowlerEngine.h"
+#include "ApplicationEndoints.h"
 
+#define WM_PostLogMessage (WM_APP + 1)
+
+namespace
+{
+
+	bool exceptionHandler(const BRWL_CHAR* test, const BRWL_CHAR* msg, bool mayIgnore)
+	{
+		BRWL_CHAR stackPrint[2000];
+		BRWL::printStackTrace(stackPrint, test, msg, 2);
+
+		int result = MessageBox(
+			NULL, stackPrint,
+			mayIgnore ? BRWL_CHAR_LITERAL("Error") : BRWL_CHAR_LITERAL("Fatal Error"),
+			mayIgnore ? MB_ICONEXCLAMATION | MB_CANCELTRYCONTINUE : MB_ICONERROR | MB_OK
+		);
+
+		switch (result)
+		{
+		case IDCANCEL:
+			return false;
+		case IDCONTINUE:
+			return true;
+		case IDOK:
+			return false;
+		default:
+			MessageBox(
+				NULL, BRWL_CHAR_LITERAL("Unknown return value from error dialogue"),
+				BRWL_CHAR_LITERAL("Error"),
+				MB_ICONERROR | MB_OK
+			);
+			return false;
+		}
+	}
+}
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -29,19 +64,31 @@ END_MESSAGE_MAP()
 
 CVisualization2App::CVisualization2App()
 {
-	// TODO: add construction code here,
-	// Place all significant initialization in InitInstance
+	BRWL::earlyStaticInit();
+	BRWL::globalExceptionHandler = exceptionHandler;
+
 	HINSTANCE hInstance = GetModuleHandle(NULL);
-	BRWL_EXCEPTION(hInstance != NULL, "No HINSTANCE returned.");
+	BRWL_EXCEPTION(hInstance != NULL, BRWL_CHAR_LITERAL("No HINSTANCE returned."));
 	BRWL::PAL::WinGlobals globals(
 		m_hInstance,
 		GetCommandLine(),
 		m_nCmdShow
 	);
+#ifdef UNICODE
+	BRWL_EXCEPTION(false, nullptr);
+#endif
+	BRWL_EXCEPTION(false > 'h', BRWL_CHAR_LITERAL("This is a test"));
+	
 
 	BRWL::PAL::ReadOnlyWinGlobals readOnlyGlobals(globals);
 
 	metaEngine = std::make_unique<BRWL::MetaEngine>(&readOnlyGlobals);
+
+}
+
+CVisualization2App::~CVisualization2App()
+{
+	BRWL::lateStaticDestroy();
 }
 
 

@@ -23,7 +23,7 @@ public:
 
 	Logger();
 
-	static const char* logLevelNames[ENUM_CLASS_TO_NUM(LogLevel::MAX)];
+	static const BRWL_CHAR* logLevelNames[ENUM_CLASS_TO_NUM(LogLevel::MAX)];
 #ifdef _DEBUG
 	static const LogLevel activeLogLevel = Logger::LogLevel::DEBUG;
 #else
@@ -31,11 +31,11 @@ public:
 #endif
 
 
-	void debug(const char* msg) const;
-	void info(const char* msg) const;
-	void warning(const char* msg) const;
-	void error(const char* msg) const;
-	void log(const char* msg, LogLevel level) const;
+	void debug(const BRWL_CHAR* msg) const;
+	void info(const BRWL_CHAR* msg) const;
+	void warning(const BRWL_CHAR* msg) const;
+	void error(const BRWL_CHAR* msg) const;
+	void log(const BRWL_CHAR* msg, LogLevel level) const;
 
 	void setOutStream(std::ostream* loggingSink) { outStream = loggingSink; }
 

@@ -6,38 +6,38 @@
 BRWL_NS
 
 
-const char* Logger::logLevelNames[ENUM_CLASS_TO_NUM(Logger::LogLevel::MAX)] = {
-	"  DEBUG",
-	"   INFO",
-	"WARNING",
-	"  ERROR",
+const BRWL_CHAR* Logger::logLevelNames[ENUM_CLASS_TO_NUM(Logger::LogLevel::MAX)] = {
+	BRWL_CHAR_LITERAL("  DEBUG"),
+	BRWL_CHAR_LITERAL("   INFO"),
+	BRWL_CHAR_LITERAL("WARNING"),
+	BRWL_CHAR_LITERAL("  ERROR"),
 };
 
 Logger::Logger() :
 	outStream(&std::cout)
 { }
 
-void Logger::debug(const char* msg) const
+void Logger::debug(const BRWL_CHAR* msg) const
 {
 	log(msg, LogLevel::DEBUG);
 }
 
-void Logger::info(const char* msg) const
+void Logger::info(const BRWL_CHAR* msg) const
 {
 	log(msg, LogLevel::INFO);
 }
 
-void Logger::warning(const char* msg) const
+void Logger::warning(const BRWL_CHAR* msg) const
 {
 	log(msg, LogLevel::WARNING);
 }
 
-void Logger::error(const char* msg) const
+void Logger::error(const BRWL_CHAR* msg) const
 {
 	log(msg, LogLevel::ERROR);
 }
 
-void Logger::log(const char* msg, LogLevel level) const
+void Logger::log(const BRWL_CHAR* msg, LogLevel level) const
 {
 	if (level >= activeLogLevel && outStream != nullptr)
 	{

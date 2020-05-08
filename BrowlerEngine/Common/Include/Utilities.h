@@ -30,12 +30,6 @@ namespace Utils
 
 }
 
-#ifdef _MSC_VER
-#define BRWL_FINAL final
-#else
-#define BRWL_FINAL
-#endif
-
 // count of elemets in c array
 template<size_t N, typename T> constexpr size_t countof(T(&)[N]) { return N; }
 #define ITERATE_ENUM_CLASS(ENUM, VAR, BEGIN, END) \

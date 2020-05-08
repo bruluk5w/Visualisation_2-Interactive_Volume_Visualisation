@@ -51,6 +51,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Include\ApplicationEndoints.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Include\BrowlerEngine.h" />
     <ClInclude Include="Include\Core_Precomp.h" />
     <ClInclude Include="Include\EventBus.h">
@@ -62,7 +66,6 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="Include\Globals.h" />
-    <ClInclude Include="Include\PAL\BrowlerWindowsInclude.h" />
     <ClInclude Include="Include\PAL\WinGlobals.h" />
     <ClInclude Include="Include\PAL\WinThread.h" />
     <ClInclude Include="Include\PAL\WinWindow.h">

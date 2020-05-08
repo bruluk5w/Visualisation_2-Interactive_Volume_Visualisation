@@ -19,11 +19,11 @@ class WinGlobals BRWL_FINAL
 public:
 	friend class ReadOnlyWinGlobals;
 
-	WinGlobals(const HINSTANCE& hInstance, const LPWSTR cmdLine, const int& cmdShow);
+	WinGlobals(const HINSTANCE& hInstance, const BRWL_CHAR* cmdLine, const int& cmdShow);
 
 private:
 	const HINSTANCE	hInstance;
-	const LPWSTR	cmdLine;
+	const BRWL_CHAR* cmdLine;
 	const int		cmdShow;
 };
 
@@ -34,7 +34,7 @@ public:
 	ReadOnlyWinGlobals(const WinGlobals& globals);
 
 	const HINSTANCE& GetHInstance() const;
-	const LPWSTR& GetCmdLine() const;
+	const BRWL_CHAR* GetCmdLine() const;
 	const int& GetCmdShow() const;
 
 private:

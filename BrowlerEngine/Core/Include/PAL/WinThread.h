@@ -52,7 +52,7 @@ public:
     bool run()
     {
         ThreadState lastState = state.exchange(ThreadState::RUNNING);
-        BRWL_EXCEPTION(lastState == ThreadState::READY, "Wrong thread state when running thread!");
+        BRWL_EXCEPTION(lastState == ThreadState::READY, BRWL_CHAR_LITERAL("Wrong thread state when running thread!"));
         threadHandle = CreateThread(
             NULL,       // default security attributes
             0,          // use default stack size  
@@ -62,7 +62,7 @@ public:
             &threadId   // returns the thread identifier 
         );
 
-        return BRWL_VERIFY(threadHandle != NULL, "Failed to start thread!");
+        return BRWL_VERIFY(threadHandle != NULL, BRWL_CHAR_LITERAL("Failed to start thread!"));
     }
 
     // may only be called from the creating thread
@@ -71,23 +71,23 @@ public:
         // Wait until all threads has terminated.
         WaitForSingleObject(threadHandle, INFINITE);
         DWORD exitCode;
-        BRWL_EXCEPTION(GetExitCodeThread(threadHandle, &exitCode), "Failed to retrieve thread exit code!");
-        BRWL_EXCEPTION(exitCode == 0, "Thread exit code is not 0!");
+        BRWL_EXCEPTION(GetExitCodeThread(threadHandle, &exitCode), BRWL_CHAR_LITERAL("Failed to retrieve thread exit code!"));
+        BRWL_EXCEPTION(exitCode == 0, BRWL_CHAR_LITERAL("Thread exit code is not 0!"));
 
         CloseHandle(threadHandle);
         ThreadState lastState = state.exchange(ThreadState::TERMINATED);
-        BRWL_EXCEPTION(lastState == ThreadState::RUNNING, "Wrong thread state when joining thread!");
+        BRWL_EXCEPTION(lastState == ThreadState::RUNNING, BRWL_CHAR_LITERAL("Wrong thread state when joining thread!"));
     }
 
     // may only be called from the creating thread
     void rewind()
     {
         ThreadState lastState = state.exchange(ThreadState::REWINDING);
-        BRWL_EXCEPTION(lastState == ThreadState::TERMINATED, "Wrong thread state when rewinding thread!");
+        BRWL_EXCEPTION(lastState == ThreadState::TERMINATED, BRWL_CHAR_LITERAL("Wrong thread state when rewinding thread!"));
         threadHandle = NULL;
         threadId = 0;
         lastState = state.exchange(ThreadState::READY);
-        BRWL_EXCEPTION(lastState == ThreadState::REWINDING, "Wrong thread state when setting to ready!");
+        BRWL_EXCEPTION(lastState == ThreadState::REWINDING, BRWL_CHAR_LITERAL("Wrong thread state when setting to ready!"));
     }
 
     ThreadState getState() const { return state.load(); }

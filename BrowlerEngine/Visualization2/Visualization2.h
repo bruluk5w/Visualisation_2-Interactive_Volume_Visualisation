@@ -22,6 +22,7 @@ class CVisualization2App : public CWinApp
 {
 public:
 	CVisualization2App();
+	~CVisualization2App();
 
 // Overrides
 public:
@@ -33,7 +34,7 @@ public:
 
 // Added stuff:
 public:
-	BRWL::MetaEngine* GetMetaEngine() const { BRWL_EXCEPTION(metaEngine != nullptr, "MetaEngine is nullptr!"); return metaEngine.get(); }
+	BRWL::MetaEngine* GetMetaEngine() const { BRWL_EXCEPTION(metaEngine != nullptr, BRWL_CHAR_LITERAL("MetaEngine is nullptr!")); return metaEngine.get(); }
 
 protected:
 	std::unique_ptr<BRWL::MetaEngine> metaEngine;
