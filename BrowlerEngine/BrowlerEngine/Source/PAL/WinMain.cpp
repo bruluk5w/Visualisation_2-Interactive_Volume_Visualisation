@@ -1,6 +1,10 @@
 #ifdef BRWL_PLATFORM_WINDOWS
 
-#include "PAL/WinMain.h"
+#include "PAL/WinGlobals.h"
+
+#include "Timer.h"
+#include "BrowlerEngine.h"
+#include "Resource.h"
 
 // Forward declarations of functions included in this code module:
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -17,10 +21,57 @@ int APIENTRY wWinMain(
 		nCmdShow
 	);
 
-	BRWL::PAL::WinGlobalsAccessor globalsAcc(globals);
-	
-	
+	BRWL::PAL::ReadOnlyWinGlobals readOnlyGlobals(globals);
+
+	BRWL::MetaEngine metaEngine = BRWL::MetaEngine(&readOnlyGlobals);
+#if 1
+	{
+
+
+		WNDCLASSEXW wc;
+		ZeroMemory(&wc, sizeof(wc)),
+
+		wc.cbSize = sizeof(WNDCLASSEX);
+		wc.style = CS_HREDRAW | CS_VREDRAW;
+		wc.lpfnWndProc = WndProc;
+		wc.hInstance = readOnlyGlobals.GetHInstance();
+		wc.hIcon = LoadIcon(readOnlyGlobals.GetHInstance(), MAKEINTRESOURCE(IDI_BROWLERENGINE));
+		wc.hIconSm = LoadIcon(readOnlyGlobals.GetHInstance(), MAKEINTRESOURCE(IDI_BROWLERENGINE_SMALL));
+		wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+		wc.hbrBackground = (HBRUSH)(COLOR_WINDOW);
+		wc.lpszMenuName = MAKEINTRESOURCEW(IDC_BROWLERENGINE);
+		wc.lpszClassName = L"MyWindow";
+
+		RegisterClassExW(&wc);
+		RECT wr = { 0, 0, 500, 400 };    // set the size, but not the position
+		AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);    // adjust the size
+
+		HWND hWnd = CreateWindowEx(NULL,
+			L"MyWindow",    // name of the window class
+			L"Our First Windowed Program",   // title of the window
+			WS_OVERLAPPEDWINDOW,    // window style
+			300,    // x-position of the window
+			300,    // y-position of the window
+			wr.right - wr.left,    // width of the window
+			wr.bottom - wr.top,    // height of the window
+			NULL,    // we have no parent window, NULL
+			NULL,    // we aren't using menus, NULL
+			hInstance,    // application handle
+			NULL);    // used with multiple windows, NULL
+
+		if (!hWnd)
+		{
+			return FALSE;
+		}
+
+		ShowWindow(hWnd, nCmdShow);
+
+
+	}
+
+#endif
 	// enter the main loop:
+	metaEngine.initialize();
 
 	// this struct holds Windows event messages
 	MSG msg = { 0 };
@@ -41,9 +92,7 @@ int APIENTRY wWinMain(
 		}
 		else
 		{
-			// Run game code here
-			// ...
-			// ...
+			metaEngine.update();
 		}
 	}
 	

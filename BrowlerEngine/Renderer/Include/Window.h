@@ -9,7 +9,7 @@ namespace Rendering
 
 #ifdef BRWL_PLATFORM_WINDOWS
 #include "PAL/WinWindow.h"
-	typedef PAL::WinWindow PlatformWindow;
+	//typedef PAL::WinWindow PlatformWindow;
 #endif
 
 }
