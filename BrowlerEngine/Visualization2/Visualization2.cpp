@@ -8,10 +8,10 @@
 #include "Visualization2Dlg.h"
 
 // engine headers
-#include "PAL/WinGlobals.h"
-#include "Timer.h"
-#include "BrowlerEngine.h"
-#include "ApplicationEndoints.h"
+#include "Core/PAL/WinGlobals.h"
+#include "Core/Timer.h"
+#include "Core/BrowlerEngine.h"
+#include "Core/ApplicationEndoints.h"
 
 #define WM_PostLogMessage (WM_APP + 1)
 

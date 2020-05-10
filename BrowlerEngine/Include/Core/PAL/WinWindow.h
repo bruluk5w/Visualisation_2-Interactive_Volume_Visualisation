@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Globals.h"
+#include "Common/EventSystem.h"
+#include "Events.h"
 
 BRWL_PAL_NS
 
@@ -10,7 +12,7 @@ class WinWindow
 {
 	friend struct WinWindowImpl;
 public:
-	WinWindow(PlatformGlobals* globals);
+	WinWindow(PlatformGlobals* globals, EventSystem<Event>* eventSystem);
 	void create();
 	void destroy();
 	int width();
@@ -21,10 +23,12 @@ public:
 	long handleMessage(unsigned int msg, unsigned int wParam, long lParam);
 
 protected:
+	void OnResize();
 
 	PlatformGlobals* globals;
 	std::unique_ptr<WinWindowImpl> impl;
-	
+
+	EventSystem<Event>* eventSystem;
 };
 
 

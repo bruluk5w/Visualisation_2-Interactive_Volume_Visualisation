@@ -33,7 +33,7 @@
     <ClInclude Include="Include\Renderer\Renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Renderer\Window.h">
+    <ClInclude Include="Include\Renderer\Events.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

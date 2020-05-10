@@ -2,6 +2,10 @@
 
 #include "Common/PAL/BrowlerWindowsInclude.h"
 
+#include "BrowlerEngine.h"
+#include "Timer.h"
+
+
 
 namespace
 {
@@ -11,29 +15,8 @@ namespace
 
 BRWL_PAL_NS
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-    WinWindow* window;
-
-    if (msg == WM_NCCREATE)
-    {
-        CREATESTRUCT* createStruct = (CREATESTRUCT*)lParam;
-
-        window = static_cast<WinWindow*>(createStruct->lpCreateParams);
-
-        if (!BRWL_VERIFY(SetWindowLongPtr(hwnd, GWL_USERDATA, (LONG_PTR)(window)) != 0, BRWL_CHAR_LITERAL("Failed to set user pointer for hwnd.")))
-        {
-            return FALSE;
-        }
-    }
-    else
-    {
-        window = (WinWindow*)GetWindowLongPtr(hwnd, GWL_USERDATA);
-    }
-
-    window->handleMessage(msg, wParam, lParam);
-}
 
 struct WinWindowImpl
 {
@@ -46,7 +29,7 @@ struct WinWindowImpl
 
         RECT rect = { x, y, width, height };
         ::AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, false);
-
+        engine->time->
         hWnd = CreateWindowEx(
             0,
             windowClassName,    // name of the window class
@@ -59,7 +42,7 @@ struct WinWindowImpl
             NULL,    // we have no parent window, NULL
             NULL,    // we aren't using menus, NULL
             wrapper->globals->GetHInstance(),    // application handle
-            wrapper // pass user pointer to this instance, so we can retrieve it again when handling WM_NCCREATE
+            this // pass user pointer to this instance, so we can retrieve it again when handling WM_NCCREATE
         );
 
         ::GetWindowRect(hWnd, &rect);
@@ -69,61 +52,7 @@ struct WinWindowImpl
         height = rect.bottom - rect.top;
     }
 
-    HWND hWnd;
-    int width;
-    int height;
-    int x;
-    int y;
-    WinWindow* wrapper;
-};
-
-
-void RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName)
-{
-    // Register a window class for creating our render window with.
-    WNDCLASSEXW windowClass;
-
-    ZeroMemory(&windowClass, sizeof(windowClass));
-
-    windowClass.cbSize = sizeof(WNDCLASSEX);
-    windowClass.style = CS_HREDRAW | CS_VREDRAW;
-    windowClass.lpfnWndProc = &WndProc;
-    windowClass.cbClsExtra = 0;
-    windowClass.cbWndExtra = 0;
-    windowClass.hInstance = hInst;
-    windowClass.hIcon = ::LoadIcon(hInst, NULL);
-    windowClass.hCursor = ::LoadCursor(NULL, IDC_ARROW);
-    windowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    windowClass.lpszMenuName = NULL;
-    windowClass.lpszClassName = windowClassName;
-    windowClass.hIconSm = ::LoadIcon(hInst, NULL);
-
-    ATOM atom = ::RegisterClassExW(&windowClass);
-    BRWL_EXCEPTION(atom > 0, nullptr);
-}
-
-WinWindow::WinWindow(PlatformGlobals* globals) :
-    globals(globals),
-    impl(nullptr)
-{
-    RegisterWindowClass(globals->GetHInstance(), windowClassName);
-}
-
-void WinWindow::create()
-{
-    impl = std::make_unique<WinWindowImpl>();
-}
-
-void WinWindow::destroy()
-{
-    impl = nullptr;
-}
-
-int WinWindow::width() { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->width : -1; }
-
-LRESULT WinWindow::handleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
-    if (impl)
-    {
+    LRESULT handleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
         switch (msg)
         {
         case WM_PAINT:
@@ -151,28 +80,103 @@ LRESULT WinWindow::handleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
             break;
         case WM_SIZE:
         {
-            RECT clientRect;
-            GetClientRect(impl->hWnd, &clientRect);
-
-            int width = clientRect.right - clientRect.left;
-            int height = clientRect.bottom - clientRect.top;
-
-            Resize(width, height);
+            OnResize();
         }
-        break;
+        case WM_EXITSIZEMOVE:
+
+            break;
         case WM_DESTROY:
             ::PostQuitMessage(0);
             break;
         default:
-            return ::DefWindowProcW(impl->hWnd, msg, wParam, lParam);
+            return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+        }
+
+        BRWL_UNREACHABLE();
+
+        return 0;
+    }
+
+    void OnResize(bool force = false)
+    {
+
+        RECT clientRect;
+        GetClientRect(hWnd, &clientRect);
+
+        int width = clientRect.right - clientRect.left;
+        int height = clientRect.bottom - clientRect.top;
+
+    }
+
+    HWND hWnd;
+    int width;
+    int height;
+    int x;
+    int y;
+    WinWindow* wrapper;
+};
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    WinWindowImpl* impl;
+
+    if (msg == WM_NCCREATE)
+    {
+        CREATESTRUCT* createStruct = (CREATESTRUCT*)lParam;
+
+        impl = static_cast<WinWindowImpl*>(createStruct->lpCreateParams);
+
+        if (!BRWL_VERIFY(SetWindowLongPtr(hwnd, GWL_USERDATA, (LONG_PTR)(impl)) != 0, BRWL_CHAR_LITERAL("Failed to set user pointer for hwnd.")))
+        {
+            return FALSE;
         }
     }
     else
     {
-        return ::DefWindowProcW(impl->hWnd, msg, wParam, lParam);
+        impl = (WinWindowImpl*)GetWindowLongPtr(hwnd, GWL_USERDATA);
     }
 
-    return 0;
+    impl->handleMessage(msg, wParam, lParam);
 }
+
+void RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName)
+{
+    // Register a window class for creating our render window with.
+    WNDCLASSEXW windowClass;
+
+    ZeroMemory(&windowClass, sizeof(windowClass));
+
+    windowClass.cbSize = sizeof(WNDCLASSEX);
+    windowClass.style = CS_HREDRAW | CS_VREDRAW;
+    windowClass.lpfnWndProc = &WndProc;
+    windowClass.cbClsExtra = 0;
+    windowClass.cbWndExtra = 0;
+    windowClass.hInstance = hInst;
+    windowClass.hIcon = ::LoadIcon(hInst, NULL);
+    windowClass.hCursor = ::LoadCursor(NULL, IDC_ARROW);
+    windowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    windowClass.lpszMenuName = NULL;
+    windowClass.lpszClassName = windowClassName;
+    windowClass.hIconSm = ::LoadIcon(hInst, NULL);
+
+    ATOM atom = ::RegisterClassExW(&windowClass);
+    BRWL_EXCEPTION(atom > 0, nullptr);
+}
+
+WinWindow::WinWindow(PlatformGlobals* globals, EventSystem<Event>* eventSystem) :
+    globals(globals),
+    eventSystem(eventSystem),
+    impl(nullptr)
+{
+    BRWL_EXCEPTION(eventSystem, BRWL_CHAR_LITERAL("The EventSystem must not be nullptr."));
+    RegisterWindowClass(globals->GetHInstance(), windowClassName);
+}
+
+void WinWindow::create() { impl = std::make_unique<WinWindowImpl>(); }
+
+void WinWindow::destroy() { impl = nullptr; }
+
+int WinWindow::width() { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->width : -1; }
+
 
 BRWL_PAL_NS_END

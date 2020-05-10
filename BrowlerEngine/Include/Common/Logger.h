@@ -10,6 +10,8 @@ BRWL_NS
 class Logger
 {
 public:
+	Logger() : outStream(nullptr) { }
+
 	enum class LogLevel : uint8_t
 	{
 		DEBUG = 0,
@@ -37,7 +39,7 @@ public:
 	void error(const BRWL_CHAR* msg) const;
 	void log(const BRWL_CHAR* msg, LogLevel level) const;
 
-	void setOutStream(std::ostream* loggingSink) { outStream = loggingSink; }
+	void setOutStream(std::ostream* loggingSink) { BRWL_EXCEPTION(outStream, BRWL_CHAR_LITERAL("Stream already set!")); outStream = loggingSink; }
 
 protected:
 	std::ostream* outStream;

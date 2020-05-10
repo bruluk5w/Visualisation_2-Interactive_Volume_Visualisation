@@ -2,6 +2,7 @@
 
 BRWL_NS
 
+
 // this global functionpointer allows to set a function that can handle errors and possibly skip them
 // return values:
 //   - true: skip error
@@ -63,11 +64,18 @@ void printStackTrace(BRWL_CHAR (&output)[maxMsgLen], const BRWL_CHAR* test, cons
 	}
 }
 
+#define BRWL_UNREACHABLE() BRWL_EXCEPTION(false, BRWL_CHAR_LITERAL("Unreachable Code Reached!"))
+
+
 BRWL_NS_END
 
 BRWL_PAL_NS
-#if defined(_DEBUG) && defined(BRWL_PLATFORM_WINDOWS);
+
+
+#if defined(_DEBUG) && defined(BRWL_PLATFORM_WINDOWS)
 // Only use this in debug configuration. We don't want this window to pop up in a release build.
 void ShowLastWindowsError();
 #endif
+
+
 BRWL_PAL_NS_END

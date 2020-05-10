@@ -1,7 +1,8 @@
 #include "BrowlerEngine.h"
 
+#include "Common/Logger.h"
 #include "Timer.h"
-
+#include "ApplicationEndoints.h"
 #include <iostream>
 
 BRWL_NS
@@ -33,7 +34,9 @@ bool Engine::init(const char* settingsFile)
 
 void Engine::update()
 {
-	std::cout << time->getDeltaTimeF();
+	BRWL_CHAR msg[20];
+	BRWL_SNPRINTF(msg, BRWL_CHAR_LITERAL("%.f"), time->getGameTimeF());
+	Engine::LogInfo(msg);
 }
 
 void Engine::shutdown()
@@ -84,11 +87,11 @@ void Engine::close()
 	//}
 
 	//// Event System
-	//if (eventBus) {
-	//	if (eventBus->hasAnyListeners())
-	//	{
-	//		logger->warning("The event bus still had listeners registered on application shutdown!");
-	//	}
+	if (eventSystem) {
+		if (eventSystem->hasAnyListeners())
+		{
+			LogWarning(BRWL_CHAR_LITERAL("The event bus still had listeners registered on application shutdown!"));
+		}
 
 	//	eventBus = nullptr;
 	//}
@@ -97,7 +100,7 @@ void Engine::close()
 	time = nullptr;
 
 	// Logger
-	// Not destroing the logger here. It should be destroyed when the application object is destroyed  or when a new logger is created
+	//Not destroing the logger here. It should be destroyed when the application object is destroyed  or when a new logger is created
 
 	//// Settings
 	//settings = nullptr;
@@ -110,8 +113,8 @@ bool Engine::internalInit(const char* settingsFile)
 	//settings = std::make_unique<Settings>();
 	//settings->read(reader);
 
-	//// Logger
-	//logger = std::make_unique<Logger>();
+	// Logger
+	logger = std::make_unique<Logger>();
 
 	//if (!VERIFY(settings != nullptr, "Invalid argument"))
 	//{
@@ -165,5 +168,10 @@ bool Engine::internalInit(const char* settingsFile)
 	isInitialized = true;
 	return isInitialized;
 }
+
+void Engine::LogDebug(const BRWL_CHAR* msg) { if (BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->debug(msg); }
+void Engine::LogInfo(const BRWL_CHAR* msg) { if (BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->info(msg); }
+void Engine::LogWarning(const BRWL_CHAR* msg) { if (!BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->warning(msg); }
+void Engine::LogError(const BRWL_CHAR* msg) { if (!BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->error(msg); }
 
 BRWL_NS_END

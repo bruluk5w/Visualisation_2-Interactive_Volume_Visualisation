@@ -2,7 +2,7 @@
 
 #ifdef BRWL_PLATFORM_WINDOWS
 
-#include "PAL/BrowlerWindowsInclude.h"
+#include "Common/PAL/BrowlerWindowsInclude.h"
 
 #include <functional>
 #include <atomic>
@@ -57,7 +57,7 @@ public:
             NULL,       // default security attributes
             0,          // use default stack size  
             ThreadRun,  // thread function name
-            &payload,    // argument to thread function 
+            &payload,   // argument to thread function 
             0,          // use default creation flags 
             &threadId   // returns the thread identifier 
         );
@@ -103,9 +103,6 @@ protected:
     DWORD   threadId;
     std::atomic<ThreadState> state;
 };
-
-
-//#include <functional>
 
 
 BRWL_PAL_NS_END

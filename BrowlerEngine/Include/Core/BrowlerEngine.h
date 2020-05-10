@@ -1,9 +1,10 @@
 #pragma once
 
-#include <mutex>
 #include "Thread.h"
 
 #include "Globals.h"
+#include "EventSystem.h"
+#include <mutex>
 
 BRWL_NS
 
@@ -11,6 +12,7 @@ BRWL_NS
 class Engine;
 class Timer;
 class TickProvider;
+class Logger;
 
 
 class MetaEngine final
@@ -78,19 +80,19 @@ public:
 
 
 
-	//// convenience functions for logging
-	//void LogDebug(const char* msg) { if (logger) logger->debug(msg); }
-	//void LogInfo(const char* msg) { if (logger) logger->info(msg); }
-	//void LogWarning(const char* msg) { if (logger) logger->warning(msg); }
-	//void LogError(const char* msg) { if (logger) logger->error(msg); }
+	// convenience functions for logging
+	void LogDebug(const BRWL_CHAR* msg);
+	void LogInfo(const BRWL_CHAR* msg);
+	void LogWarning(const BRWL_CHAR* msg);
+	void LogError(const BRWL_CHAR* msg);
 
 	//std::shared_ptr<Settings> settings;
-	//std::shared_ptr<Logger> logger;
+	std::shared_ptr<Logger> logger;
 	std::unique_ptr<Timer> time;
+	std::unique_ptr<CoreEventSystem> eventSystem;
 	//std::unique_ptr<Window> window;
 	//std::unique_ptr<Renderer> renderer;
 	//std::unique_ptr<InputManager> input;
-	//std::unique_ptr<EventBus> eventBus;
 	//std::unique_ptr<Hierarchy> hierarchy;
 	//std::unique_ptr<MeshRegistry> meshRegistry;
 	//std::unique_ptr<TextureRegistry> textureRegistry;

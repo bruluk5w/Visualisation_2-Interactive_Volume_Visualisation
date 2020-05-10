@@ -36,6 +36,8 @@
 *.vcxproj.user
 **/[Dd]ebug
 **/[Rr]elease
+BrowlerEngine/build/**
+BrowlerEngine/Visualization2/build/**
 
 
 # NuGet Packages

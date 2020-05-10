@@ -5,7 +5,8 @@
 BRWL_NS
 
 
-//enum class Event {
+enum class Event {
+	WINDOW_RESIZE,
 	//KEY_F1,
 	//KEY_F2,
 	//KEY_F3,
@@ -31,9 +32,19 @@ BRWL_NS
 	//MOUSE_MOVE,
 	//MOUSE_DELTA,
 	//MOUSE_SCROLL,
-//	MAX,
-//	MIN = 0
-//};
+	MAX,
+	MIN = 0
+};
+
+struct WindowResizeParam
+{
+	int width;
+	int height;
+};
+
+EVENT_PARAMETER_MAP(Event, WINDOW_RESIZE, WindowResizeParam)
+
+
 
 //
 //struct MouseMoveParam
