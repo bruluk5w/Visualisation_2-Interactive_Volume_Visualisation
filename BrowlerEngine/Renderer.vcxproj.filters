@@ -36,9 +36,6 @@
     <ClInclude Include="Include\Renderer\Window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Renderer\PAL\WinWindow.h">
-      <Filter>Header Files\PAL</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Renderer\Renderer_Precomp.cpp">
@@ -48,12 +45,6 @@
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
     <ClCompile Include="Source\Renderer\Renderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Renderer\PAL\WinWindow.cpp">
-      <Filter>Source Files\PAL</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Renderer\Window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
