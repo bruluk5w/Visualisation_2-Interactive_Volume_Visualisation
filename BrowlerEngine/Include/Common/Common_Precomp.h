@@ -39,12 +39,6 @@ namespace PAL {
 
 #endif
 
-#ifdef _MSC_VER
-#define BRWL_FINAL final
-#else
-#define BRWL_FINAL
-#endif
-
 #ifdef _DEBUG
 #define BRWL_USE_DEBUG_SYMBOLS
 #endif

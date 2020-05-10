@@ -13,7 +13,7 @@ class Timer;
 class TickProvider;
 
 
-class MetaEngine BRWL_FINAL
+class MetaEngine final
 {
 public:
 	typedef uint8_t EngineHandle;

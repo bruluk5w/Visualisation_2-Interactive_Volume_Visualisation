@@ -1,6 +1,6 @@
 #include "PAL/WinWindow.h"
 
-#include "PAL/BrowlerWindowsInclude.h"
+#include "Common/PAL/BrowlerWindowsInclude.h"
 
 
 namespace

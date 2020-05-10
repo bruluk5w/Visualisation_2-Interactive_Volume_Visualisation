@@ -14,7 +14,7 @@ BRWL_PAL_NS
 class ReadOnlyWinGlobals;
 
 
-class WinGlobals BRWL_FINAL
+class WinGlobals final
 {
 public:
 	friend class ReadOnlyWinGlobals;
@@ -28,7 +28,7 @@ private:
 };
 
 
-class ReadOnlyWinGlobals BRWL_FINAL
+class ReadOnlyWinGlobals final
 {
 public:
 	ReadOnlyWinGlobals(const WinGlobals& globals);

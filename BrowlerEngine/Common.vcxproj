@@ -21,6 +21,10 @@
   <ItemGroup>
     <ClInclude Include="Include\Common\Common_Precomp.h" />
     <ClInclude Include="Include\Common\EventBus.h" />
+    <ClInclude Include="Include\Common\Events.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Include\Common\Exception.h" />
     <ClInclude Include="Include\Common\Logger.h" />
     <ClInclude Include="Include\Common\PAL\BrowlerWindowsInclude.h" />
