@@ -93,7 +93,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeaderFile>Renderer_Precomp.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Renderer_Precomp.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)../Common/Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -113,7 +113,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeaderFile>Renderer_Precomp.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Renderer_Precomp.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)../Common/Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -135,7 +135,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeaderFile>Renderer_Precomp.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Renderer_Precomp.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)../Common/Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -159,7 +159,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeaderFile>Renderer_Precomp.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Renderer_Precomp.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)../Common/Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -171,53 +171,29 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Common\Common.vcxproj">
+    <ProjectReference Include="Common.vcxproj">
       <Project>{abd45fc6-aed5-41f1-8895-8ba12b1367c4}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Include\PAL\WinRenderer.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
-    <ClInclude Include="Include\PAL\WinWindow.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
-    <ClInclude Include="Include\Renderer.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
-    <ClInclude Include="Include\Renderer_Precomp.h" />
-    <ClInclude Include="Include\targetver.h" />
-    <ClInclude Include="Include\Window.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
+    <ClInclude Include="Include\Renderer\PAL\WinRenderer.h" />
+    <ClInclude Include="Include\Renderer\PAL\WinWindow.h" />
+    <ClInclude Include="Include\Renderer\Renderer.h" />
+    <ClInclude Include="Include\Renderer\Renderer_Precomp.h" />
+    <ClInclude Include="Include\Renderer\targetver.h" />
+    <ClInclude Include="Include\Renderer\Window.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\PAL\WinRenderer.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
-    <ClCompile Include="Source\PAL\WinWindow.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
-    <ClCompile Include="Source\Renderer.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
-    <ClCompile Include="Source\Renderer_Precomp.cpp">
+    <ClCompile Include="Source\Renderer\Renderer_Precomp.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Source\Window.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
+    <ClCompile Include="Source\Renderer\PAL\WinRenderer.cpp"/>
+    <ClCompile Include="Source\Renderer\PAL\WinWindow.cpp" />
+    <ClCompile Include="Source\Renderer\Renderer.cpp" />
+    <ClCompile Include="Source\Renderer\Window.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

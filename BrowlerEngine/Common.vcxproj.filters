@@ -17,48 +17,48 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Include\Common_Precomp.h">
+    <ClInclude Include="Include\Common\Common_Precomp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\targetver.h">
+    <ClInclude Include="Include\Common\targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Utilities.h">
+    <ClInclude Include="Include\Common\Utilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Exception.h">
+    <ClInclude Include="Include\Common\Exception.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Logger.h">
+    <ClInclude Include="Include\Common\Logger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\StackTrace.h">
+    <ClInclude Include="Include\Common\StackTrace.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\PAL\WinStackTrace.h">
+    <ClInclude Include="Include\Common\PAL\WinStackTrace.h">
       <Filter>Header Files\PAL</Filter>
     </ClInclude>
-    <ClInclude Include="Include\PAL\BrowlerWindowsInclude.h">
+    <ClInclude Include="Include\Common\PAL\BrowlerWindowsInclude.h">
       <Filter>Header Files\PAL</Filter>
     </ClInclude>
-    <ClInclude Include="Include\EventBus.h">
+    <ClInclude Include="Include\Common\EventBus.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\Common_Precomp.cpp">
+    <ClCompile Include="Source\Common\Common_Precomp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Exception.cpp">
+    <ClCompile Include="Source\Common\Exception.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Logger.cpp">
+    <ClCompile Include="Source\Common\Logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\WinStackTrace.cpp">
+    <ClCompile Include="Source\Common\WinStackTrace.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
-    <ClCompile Include="Source\EventBus.cpp">
+    <ClCompile Include="Source\Common\EventBus.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

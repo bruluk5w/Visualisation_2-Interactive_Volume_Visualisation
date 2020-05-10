@@ -21,57 +21,57 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\Core_Precomp.cpp">
+    <ClCompile Include="Source\Core\Core_Precomp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\BrowlerEngine.cpp">
+    <ClCompile Include="Source\Core\BrowlerEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\MetaEngine.cpp">
+    <ClCompile Include="Source\Core\MetaEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\PAL\WinGlobals.cpp">
+    <ClCompile Include="Source\Core\PAL\WinGlobals.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
-    <ClCompile Include="Source\PAL\WinTickProvider.cpp">
+    <ClCompile Include="Source\Core\PAL\WinTickProvider.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
-    <ClCompile Include="Source\PAL\WinWindow.cpp">
+    <ClCompile Include="Source\Core\PAL\WinWindow.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Include\Core_Precomp.h">
+    <ClInclude Include="Include\Core\Core_Precomp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\PAL\WinGlobals.h">
+    <ClInclude Include="Include\Core\PAL\WinGlobals.h">
       <Filter>Header Files\PAL</Filter>
     </ClInclude>
-    <ClInclude Include="Include\PAL\WinThread.h">
+    <ClInclude Include="Include\Core\PAL\WinThread.h">
       <Filter>Header Files\PAL</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Globals.h">
+    <ClInclude Include="Include\Core\Globals.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Thread.h">
+    <ClInclude Include="Include\Core\Thread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\ThreadState.h">
+    <ClInclude Include="Include\Core\ThreadState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Timer.h">
+    <ClInclude Include="Include\Core\Timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\BrowlerEngine.h">
+    <ClInclude Include="Include\Core\BrowlerEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Events.h">
+    <ClInclude Include="Include\Core\Events.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\PAL\WinWindow.h">
+    <ClInclude Include="Include\Core\PAL\WinWindow.h">
       <Filter>Header Files\PAL</Filter>
     </ClInclude>
-    <ClInclude Include="Include\ApplicationEndoints.h">
+    <ClInclude Include="Include\Core\ApplicationEndoints.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
