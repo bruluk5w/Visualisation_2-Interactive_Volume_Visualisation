@@ -36,12 +36,6 @@
     <ClCompile Include="Source\PAL\WinTickProvider.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
-    <ClCompile Include="Source\EventBus.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Window.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source\PAL\WinWindow.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
@@ -72,12 +66,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Events.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\EventBus.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\PAL\WinWindow.h">

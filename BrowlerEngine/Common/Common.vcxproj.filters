@@ -41,6 +41,9 @@
     <ClInclude Include="Include\PAL\BrowlerWindowsInclude.h">
       <Filter>Header Files\PAL</Filter>
     </ClInclude>
+    <ClInclude Include="Include\EventBus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Common_Precomp.cpp">
@@ -54,6 +57,9 @@
     </ClCompile>
     <ClCompile Include="Source\WinStackTrace.cpp">
       <Filter>Source Files\PAL</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\EventBus.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

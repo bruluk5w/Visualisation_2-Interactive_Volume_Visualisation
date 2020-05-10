@@ -34,10 +34,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Source\EventBus.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
     <ClCompile Include="Source\MetaEngine.cpp" />
     <ClCompile Include="Source\PAL\WinGlobals.cpp" />
     <ClCompile Include="Source\PAL\WinTickProvider.cpp" />
@@ -57,10 +53,6 @@
     </ClInclude>
     <ClInclude Include="Include\BrowlerEngine.h" />
     <ClInclude Include="Include\Core_Precomp.h" />
-    <ClInclude Include="Include\EventBus.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
     <ClInclude Include="Include\Events.h">
       <SubType>
       </SubType>

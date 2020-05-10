@@ -28,6 +28,9 @@ namespace Utils
 	constexpr uint16_t nextPowerOfTwo(uint16_t x) { x--; x |= x >> 1; x |= x >> 2; x |= x >> 4; return (x | (x >> 8)) + 1; }
 	constexpr uint8_t nextPowerOfTwo(uint8_t x) { x--; x |= x >> 1; x |= x >> 2; return (x | (x >> 4)) + 1; }
 
+	template<typename T>
+	using is_enum_class = std::integral_constant<bool, std::is_enum<T>::value && !std::is_convertible_v<T, int>>;
+
 }
 
 // count of elemets in c array
