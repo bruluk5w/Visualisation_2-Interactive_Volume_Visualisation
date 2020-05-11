@@ -23,7 +23,9 @@ public:
 	long handleMessage(unsigned int msg, unsigned int wParam, long lParam);
 
 protected:
-	void OnResize();
+	void move(int x, int y, int dx, int dy);
+	void resize(int width, int height);
+
 
 	PlatformGlobals* globals;
 	std::unique_ptr<WinWindowImpl> impl;

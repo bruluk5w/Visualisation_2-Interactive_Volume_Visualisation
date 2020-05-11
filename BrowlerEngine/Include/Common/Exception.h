@@ -23,6 +23,20 @@ BRWL_STR getExceptionString(const BRWL_CHAR* const test, const BRWL_CHAR* const 
 	} \
 })()
 
+#ifdef _DEBUG
+
+#define BRWL_CHECK(test, msg) do { \
+static bool thrown = false; \
+if (!thrown && !(test)) { \
+BRWL::exception(BRWL_CHAR_LITERAL(#test), (msg), true); \
+thrown = true; \
+} \
+} while(0)
+
+#else
+#define BRWL_CHECK
+#endif
+
 struct ScopedNoDebugBreakOnException
 {
 	ScopedNoDebugBreakOnException();

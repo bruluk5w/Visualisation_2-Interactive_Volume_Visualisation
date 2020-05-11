@@ -1,6 +1,6 @@
 #include "PAL/WinGlobals.h"
 
-#include "PAL/BrowlerWindowsInclude.h"
+#include "Common/PAL/BrowlerWindowsInclude.h"
 
 BRWL_PAL_NS
 

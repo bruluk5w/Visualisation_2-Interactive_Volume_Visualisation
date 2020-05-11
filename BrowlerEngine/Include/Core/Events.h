@@ -7,6 +7,7 @@ BRWL_NS
 
 enum class Event {
 	WINDOW_RESIZE,
+	WINDOW_MOVE,
 	//KEY_F1,
 	//KEY_F2,
 	//KEY_F3,
@@ -36,13 +37,21 @@ enum class Event {
 	MIN = 0
 };
 
-struct WindowResizeParam
+struct WindowSizeParam
 {
 	int width;
 	int height;
 };
 
-EVENT_PARAMETER_MAP(Event, WINDOW_RESIZE, WindowResizeParam)
+struct WindowMoveParam
+{
+	int x;  // the new x position
+	int y;  // the new y position
+	int dx; // the change in the x coordinate
+	int dy; // the change in the y coordinate
+};
+
+EVENT_PARAMETER_MAP(Event, WINDOW_RESIZE, WindowSizeParam, WINDOW_MOVE, WindowMoveParam)
 
 
 

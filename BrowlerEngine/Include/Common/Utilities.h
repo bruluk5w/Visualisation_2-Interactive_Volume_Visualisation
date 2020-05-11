@@ -29,7 +29,7 @@ namespace Utils
 	constexpr uint8_t nextPowerOfTwo(uint8_t x) { x--; x |= x >> 1; x |= x >> 2; return (x | (x >> 4)) + 1; }
 
 	template<typename T>
-	using is_enum_class = std::integral_constant<bool, std::is_enum<T>::value && !std::is_convertible_v<T, int>>;
+	using is_enum_class = std::integral_constant<bool, std::is_enum_v<T> && !std::is_convertible_v<T, int>>;
 
 }
 
@@ -38,7 +38,7 @@ template<size_t N, typename T> constexpr size_t countof(T(&)[N]) { return N; }
 #define ITERATE_ENUM_CLASS(ENUM, VAR, BEGIN, END) \
 	for(ENUM VAR = ENUM::BEGIN; VAR < ENUM::END; VAR = static_cast<ENUM>(static_cast<std::underlying_type<ENUM>::type>(VAR) + 1))
 
-#define ENUM_CLASS_TO_NUM(VAL) static_cast<std::underlying_type<std::remove_reference<decltype(VAL)>::type>::type>(VAL)
+#define ENUM_CLASS_TO_NUM(VAL) static_cast<typename std::underlying_type<std::remove_reference<decltype(VAL)>::type>::type>(VAL)
 
 #define DEFINE_ENUM_CLASS_OPERATORS(ENUMTYPE) \
 extern "C++" { \

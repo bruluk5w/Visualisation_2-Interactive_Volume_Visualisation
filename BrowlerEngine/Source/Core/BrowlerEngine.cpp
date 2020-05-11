@@ -35,7 +35,7 @@ bool Engine::init(const char* settingsFile)
 void Engine::update()
 {
 	BRWL_CHAR msg[20];
-	BRWL_SNPRINTF(msg, BRWL_CHAR_LITERAL("%.f"), time->getGameTimeF());
+	BRWL_SNPRINTF(msg, BRWL_CHAR_LITERAL("%.f"), time->getTimeF());
 	Engine::LogInfo(msg);
 }
 

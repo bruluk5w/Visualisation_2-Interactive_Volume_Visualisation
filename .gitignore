@@ -38,6 +38,7 @@
 **/[Rr]elease
 BrowlerEngine/build/**
 BrowlerEngine/Visualization2/build/**
+*.i
 
 
 # NuGet Packages

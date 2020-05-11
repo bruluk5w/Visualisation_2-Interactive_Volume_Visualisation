@@ -21,6 +21,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 struct WinWindowImpl
 {
     WinWindowImpl(WinWindow* wrapper, int x, int y, int width, int height) :
+        x(0),
+        y(0),
+        width(-1),
+        height(-1),
+        hWnd(),
+        lastTimeTransformUpdated(-1),
         wrapper(wrapper)
     {
         // for now we only consider the main monitor
@@ -29,7 +35,7 @@ struct WinWindowImpl
 
         RECT rect = { x, y, width, height };
         ::AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, false);
-        engine->time->
+        
         hWnd = CreateWindowEx(
             0,
             windowClassName,    // name of the window class
@@ -79,11 +85,23 @@ struct WinWindowImpl
             // Handle this one cause else windows playes the annoying PLINNNG sound
             break;
         case WM_SIZE:
+            OnChangeTransform();
+            break;
+        case WM_SIZING:
         {
-            OnResize();
+            float currentTime = engine->time->getUnmodifiedTimeF();
+            float deltaUpdate = currentTime - lastTimeTransformUpdated;
+            if (deltaUpdate > 0.2) {
+                OnChangeTransform();
+                lastTimeTransformUpdated = currentTime;
+            }
         }
+            break;
+        case WM_ENTERSIZEMOVE:
+            lastTimeTransformUpdated = engine->time->getUnmodifiedTimeF();
+            break;
         case WM_EXITSIZEMOVE:
-
+            if (lastTimeTransformUpdated < engine->time->getDeltaUnmodifiedTime()) OnChangeTransform();
             break;
         case WM_DESTROY:
             ::PostQuitMessage(0);
@@ -97,22 +115,32 @@ struct WinWindowImpl
         return 0;
     }
 
-    void OnResize(bool force = false)
+    void OnChangeTransform()
     {
 
-        RECT clientRect;
-        GetClientRect(hWnd, &clientRect);
-
-        int width = clientRect.right - clientRect.left;
-        int height = clientRect.bottom - clientRect.top;
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+        if (rect.left != x || rect.top != y)
+        {
+            int dx = rect.left - x;
+            int dy = rect.top - y;
+            x = rect.left;
+            y = rect.top;
+            wrapper->move(x, y, dx, dy);
+        }
+        int width = rect.right - rect.left;
+        int height = rect.bottom - rect.top;
 
     }
 
-    HWND hWnd;
+    int y;
+    int x;
     int width;
     int height;
-    int x;
-    int y;
+    HWND hWnd;
+
+    float lastTimeTransformUpdated;
+
     WinWindow* wrapper;
 };
 
