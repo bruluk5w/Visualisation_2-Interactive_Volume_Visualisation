@@ -30,13 +30,15 @@ namespace PAL {
 #define BRWL_STRLEN wcslen
 #define BRWL_STR ::std::wstring
 #define BRWL_SNPRINTF swprintf
+#define BRWL_STD_COUT ::std::wcout
+#define BRWL_STD_CIN ::std::wcin
 #else
 #define BRWL_CHAR char
 #define BRWL_CHAR_LITERAL(LITERAL) LITERAL
 #define BRWL_STRLEN strlen
 #define BRWL_STR ::std::string
 #define BRWL_SNPRINTF snprintf
-
+#define BRWL_STD_CIN ::std::cin
 #endif
 
 #ifdef _DEBUG

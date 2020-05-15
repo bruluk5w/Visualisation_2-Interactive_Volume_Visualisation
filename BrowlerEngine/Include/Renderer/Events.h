@@ -23,7 +23,7 @@ struct FrameBufferResizeParam
 	int height;
 };
 
-EVENT_PARAMETER_MAP(RENDERER::Event, FRAMEBUFFER_RESIZE, FrameBufferResizeParam)
+//EVENT_PARAMETER_MAP(RENDERER::Event, FRAMEBUFFER_RESIZE, FrameBufferResizeParam)
 
 
 BRWL_NS_END

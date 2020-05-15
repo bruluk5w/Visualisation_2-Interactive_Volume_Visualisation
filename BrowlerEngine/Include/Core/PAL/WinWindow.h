@@ -13,19 +13,16 @@ class WinWindow
 	friend struct WinWindowImpl;
 public:
 	WinWindow(PlatformGlobals* globals, EventSystem<Event>* eventSystem);
-	void create();
+	void create(int x, int y, int width, int height);
 	void destroy();
-	int width();
-	int height();
-	int x();
-	int y();
-
-	long handleMessage(unsigned int msg, unsigned int wParam, long lParam);
+	int x() const;
+	int y() const;
+	int width() const;
+	int height() const;
 
 protected:
 	void move(int x, int y, int dx, int dy);
 	void resize(int width, int height);
-
 
 	PlatformGlobals* globals;
 	std::unique_ptr<WinWindowImpl> impl;

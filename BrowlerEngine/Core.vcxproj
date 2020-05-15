@@ -57,6 +57,9 @@
     <ClInclude Include="Include\Core\Timer.h" />
     <ClInclude Include="Include\Core\Window.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{8D16DF7D-5843-4BCC-80FE-B71E4C1AE6D9}</ProjectGuid>
@@ -138,8 +141,6 @@
       <ForcedIncludeFiles>Core_Precomp.h</ForcedIncludeFiles>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
-      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -159,8 +160,6 @@
       <ForcedIncludeFiles>Core_Precomp.h</ForcedIncludeFiles>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
-      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -182,8 +181,6 @@
       <ForcedIncludeFiles>Core_Precomp.h</ForcedIncludeFiles>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
-      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -207,8 +204,6 @@
       <ForcedIncludeFiles>Core_Precomp.h</ForcedIncludeFiles>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
-      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

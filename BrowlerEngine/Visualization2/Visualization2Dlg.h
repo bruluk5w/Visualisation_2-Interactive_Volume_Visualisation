@@ -1,9 +1,8 @@
-
-// Visualization2Dlg.h : header file
-//
-
 #pragma once
 
+#include "CLogEdit.h"
+
+class LogHandler;
 
 // CVisualization2Dlg dialog
 class CVisualization2Dlg : public CDialogEx
@@ -11,6 +10,7 @@ class CVisualization2Dlg : public CDialogEx
 // Construction
 public:
 	CVisualization2Dlg(CWnd* pParent = nullptr);	// standard constructor
+	virtual ~CVisualization2Dlg();
 
 // Dialog Data
 #ifdef AFX_DESIGN_TIME
@@ -27,6 +27,7 @@ protected:
 
 	// Generated message map functions
 	virtual BOOL OnInitDialog();
+	afx_msg void OnDestroy();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
@@ -34,4 +35,9 @@ protected:
 public:
 	afx_msg void OnMainMenuBarHelpAbout();
 	afx_msg void OnMainMenuBarFileExit();
+	afx_msg LRESULT OnLogMessage(WPARAM, LPARAM lParam);
+protected:
+	// The edit control which displays the application log
+	CLogEdit logEdit;
+	std::unique_ptr<LogHandler> logHandler;
 };

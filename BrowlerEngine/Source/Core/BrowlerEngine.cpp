@@ -3,7 +3,6 @@
 #include "Common/Logger.h"
 #include "Timer.h"
 #include "ApplicationEndoints.h"
-#include <iostream>
 
 BRWL_NS
 
@@ -12,7 +11,7 @@ Engine::Engine( TickProvider* tickProvider, PlatformGlobals* globals) :
 	isInitialized(false),
 	tickProvider(tickProvider),
 	globals(nullptr),
-	runMode(MetaEngine::EngineRunMode::SYNCHRONIZED)
+	runMode(MetaEngine::EngineRunMode::META_ENGINE_MAIN_THREAD)
 { }
 
 Engine::~Engine()
@@ -29,13 +28,15 @@ bool Engine::init(const char* settingsFile)
 		return false;
 	}
 
+	time->start();
+
 	return true;
 }
 
 void Engine::update()
 {
 	BRWL_CHAR msg[20];
-	BRWL_SNPRINTF(msg, BRWL_CHAR_LITERAL("%.f"), time->getTimeF());
+	BRWL_SNPRINTF(msg, countof(msg), BRWL_CHAR_LITERAL("%.f"), time->getTimeF());
 	Engine::LogInfo(msg);
 }
 
@@ -52,6 +53,8 @@ bool Engine::shouldClose()
 
 void Engine::close()
 {
+	if (time) time->stop();
+
 	//// Input
 	//if (input)
 	//{
@@ -92,6 +95,7 @@ void Engine::close()
 		{
 			LogWarning(BRWL_CHAR_LITERAL("The event bus still had listeners registered on application shutdown!"));
 		}
+	}
 
 	//	eventBus = nullptr;
 	//}

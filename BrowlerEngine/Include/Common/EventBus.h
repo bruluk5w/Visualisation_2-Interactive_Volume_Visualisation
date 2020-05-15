@@ -11,10 +11,13 @@ BRWL_NS
 template<typename Event>
 class EventBus
 {
-	static_assert(Utils::is_enum_class<Event>);
+	static_assert(Utils::is_enum_class<Event>::value);
+public:
 	using Listener = std::function<bool(Event, void*)>;
+protected:
 	using ListenerArray = std::vector<Listener>;
 	using ListenerRegistry = std::vector<ListenerArray>;
+	using EventBusT = EventBus<Event>;
 public:
 	using Handle = size_t;
 

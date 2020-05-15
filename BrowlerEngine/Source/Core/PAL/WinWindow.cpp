@@ -154,17 +154,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         impl = static_cast<WinWindowImpl*>(createStruct->lpCreateParams);
 
-        if (!BRWL_VERIFY(SetWindowLongPtr(hwnd, GWL_USERDATA, (LONG_PTR)(impl)) != 0, BRWL_CHAR_LITERAL("Failed to set user pointer for hwnd.")))
+        if (!BRWL_VERIFY(SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)(impl)) != 0, BRWL_CHAR_LITERAL("Failed to set user pointer for hwnd.")))
         {
             return FALSE;
         }
     }
     else
     {
-        impl = (WinWindowImpl*)GetWindowLongPtr(hwnd, GWL_USERDATA);
+        impl = (WinWindowImpl*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
     }
 
-    impl->handleMessage(msg, wParam, lParam);
+    return impl->handleMessage(msg, wParam, lParam);
 }
 
 void RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName)
@@ -200,11 +200,26 @@ WinWindow::WinWindow(PlatformGlobals* globals, EventSystem<Event>* eventSystem) 
     RegisterWindowClass(globals->GetHInstance(), windowClassName);
 }
 
-void WinWindow::create() { impl = std::make_unique<WinWindowImpl>(); }
+void WinWindow::create(int x, int y, int width, int height) { impl = std::make_unique<WinWindowImpl>(this, x, y, width, height); }
 
 void WinWindow::destroy() { impl = nullptr; }
 
-int WinWindow::width() { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->width : -1; }
+int WinWindow::x() const { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->x : 0; }
+int WinWindow::y() const { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->y : 0; }
+int WinWindow::width() const { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->width : -1; }
+int WinWindow::height() const { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->height : -1; }
+
+void WinWindow::move(int x, int y, int dx, int dy)
+{
+    WindowMoveParam param{ x, y, dx, dy };
+    eventSystem->postEvent<Event::WINDOW_MOVE>(&param);
+}
+
+void WinWindow::resize(int width, int height)
+{
+    WindowSizeParam param{ width, height };
+    eventSystem->postEvent<Event::WINDOW_RESIZE>(&param);
+}
 
 
 BRWL_PAL_NS_END

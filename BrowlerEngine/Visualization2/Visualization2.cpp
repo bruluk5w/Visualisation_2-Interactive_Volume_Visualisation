@@ -13,7 +13,6 @@
 #include "Core/BrowlerEngine.h"
 #include "Core/ApplicationEndoints.h"
 
-#define WM_PostLogMessage (WM_APP + 1)
 
 namespace
 {
@@ -74,16 +73,12 @@ CVisualization2App::CVisualization2App()
 		GetCommandLine(),
 		m_nCmdShow
 	);
-#ifdef UNICODE
-	BRWL_EXCEPTION(false, nullptr);
-#endif
-	BRWL_EXCEPTION(false > 'h', BRWL_CHAR_LITERAL("This is a test"));
 	
 
 	BRWL::PAL::ReadOnlyWinGlobals readOnlyGlobals(globals);
 
 	metaEngine = std::make_unique<BRWL::MetaEngine>(&readOnlyGlobals);
-
+	metaEngine->initialize();
 }
 
 CVisualization2App::~CVisualization2App()

@@ -4,9 +4,33 @@
 
 BRWL_NS
 
-
 // Global pointer to the currently running engine
 thread_local Engine* engine;
+
+namespace {
+	const BRWL_CHAR* handleOutOfBoundsMsg = BRWL_CHAR_LITERAL("Engine handle out of bounds.");
+	const BRWL_CHAR* invalidHandleMsg = BRWL_CHAR_LITERAL("No Engine exists for this handle.");
+}
+
+bool MetaEngine::checkHandle(EngineHandle handle, const BRWL_CHAR*& errorMsg)
+{
+	if (handle >= maxEngine) {
+		errorMsg = handleOutOfBoundsMsg;
+		return false;
+	} else if (engines[handle] == nullptr) {
+		errorMsg = invalidHandleMsg;
+		return false;
+	}
+
+	return true;
+}
+
+Engine* MetaEngine::getEngine(EngineHandle handle)
+{
+	const BRWL_CHAR* msg;
+	BRWL_EXCEPTION(checkHandle(handle, msg), msg);
+	return engines[handle]->engine.get();
+}
 
 MetaEngine::MetaEngine(PlatformGlobalsPtr globals) :
 	isInitialized(false),
@@ -57,6 +81,7 @@ void MetaEngine::update()
 			{
 				frameThreads[i] = std::make_unique<Thread<void>>([this, i] {
 					engine = engines[i]->engine.get();  // set (per thread) global pointer to currently running engine
+					engines[i]->tickProvider->nextFrame();
 					engine->update();
 					engine = nullptr;
 				}, nullptr);
@@ -79,6 +104,7 @@ void MetaEngine::update()
 		if (engines[i]->engine->getRunMode() == EngineRunMode::META_ENGINE_MAIN_THREAD)
 		{
 			engine = engines[i]->engine.get();
+			engines[i]->tickProvider->nextFrame();
 			engine->update();
 			engine = nullptr;
 		}
@@ -114,17 +140,22 @@ bool MetaEngine::createEngine(EngineHandle& handle, const char* settingsFile/* =
 	std::unique_ptr<TickProvider> tickProvider = std::make_unique<TickProvider>();
 
 	*nextEnginePtr = std::make_unique<EngineData>(tickProvider,  globals, false);
-	(*nextEnginePtr)->engine->init(settingsFile);
+	if (!BRWL_VERIFY((*nextEnginePtr)->engine->init(settingsFile), BRWL_CHAR_LITERAL("Failed to initialize engine!")))
+	{
+		nextEnginePtr = nullptr;
+		tickProvider = nullptr;
+		handle = maxEngine;
+		return false;
+	}
 
 	handle = (uint8_t)(nextEnginePtr - engines);
-
 	return true;
 }
 
 void MetaEngine::setEngineRunMode(EngineHandle handle, EngineRunMode runMode)
 {
-	BRWL_EXCEPTION(handle < maxEngine, BRWL_CHAR_LITERAL("Invalid engine handle"));
-	BRWL_EXCEPTION(engines[handle] != nullptr, BRWL_CHAR_LITERAL("Invalid engine handle"));
+	const BRWL_CHAR* msg;
+ 	BRWL_EXCEPTION(!checkHandle(handle, msg), msg);
 	engines[handle]->engine->writeAccessMetaEngine().setRunMode(runMode);
 }
 

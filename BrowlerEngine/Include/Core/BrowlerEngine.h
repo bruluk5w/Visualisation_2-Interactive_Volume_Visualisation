@@ -42,10 +42,14 @@ public:
 	bool createEngine(EngineHandle& handle, const char* settingsFile = nullptr);
 	void setEngineRunMode(EngineHandle handle, EngineRunMode runMode);
 	EngineHandle getDefaultEngineHandle() { return defaultEngineHandle; }
+	// Only use the returned pointer temporarily
+	// Only use this 
+	Engine* getEngine(EngineHandle handle);
 
 	void shutDown();
 
 private:
+	bool checkHandle(EngineHandle handle, const BRWL_CHAR*& errorMsg);
 	bool isInitialized;
 	std::recursive_mutex metaEngineLock;
 	EngineHandle defaultEngineHandle;
