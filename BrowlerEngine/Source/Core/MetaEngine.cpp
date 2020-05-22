@@ -60,7 +60,10 @@ void MetaEngine::initialize()
 	isInitialized = true;
 
 	// create one default engine
-	if (*engines == nullptr) createEngine(defaultEngineHandle);
+	if (*engines == nullptr) {
+		bool success = createEngine(defaultEngineHandle);
+		BRWL_EXCEPTION(success, BRWL_CHAR_LITERAL("Enginge creation failed!"));
+	}
 }
 
 void MetaEngine::shutDown() {

@@ -6,8 +6,6 @@ BRWL_NS
 
 
 
-
-
 BRWL_NS_END
 
 #endif // BRWL_PLATFORM_WINDOWS

@@ -36,6 +36,9 @@
     <ClInclude Include="Include\Renderer\Events.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Renderer\RendererFwd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Renderer\Renderer_Precomp.cpp">

@@ -19,14 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="Common.vcxproj">
-      <Project>{abd45fc6-aed5-41f1-8895-8ba12b1367c4}</Project>
-    </ProjectReference>
-    <ProjectReference Include="Renderer.vcxproj">
-      <Project>{4e480767-b556-4a96-94a7-2197c922eeb0}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="Source\Core\Core_Precomp.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -66,6 +58,14 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Common.vcxproj">
+      <Project>{abd45fc6-aed5-41f1-8895-8ba12b1367c4}</Project>
+    </ProjectReference>
+    <ProjectReference Include="Renderer.vcxproj">
+      <Project>{4e480767-b556-4a96-94a7-2197c922eeb0}</Project>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

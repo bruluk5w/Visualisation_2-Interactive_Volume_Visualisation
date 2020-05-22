@@ -5,6 +5,7 @@
 #include "EventSystem.h"
 #include "GlobalsFwd.h"
 #include "WindowFwd.h"
+#include "Renderer/RendererFwd.h"
 #include <mutex>
 
 BRWL_NS
@@ -100,7 +101,7 @@ public:
 	std::unique_ptr<Timer> time;
 	std::unique_ptr<CoreEventSystem> eventSystem;
 	std::unique_ptr<Window> window;
-	//std::unique_ptr<Renderer> renderer;
+	std::unique_ptr<RENDERER::Renderer> renderer;
 	//std::unique_ptr<InputManager> input;
 	//std::unique_ptr<Hierarchy> hierarchy;
 	//std::unique_ptr<MeshRegistry> meshRegistry;

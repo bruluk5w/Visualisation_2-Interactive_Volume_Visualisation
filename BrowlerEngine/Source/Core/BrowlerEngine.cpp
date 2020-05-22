@@ -3,6 +3,7 @@
 #include "Common/Logger.h"
 #include "Timer.h"
 #include "Window.h"
+#include "Renderer/Renderer.h"
 
 
 BRWL_NS
@@ -11,7 +12,8 @@ BRWL_NS
 Engine::Engine( TickProvider* tickProvider, PlatformGlobals* globals) :
 	logger(nullptr),
 	eventSystem(nullptr),
-	window(nullptr), 
+	window(nullptr),
+	renderer(nullptr),
 	isInitialized(false),
 	tickProvider(tickProvider),
 	globals(globals),
@@ -80,13 +82,6 @@ void Engine::close()
 	//// Hierarchy
 	//hierarchy = nullptr;
 
-	//// Renderer
-	//if (renderer)
-	//{
-	//	renderer->destroy();
-	//	renderer = nullptr;
-	//}
-
 	//// Mesh Registry
 	//if (meshRegistry) {
 	//	meshRegistry = nullptr;
@@ -96,6 +91,13 @@ void Engine::close()
 	//if (textureRegistry) {
 	//	textureRegistry = nullptr;
 	//}
+	// Renderer
+
+	if (renderer)
+	{
+		renderer->destroy();
+		renderer = nullptr;
+	}
 
 	// Window
 	if (window)
@@ -148,6 +150,14 @@ bool Engine::internalInit(const char* settingsFile)
 	//// Window
 	window = std::make_unique<Window>(globals, eventSystem.get());
 
+	// Renderer
+	renderer = std::make_unique<RENDERER::Renderer>(eventSystem.get());
+	renderer->setLogger(logger);
+	if (!BRWL_VERIFY(renderer->init(), BRWL_CHAR_LITERAL("Failed to initialize renderer!")))
+	{
+		return false;
+	}
+
 	//if (!VERIFY(window->create(
 	//	settings->window.width,
 	//	settings->window.height,
@@ -168,13 +178,7 @@ bool Engine::internalInit(const char* settingsFile)
 	//// Hierarchy
 	//hierarchy = std::make_unique<Hierarchy>();
 
-	//// Renderer
-	//renderer = std::make_unique<Renderer>();
-	//renderer->setLogger(logger);
-	//if (!VERIFY(renderer->init(), "Failed to initialize renderer"))
-	//{
-	//	return false;
-	//}
+
 
 	//// Input
 	//input = std::make_unique<InputManager>(true);

@@ -2,10 +2,8 @@
 
 #ifdef BRWL_PLATFORM_WINDOWS
 
-BRWL_NS
+BRWL_RENDERER_NS
 
-namespace Rendering
-{
 
 namespace PAL
 {
@@ -17,8 +15,7 @@ namespace PAL
 
 }
 
-}
 
-BRWL_NS_END
+BRWL_RENDERER_NS_END
 
 #endif

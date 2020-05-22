@@ -175,17 +175,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="Common.vcxproj">
-      <Project>{abd45fc6-aed5-41f1-8895-8ba12b1367c4}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="Include\Renderer\Events.h">
       <SubType>
       </SubType>
     </ClInclude>
     <ClInclude Include="Include\Renderer\PAL\WinRenderer.h" />
     <ClInclude Include="Include\Renderer\Renderer.h" />
+    <ClInclude Include="Include\Renderer\RendererFwd.h" />
     <ClInclude Include="Include\Renderer\Renderer_Precomp.h" />
     <ClInclude Include="Include\Renderer\targetver.h" />
   </ItemGroup>
@@ -198,6 +194,11 @@
     </ClCompile>
     <ClCompile Include="Source\Renderer\PAL\WinRenderer.cpp" />
     <ClCompile Include="Source\Renderer\Renderer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Common.vcxproj">
+      <Project>{abd45fc6-aed5-41f1-8895-8ba12b1367c4}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
