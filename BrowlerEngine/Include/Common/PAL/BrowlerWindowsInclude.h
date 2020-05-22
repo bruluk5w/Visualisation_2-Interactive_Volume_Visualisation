@@ -8,5 +8,8 @@
 // undefine annoying macros from windows headers
 #undef near
 #undef far
+#ifdef ERROR
+#undef ERROR
+#endif
 
 #endif

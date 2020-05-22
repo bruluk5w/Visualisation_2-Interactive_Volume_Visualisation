@@ -19,14 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="Common.vcxproj">
-      <Project>{abd45fc6-aed5-41f1-8895-8ba12b1367c4}</Project>
-    </ProjectReference>
-    <ProjectReference Include="Renderer.vcxproj">
-      <Project>{4e480767-b556-4a96-94a7-2197c922eeb0}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="Source\Core\Core_Precomp.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -34,6 +26,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Source\Core\BrowlerEngine.cpp" />
+    <ClCompile Include="Source\Core\EventSystem.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="Source\Core\MetaEngine.cpp" />
     <ClCompile Include="Source\Core\PAL\WinGlobals.cpp" />
     <ClCompile Include="Source\Core\PAL\WinTickProvider.cpp" />
@@ -49,13 +45,27 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="Include\Core\Globals.h" />
+    <ClInclude Include="Include\Core\GlobalsFwd.h" />
     <ClInclude Include="Include\Core\PAL\WinGlobals.h" />
     <ClInclude Include="Include\Core\PAL\WinThread.h" />
     <ClInclude Include="Include\Core\PAL\WinWindow.h" />
     <ClInclude Include="Include\Core\Thread.h" />
+    <ClInclude Include="Include\Core\ThreadFwd.h" />
     <ClInclude Include="Include\Core\ThreadState.h" />
     <ClInclude Include="Include\Core\Timer.h" />
     <ClInclude Include="Include\Core\Window.h" />
+    <ClInclude Include="Include\Core\WindowFwd.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Common.vcxproj">
+      <Project>{abd45fc6-aed5-41f1-8895-8ba12b1367c4}</Project>
+    </ProjectReference>
+    <ProjectReference Include="Renderer.vcxproj">
+      <Project>{4e480767-b556-4a96-94a7-2197c922eeb0}</Project>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -138,8 +148,6 @@
       <ForcedIncludeFiles>Core_Precomp.h</ForcedIncludeFiles>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
-      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -159,8 +167,6 @@
       <ForcedIncludeFiles>Core_Precomp.h</ForcedIncludeFiles>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
-      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -182,8 +188,6 @@
       <ForcedIncludeFiles>Core_Precomp.h</ForcedIncludeFiles>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
-      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -207,8 +211,6 @@
       <ForcedIncludeFiles>Core_Precomp.h</ForcedIncludeFiles>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
-      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

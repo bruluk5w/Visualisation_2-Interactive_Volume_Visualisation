@@ -2,17 +2,22 @@
 
 #include "Common/Logger.h"
 #include "Timer.h"
-#include "ApplicationEndoints.h"
-#include <iostream>
+#include "Window.h"
+#include "Renderer/Renderer.h"
+
 
 BRWL_NS
 
 
 Engine::Engine( TickProvider* tickProvider, PlatformGlobals* globals) :
+	logger(nullptr),
+	eventSystem(nullptr),
+	window(nullptr),
+	renderer(nullptr),
 	isInitialized(false),
 	tickProvider(tickProvider),
-	globals(nullptr),
-	runMode(MetaEngine::EngineRunMode::SYNCHRONIZED)
+	globals(globals),
+	runMode(MetaEngine::EngineRunMode::META_ENGINE_MAIN_THREAD)
 { }
 
 Engine::~Engine()
@@ -29,14 +34,26 @@ bool Engine::init(const char* settingsFile)
 		return false;
 	}
 
+	time->start();
+
 	return true;
+}
+
+void Engine::threadInit()
+{
+	window->create(0, 0, 600, 1200);
+	isInitialized = true;
 }
 
 void Engine::update()
 {
 	BRWL_CHAR msg[20];
-	BRWL_SNPRINTF(msg, BRWL_CHAR_LITERAL("%.f"), time->getTimeF());
+	BRWL_SNPRINTF(msg, countof(msg), BRWL_CHAR_LITERAL("%.f"), time->getTimeF());
 	Engine::LogInfo(msg);
+	if (window && runMode == MetaEngine::EngineRunMode::DETATCHED)
+	{	// only process messages if they are not received from the parent window
+		window->processPlatformMessages();
+	}
 }
 
 void Engine::shutdown()
@@ -51,7 +68,10 @@ bool Engine::shouldClose()
 }
 
 void Engine::close()
-{
+{	
+	isInitialized = false;
+	if (time) time->stop();
+
 	//// Input
 	//if (input)
 	//{
@@ -62,13 +82,6 @@ void Engine::close()
 	//// Hierarchy
 	//hierarchy = nullptr;
 
-	//// Renderer
-	//if (renderer)
-	//{
-	//	renderer->destroy();
-	//	renderer = nullptr;
-	//}
-
 	//// Mesh Registry
 	//if (meshRegistry) {
 	//	meshRegistry = nullptr;
@@ -78,13 +91,20 @@ void Engine::close()
 	//if (textureRegistry) {
 	//	textureRegistry = nullptr;
 	//}
+	// Renderer
 
-	//// Window
-	//if (window)
-	//{
-	//	window->destroy();
-	//	window = nullptr;
-	//}
+	if (renderer)
+	{
+		renderer->destroy();
+		renderer = nullptr;
+	}
+
+	// Window
+	if (window)
+	{
+		window->destroy();
+		window = nullptr;
+	}
 
 	//// Event System
 	if (eventSystem) {
@@ -93,8 +113,8 @@ void Engine::close()
 			LogWarning(BRWL_CHAR_LITERAL("The event bus still had listeners registered on application shutdown!"));
 		}
 
-	//	eventBus = nullptr;
-	//}
+		eventSystem = nullptr;
+	}
 
 	// game timer
 	time = nullptr;
@@ -124,15 +144,19 @@ bool Engine::internalInit(const char* settingsFile)
 	// game timer
 	time = std::make_unique<Timer>(tickProvider);
 
-	//// Event System
-	//eventBus = std::make_unique<EventBus>();
-
+	// Event System
+	eventSystem = std::make_unique<CoreEventSystem>();
+	
 	//// Window
-	//window = std::make_unique<Window>();
-	//if (!VERIFY(window->init(), "Failed to initialize window object"))
-	//{
-	//	return false;
-	//}
+	window = std::make_unique<Window>(globals, eventSystem.get());
+
+	// Renderer
+	renderer = std::make_unique<RENDERER::Renderer>(eventSystem.get());
+	renderer->setLogger(logger);
+	if (!BRWL_VERIFY(renderer->init(), BRWL_CHAR_LITERAL("Failed to initialize renderer!")))
+	{
+		return false;
+	}
 
 	//if (!VERIFY(window->create(
 	//	settings->window.width,
@@ -154,24 +178,17 @@ bool Engine::internalInit(const char* settingsFile)
 	//// Hierarchy
 	//hierarchy = std::make_unique<Hierarchy>();
 
-	//// Renderer
-	//renderer = std::make_unique<Renderer>();
-	//renderer->setLogger(logger);
-	//if (!VERIFY(renderer->init(), "Failed to initialize renderer"))
-	//{
-	//	return false;
-	//}
+
 
 	//// Input
 	//input = std::make_unique<InputManager>(true);
 
-	isInitialized = true;
-	return isInitialized;
+	return true;
 }
 
 void Engine::LogDebug(const BRWL_CHAR* msg) { if (BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->debug(msg); }
 void Engine::LogInfo(const BRWL_CHAR* msg) { if (BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->info(msg); }
-void Engine::LogWarning(const BRWL_CHAR* msg) { if (!BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->warning(msg); }
-void Engine::LogError(const BRWL_CHAR* msg) { if (!BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->error(msg); }
+void Engine::LogWarning(const BRWL_CHAR* msg) { if (BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->warning(msg); }
+void Engine::LogError(const BRWL_CHAR* msg) { if (BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->error(msg); }
 
 BRWL_NS_END

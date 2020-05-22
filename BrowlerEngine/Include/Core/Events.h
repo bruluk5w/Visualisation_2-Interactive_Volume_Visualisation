@@ -51,8 +51,10 @@ struct WindowMoveParam
 	int dy; // the change in the y coordinate
 };
 
-EVENT_PARAMETER_MAP(Event, WINDOW_RESIZE, WindowSizeParam, WINDOW_MOVE, WindowMoveParam)
-
+EVENT_PARAMETER_MAP_START
+	MAP_EVENT_PARAMETER(Event, WINDOW_MOVE, WindowMoveParam)
+	MAP_EVENT_PARAMETER(Event, WINDOW_RESIZE, WindowSizeParam)
+EVENT_PARAMETER_MAP_END
 
 
 //
@@ -62,10 +64,6 @@ EVENT_PARAMETER_MAP(Event, WINDOW_RESIZE, WindowSizeParam, WINDOW_MOVE, WindowMo
 //	double y;
 //};
 //
-//template<>
-//struct TypeConvert<Event::MOUSE_MOVE> {
-//	using ResultType = MouseMoveParam;
-//};
 //
 //struct MouseDeltaParam
 //{
@@ -82,8 +80,5 @@ EVENT_PARAMETER_MAP(Event, WINDOW_RESIZE, WindowSizeParam, WINDOW_MOVE, WindowMo
 //struct TypeConvert<Event::MOUSE_SCROLL> {
 //	using ResultType = MouseDeltaParam;
 //};
-
-// Add more parameter structs here and evtl. also add specializations of the TypeConvert helper struct
-
 
 BRWL_NS_END

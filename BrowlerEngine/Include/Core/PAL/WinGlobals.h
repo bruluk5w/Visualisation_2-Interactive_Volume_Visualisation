@@ -7,8 +7,9 @@ struct HINSTANCE__;
 typedef HINSTANCE__* HINSTANCE;
 typedef wchar_t WCHAR;
 typedef WCHAR* LPWSTR;
-
 #endif
+
+
 BRWL_PAL_NS
 
 class ReadOnlyWinGlobals;

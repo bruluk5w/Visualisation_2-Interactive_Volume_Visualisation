@@ -34,6 +34,10 @@
     <ClInclude Include="Include\Common\PAL\BrowlerWindowsInclude.h" />
     <ClInclude Include="Include\Common\PAL\WinStackTrace.h" />
     <ClInclude Include="Include\Common\StackTrace.h" />
+    <ClInclude Include="Include\Common\StackTraceFwd.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Include\Common\targetver.h" />
     <ClInclude Include="Include\Common\Utilities.h" />
   </ItemGroup>
@@ -131,7 +135,6 @@
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -156,7 +159,6 @@
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -183,7 +185,6 @@
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -211,7 +212,6 @@
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalOptions>/experimental:preprocessor %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

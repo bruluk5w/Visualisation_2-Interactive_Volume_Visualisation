@@ -68,7 +68,7 @@ public:
     // may only be called from the creating thread
     void join()
     {
-        // Wait until all threads has terminated.
+        // Wait until the thread has terminated.
         WaitForSingleObject(threadHandle, INFINITE);
         DWORD exitCode;
         BRWL_EXCEPTION(GetExitCodeThread(threadHandle, &exitCode), BRWL_CHAR_LITERAL("Failed to retrieve thread exit code!"));
@@ -80,6 +80,7 @@ public:
     }
 
     // may only be called from the creating thread
+    // todo: recycle threads instead of creating new ones everytime
     void rewind()
     {
         ThreadState lastState = state.exchange(ThreadState::REWINDING);

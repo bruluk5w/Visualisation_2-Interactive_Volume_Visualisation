@@ -2,7 +2,9 @@
 // Visualization2Dlg.cpp : implementation file
 //
 
-#include "BrowlerEngine.h"
+#include "Core/BrowlerEngine.h"
+#include "Common/Logger.h"
+#include "LogHandler.h"
 
 #include "pch.h"
 #include "framework.h"
@@ -51,23 +53,30 @@ END_MESSAGE_MAP()
 
 
 
-CVisualization2Dlg::CVisualization2Dlg(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_VISUALIZATION2_DIALOG, pParent)
+CVisualization2Dlg::CVisualization2Dlg(CWnd* pParent /*=nullptr*/) :
+	CDialogEx(IDD_VISUALIZATION2_DIALOG, pParent),
+	logHandler(nullptr)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
+CVisualization2Dlg::~CVisualization2Dlg()
+{ }
+
 void CVisualization2Dlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_LOG_EDIT, logEdit);
 }
 
 BEGIN_MESSAGE_MAP(CVisualization2Dlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_WM_DESTROY()
 	ON_COMMAND(ID_HELP_ABOUT, &CVisualization2Dlg::OnMainMenuBarHelpAbout)
 	ON_COMMAND(ID_FILE_EXIT, &CVisualization2Dlg::OnMainMenuBarFileExit)
+	ON_MESSAGE(WM_USER_POST_LOG_MSG, &CVisualization2Dlg::OnLogMessage)
 END_MESSAGE_MAP()
 
 
@@ -106,7 +115,11 @@ BOOL CVisualization2Dlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 	{
-		app.GetMetaEngine();
+		logHandler = std::make_unique<LogHandler>(*this);
+		BRWL::MetaEngine* meta = app.GetMetaEngine();
+		BRWL::MetaEngine::EngineHandle defaultHandle = meta->getDefaultEngineHandle();
+		BRWL::Engine* defaultEngine =  meta->getEngine(defaultHandle);
+		defaultEngine->logger->setOutStream(logHandler.get());
 	}
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
@@ -131,6 +144,8 @@ void CVisualization2Dlg::OnSysCommand(UINT nID, LPARAM lParam)
 
 void CVisualization2Dlg::OnPaint()
 {
+	app.GetMetaEngine()->update();
+
 	if (IsIconic())
 	{
 		CPaintDC dc(this); // device context for painting
@@ -161,6 +176,16 @@ HCURSOR CVisualization2Dlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+void CVisualization2Dlg::OnDestroy()
+{
+	// TODO: wait for end of frame!
+	BRWL::MetaEngine* meta = app.GetMetaEngine();
+	meta->shutDown();
+	BRWL::Engine* defaultEngine = meta->getEngine(meta->getDefaultEngineHandle());
+	defaultEngine->logger->setOutStream(nullptr);
+	CDialogEx::OnDestroy();
+}
+
 
 void CVisualization2Dlg::OnMainMenuBarHelpAbout()
 {
@@ -173,4 +198,16 @@ void CVisualization2Dlg::OnMainMenuBarFileExit()
 {
 	app.GetMetaEngine()->shutDown();
 	EndDialog(IDOK);
+}
+
+LRESULT CVisualization2Dlg::OnLogMessage(WPARAM, LPARAM lParam)
+{
+	BRWL_CHECK(logHandler != nullptr, BRWL_CHAR_LITERAL("No logger present!"));
+	if (logHandler) {
+		const BRWL_STR& msg = logHandler->getStringRef(lParam);
+		logEdit.OnLogMessage(msg);
+		logHandler->setStringDone(lParam);
+	}
+	
+	return 0; // doesn't matter actually
 }

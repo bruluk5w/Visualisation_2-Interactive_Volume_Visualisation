@@ -13,7 +13,6 @@
 #include "Core/BrowlerEngine.h"
 #include "Core/ApplicationEndoints.h"
 
-#define WM_PostLogMessage (WM_APP + 1)
 
 namespace
 {
@@ -26,14 +25,14 @@ namespace
 		int result = MessageBox(
 			NULL, stackPrint,
 			mayIgnore ? BRWL_CHAR_LITERAL("Error") : BRWL_CHAR_LITERAL("Fatal Error"),
-			mayIgnore ? MB_ICONEXCLAMATION | MB_CANCELTRYCONTINUE : MB_ICONERROR | MB_OK
+			mayIgnore ? MB_ICONEXCLAMATION | MB_RETRYCANCEL : MB_ICONERROR | MB_OK
 		);
 
 		switch (result)
 		{
 		case IDCANCEL:
 			return false;
-		case IDCONTINUE:
+		case IDRETRY:
 			return true;
 		case IDOK:
 			return false;
@@ -62,28 +61,23 @@ END_MESSAGE_MAP()
 
 // CVisualization2App construction
 
-CVisualization2App::CVisualization2App()
+CVisualization2App::CVisualization2App() :
+	metaEngine(nullptr),
+	globals(nullptr),
+	readOnlyGlobals(nullptr)
 {
 	BRWL::earlyStaticInit();
 	BRWL::globalExceptionHandler = exceptionHandler;
 
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 	BRWL_EXCEPTION(hInstance != NULL, BRWL_CHAR_LITERAL("No HINSTANCE returned."));
-	BRWL::PAL::WinGlobals globals(
-		m_hInstance,
-		GetCommandLine(),
-		m_nCmdShow
-	);
-#ifdef UNICODE
-	BRWL_EXCEPTION(false, nullptr);
-#endif
-	BRWL_EXCEPTION(false > 'h', BRWL_CHAR_LITERAL("This is a test"));
-	
 
-	BRWL::PAL::ReadOnlyWinGlobals readOnlyGlobals(globals);
+	globals = std::make_unique<BRWL::PAL::WinGlobals>(m_hInstance, GetCommandLine(), m_nCmdShow);
+	readOnlyGlobals = std::make_unique<BRWL::PAL::ReadOnlyWinGlobals>(*globals);
 
-	metaEngine = std::make_unique<BRWL::MetaEngine>(&readOnlyGlobals);
-
+	metaEngine = std::make_unique<BRWL::MetaEngine>(readOnlyGlobals.get());
+	metaEngine->initialize();
+	metaEngine->setEngineRunMode(metaEngine->getDefaultEngineHandle(), BRWL::MetaEngine::EngineRunMode::DETATCHED);
 }
 
 CVisualization2App::~CVisualization2App()
@@ -163,4 +157,9 @@ BOOL CVisualization2App::InitInstance()
 	// Since the dialog has been closed, return FALSE so that we exit the
 	//  application, rather than start the application's message pump.
 	return FALSE;
+}
+
+int CVisualization2App::ExitInstance()
+{
+	return CWinApp::ExitInstance();
 }

@@ -2,6 +2,7 @@
 
 BRWL_NS
 
+
 class Timer;
 
 class TickProvider
@@ -44,7 +45,7 @@ public:
 	void start()
 	{
 		if (started) return;
-
+		started = true;
 		tickProvider->nextFrame();
 		lastTick = currentTick = startTick = tickProvider->tick;
 		deltaTicks = 0;
@@ -53,7 +54,6 @@ public:
 		unmodifiedTime = 0;
 		lastUnmodifiedTime = 0;
 		deltaUnmodifiedTime = 0;
-		started = true;
 	}
 
 	void pause()
@@ -126,5 +126,6 @@ private:
 	double deltaUnmodifiedTime;
 	TickProvider* tickProvider;
 };
+
 
 BRWL_NS_END

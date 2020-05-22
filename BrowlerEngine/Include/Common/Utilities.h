@@ -29,7 +29,7 @@ namespace Utils
 	constexpr uint8_t nextPowerOfTwo(uint8_t x) { x--; x |= x >> 1; x |= x >> 2; return (x | (x >> 4)) + 1; }
 
 	template<typename T>
-	using is_enum_class = std::integral_constant<bool, std::is_enum_v<T> && !std::is_convertible_v<T, int>>;
+	using is_enum_class = std::integral_constant<bool, (std::is_enum_v<T> && !std::is_convertible_v<T, int>)>;
 
 }
 

@@ -1,15 +1,25 @@
 #include "PAL/WinWindow.h"
 
+#ifdef BRWL_PLATFORM_WINDOWS
+
 #include "Common/PAL/BrowlerWindowsInclude.h"
 
 #include "BrowlerEngine.h"
 #include "Timer.h"
 
 
-
 namespace
 {
     const BRWL_CHAR windowClassName[] = BRWL_CHAR_LITERAL("EngineDefaultWindow");
+    void getScreenSpaceClientRect(HWND& hWnd, RECT& rect) {
+        GetClientRect(hWnd, &rect);
+        POINT origin = { rect.left, rect.top };
+        ClientToScreen(hWnd, &origin);
+        rect.left += origin.x;
+        rect.top += origin.y;
+        rect.right += origin.x;
+        rect.bottom += origin.y;
+    }
 }
 
 
@@ -35,9 +45,9 @@ struct WinWindowImpl
 
         RECT rect = { x, y, width, height };
         ::AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, false);
-        
+
         hWnd = CreateWindowEx(
-            0,
+            WS_EX_APPWINDOW,
             windowClassName,    // name of the window class
             L"Put Title Here",   // title of the window
             WS_OVERLAPPEDWINDOW,    // window style
@@ -51,11 +61,19 @@ struct WinWindowImpl
             this // pass user pointer to this instance, so we can retrieve it again when handling WM_NCCREATE
         );
 
-        ::GetWindowRect(hWnd, &rect);
+        BRWL_EXCEPTION(hWnd, BRWL_CHAR_LITERAL("Failed to create Window!"));
+        if (!hWnd) {
+            PAL::ShowLastWindowsError();
+        }
+
+        getScreenSpaceClientRect(hWnd, rect);
         x = rect.left;
         y = rect.top;
         width = rect.right - rect.left;
         height = rect.bottom - rect.top;
+
+        //ShowWindow(hWnd, wrapper->globals->GetCmdShow());
+        ShowWindow(hWnd, SW_SHOW);
     }
 
     LRESULT handleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -85,9 +103,6 @@ struct WinWindowImpl
             // Handle this one cause else windows playes the annoying PLINNNG sound
             break;
         case WM_SIZE:
-            OnChangeTransform();
-            break;
-        case WM_SIZING:
         {
             float currentTime = engine->time->getUnmodifiedTimeF();
             float deltaUpdate = currentTime - lastTimeTransformUpdated;
@@ -96,12 +111,12 @@ struct WinWindowImpl
                 lastTimeTransformUpdated = currentTime;
             }
         }
-            break;
+        break;
         case WM_ENTERSIZEMOVE:
             lastTimeTransformUpdated = engine->time->getUnmodifiedTimeF();
             break;
         case WM_EXITSIZEMOVE:
-            if (lastTimeTransformUpdated < engine->time->getDeltaUnmodifiedTime()) OnChangeTransform();
+            if (lastTimeTransformUpdated < engine->time->getUnmodifiedTime()) OnChangeTransform();
             break;
         case WM_DESTROY:
             ::PostQuitMessage(0);
@@ -110,16 +125,29 @@ struct WinWindowImpl
             return ::DefWindowProcW(hWnd, msg, wParam, lParam);
         }
 
-        BRWL_UNREACHABLE();
+        return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+    }
 
-        return 0;
+    void ProcessWindowsMessages() {
+        MSG msg = { 0 };
+
+        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            // translate keystroke messages into the right format
+            TranslateMessage(&msg);
+            // send the message to the WindowProc function
+            DispatchMessage(&msg);
+            // check for application exit
+            if (msg.message == WM_QUIT)
+                int returnCode = (int)msg.wParam;
+                break;
+        }
     }
 
     void OnChangeTransform()
     {
-
         RECT rect;
-        GetClientRect(hWnd, &rect);
+        getScreenSpaceClientRect(hWnd, rect);
         if (rect.left != x || rect.top != y)
         {
             int dx = rect.left - x;
@@ -128,9 +156,15 @@ struct WinWindowImpl
             y = rect.top;
             wrapper->move(x, y, dx, dy);
         }
+
         int width = rect.right - rect.left;
         int height = rect.bottom - rect.top;
-
+        if (this->width != width || this->height != height)
+        {
+            this->width = width;
+            this->height = height;
+            wrapper->resize(width, height);
+        }
     }
 
     int y;
@@ -144,27 +178,47 @@ struct WinWindowImpl
     WinWindow* wrapper;
 };
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    WinWindowImpl* impl;
-
-    if (msg == WM_NCCREATE)
+    WinWindowImpl* impl = (WinWindowImpl*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    ;
+    switch (msg) {
+#pragma region Messages that could be sent before WM_NCCREATE
+    case WM_GETMINMAXINFO:
+        return 0;
+    case WM_NCDESTROY:
+    case WM_DWMNCRENDERINGCHANGED:
+    case WM_ACTIVATEAPP:
+    case WM_NCCALCSIZE:
+        if (!impl) {
+            return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+        }
+#pragma endregion
+    case WM_CREATE:  // intentional fall-through
+    case WM_NCCREATE:
     {
         CREATESTRUCT* createStruct = (CREATESTRUCT*)lParam;
-
-        impl = static_cast<WinWindowImpl*>(createStruct->lpCreateParams);
-
-        if (!BRWL_VERIFY(SetWindowLongPtr(hwnd, GWL_USERDATA, (LONG_PTR)(impl)) != 0, BRWL_CHAR_LITERAL("Failed to set user pointer for hwnd.")))
-        {
-            return FALSE;
+        if (!impl) {
+            impl = static_cast<WinWindowImpl*>(createStruct->lpCreateParams);
+            SetLastError(0);
+            if (!BRWL_VERIFY(SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)(impl)) != 0 || GetLastError() == 0, BRWL_CHAR_LITERAL("Failed to set user pointer for hwnd.")))
+            {
+                return FALSE;
+            }
         }
+
+        return ::DefWindowProcW(hWnd, msg, wParam, lParam);
     }
-    else
+    }
+    
+
+    BRWL_CHECK(impl, BRWL_CHAR_LITERAL("Missed a Windows message before Window creation."));
+    if (!impl)
     {
-        impl = (WinWindowImpl*)GetWindowLongPtr(hwnd, GWL_USERDATA);
+        return ::DefWindowProcW(hWnd, msg, wParam, lParam);
     }
 
-    impl->handleMessage(msg, wParam, lParam);
+    return impl->handleMessage(msg, wParam, lParam);
 }
 
 void RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName)
@@ -191,7 +245,7 @@ void RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName)
     BRWL_EXCEPTION(atom > 0, nullptr);
 }
 
-WinWindow::WinWindow(PlatformGlobals* globals, EventSystem<Event>* eventSystem) :
+WinWindow::WinWindow(PlatformGlobals* globals, EventBusSwitch<Event>* eventSystem) :
     globals(globals),
     eventSystem(eventSystem),
     impl(nullptr)
@@ -200,11 +254,36 @@ WinWindow::WinWindow(PlatformGlobals* globals, EventSystem<Event>* eventSystem) 
     RegisterWindowClass(globals->GetHInstance(), windowClassName);
 }
 
-void WinWindow::create() { impl = std::make_unique<WinWindowImpl>(); }
+WinWindow::~WinWindow()
+{ }
+
+void WinWindow::create(int x, int y, int width, int height) { impl = std::make_unique<WinWindowImpl>(this, x, y, width, height); }
 
 void WinWindow::destroy() { impl = nullptr; }
 
-int WinWindow::width() { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->width : -1; }
+int WinWindow::x() const { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->x : 0; }
+int WinWindow::y() const { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->y : 0; }
+int WinWindow::width() const { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->width : -1; }
+int WinWindow::height() const { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->height : -1; }
+
+void WinWindow::processPlatformMessages()
+{
+    if (impl) impl->ProcessWindowsMessages();
+}
+
+void WinWindow::move(int x, int y, int dx, int dy)
+{
+    WindowMoveParam param{ x, y, dx, dy };
+    eventSystem->postEvent<Event::WINDOW_MOVE>(&param);
+}
+
+void WinWindow::resize(int width, int height)
+{
+    WindowSizeParam param{ width, height };
+    eventSystem->postEvent<Event::WINDOW_RESIZE>(&param);
+}
 
 
 BRWL_PAL_NS_END
+
+#endif // BRWL_PLATFORM_WINDOWS
