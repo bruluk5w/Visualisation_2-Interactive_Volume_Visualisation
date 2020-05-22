@@ -2,6 +2,7 @@
 
 BRWL_NS
 
+
 class Timer;
 
 class TickProvider
@@ -125,5 +126,6 @@ private:
 	double deltaUnmodifiedTime;
 	TickProvider* tickProvider;
 };
+
 
 BRWL_NS_END

@@ -1,11 +1,11 @@
-
-// Visualization2.h : main header file for the PROJECT_NAME application
-//
-
 #pragma once
+
+#include "Core/GlobalsFwd.h"
+
 BRWL_NS
 class MetaEngine;
 BRWL_NS_END
+
 
 #ifndef __AFXWIN_H__
 	#error "include 'pch.h' before including this file for PCH"
@@ -26,7 +26,8 @@ public:
 
 // Overrides
 public:
-	virtual BOOL InitInstance();
+	virtual BOOL InitInstance() override;
+	virtual int ExitInstance() override; 
 
 // Implementation
 
@@ -38,6 +39,9 @@ public:
 
 protected:
 	std::unique_ptr<BRWL::MetaEngine> metaEngine;
+
+	std::unique_ptr<BRWL::PAL::WinGlobals> globals;
+	std::unique_ptr<BRWL::PAL::ReadOnlyWinGlobals> readOnlyGlobals;
 };
 
 extern CVisualization2App app;

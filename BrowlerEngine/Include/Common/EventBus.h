@@ -58,14 +58,16 @@ public:
 		return false;
 	}
 
-	void postEvent(Event event, void* param)
+	bool postEvent(Event event, void* param)
 	{
 		ListenerArray& listeners = registry[ENUM_CLASS_TO_NUM(event)];
 		for (Listener& listener : listeners)
 		{
 			// if consumed, then we break
-			if (listener != nullptr && listener(event, param)) break;
+			if (listener != nullptr && listener(event, param)) return true;
 		}
+
+		return false;
 	}
 
 	bool hasAnyListeners()

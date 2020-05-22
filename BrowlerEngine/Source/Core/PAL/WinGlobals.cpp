@@ -1,5 +1,7 @@
 #include "PAL/WinGlobals.h"
 
+#ifdef BRWL_PLATFORM_WINDOWS
+
 #include "Common/PAL/BrowlerWindowsInclude.h"
 
 BRWL_PAL_NS
@@ -24,3 +26,5 @@ const int& ReadOnlyWinGlobals::GetCmdShow() const { return globals.cmdShow; }
 
 
 BRWL_PAL_NS_END
+
+#endif // BRWL_PLATFORM_WINDOWS

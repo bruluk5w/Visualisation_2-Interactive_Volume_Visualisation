@@ -1,8 +1,11 @@
 #include "Timer.h"
 
+#ifdef BRWL_PLATFORM_WINDOWS
+
 #include "Common/PAL/BrowlerWindowsInclude.h"
 
 BRWL_NS
+
 
 TickProvider::TickProvider() :
 	tick(0),
@@ -27,4 +30,7 @@ void TickProvider::nextFrame()
 	}
 }
 
+
 BRWL_NS_END
+
+#endif // BRWL_PLATFORM_WINDOWS

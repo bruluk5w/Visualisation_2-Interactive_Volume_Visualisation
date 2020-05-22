@@ -73,6 +73,7 @@ BEGIN_MESSAGE_MAP(CVisualization2Dlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_WM_DESTROY()
 	ON_COMMAND(ID_HELP_ABOUT, &CVisualization2Dlg::OnMainMenuBarHelpAbout)
 	ON_COMMAND(ID_FILE_EXIT, &CVisualization2Dlg::OnMainMenuBarFileExit)
 	ON_MESSAGE(WM_USER_POST_LOG_MSG, &CVisualization2Dlg::OnLogMessage)
@@ -179,6 +180,7 @@ void CVisualization2Dlg::OnDestroy()
 {
 	// TODO: wait for end of frame!
 	BRWL::MetaEngine* meta = app.GetMetaEngine();
+	meta->shutDown();
 	BRWL::Engine* defaultEngine = meta->getEngine(meta->getDefaultEngineHandle());
 	defaultEngine->logger->setOutStream(nullptr);
 	CDialogEx::OnDestroy();

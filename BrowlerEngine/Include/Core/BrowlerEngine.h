@@ -2,8 +2,9 @@
 
 #include "Thread.h"
 
-#include "Globals.h"
 #include "EventSystem.h"
+#include "GlobalsFwd.h"
+#include "WindowFwd.h"
 #include <mutex>
 
 BRWL_NS
@@ -13,7 +14,6 @@ class Engine;
 class Timer;
 class TickProvider;
 class Logger;
-
 
 class MetaEngine final
 {
@@ -27,7 +27,7 @@ public:
 		DETATCHED,
 	};
 
-	MetaEngine(PlatformGlobalsPtr globals);
+	MetaEngine(PlatformGlobals* globals);
 	~MetaEngine();
 
 	void initialize();
@@ -36,7 +36,8 @@ public:
 	void update();
 private:
 	// Runs an independent loop for engines which are in DETACHED mode
-	void detachedRun();
+	struct EngineData;
+	void detachedRun(EngineData* engine);
 
 public:
 	bool createEngine(EngineHandle& handle, const char* settingsFile = nullptr);
@@ -47,26 +48,26 @@ public:
 	Engine* getEngine(EngineHandle handle);
 
 	void shutDown();
+protected:
+	bool checkHandle(EngineHandle handle, const BRWL_CHAR*& errorMsg);
 
 private:
-	bool checkHandle(EngineHandle handle, const BRWL_CHAR*& errorMsg);
 	bool isInitialized;
 	std::recursive_mutex metaEngineLock;
 	EngineHandle defaultEngineHandle;
 	
 	struct EngineData {
-		EngineData(std::unique_ptr<TickProvider>& tickProvider, PlatformGlobalsPtr globals, bool threaded);
+		EngineData(std::unique_ptr<TickProvider>& tickProvider, PlatformGlobals* globals, bool threaded);
 
 		std::unique_ptr<TickProvider> tickProvider;
 		std::unique_ptr<Engine> engine;
 		bool threaded;
-
 	};
 
 	std::unique_ptr<EngineData> engines[maxEngine];
 	std::unique_ptr<Thread<void>> frameThreads[maxEngine];
 	
-	PlatformGlobalsPtr globals;
+	PlatformGlobals* globals;
 };
 
 class Engine
@@ -74,8 +75,12 @@ class Engine
 public:
 	Engine(TickProvider* tickProvider, PlatformGlobals* globals);
 	~Engine();
-
+	// Called from the thread which is initally creating the Engine
 	bool init(const char* settingsFile);
+	// Called from the thread which will also subsequently call the update method;
+	void threadInit();
+	// Returns true if "init" and "threadInit" succeeded and "close" has not yet been called
+	bool IsInitialized() const { return isInitialized; }
 	void update();
 	void shutdown();
 	bool shouldClose();
@@ -94,7 +99,7 @@ public:
 	std::shared_ptr<Logger> logger;
 	std::unique_ptr<Timer> time;
 	std::unique_ptr<CoreEventSystem> eventSystem;
-	//std::unique_ptr<Window> window;
+	std::unique_ptr<Window> window;
 	//std::unique_ptr<Renderer> renderer;
 	//std::unique_ptr<InputManager> input;
 	//std::unique_ptr<Hierarchy> hierarchy;

@@ -41,9 +41,6 @@
     <ClCompile Include="Source\PAL\WinMain.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
-    <ClCompile Include="Source\HostSystem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="BrowlerEngine.rc">

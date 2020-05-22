@@ -3,7 +3,14 @@
 #include "Common/EventBus.h"
 
 BRWL_NS
-struct TranslatorInterface {
+template<typename EventType>
+class EventBusSwitch;
+
+// This class should never be instantiated but only derived once from.
+// Specialized implementations for the template methods in this class should downcast to the derived type which should have access to the EventBusSwitches of the other modules.
+// The derived type can then pass the event on to other modules.
+template<typename EventType>
+struct Translator {
 	// This function can be used to tie multiple events which mean the same thing from different modules toghether.
 	// E.g.: A window resizing event is produced by the Core module and consumed by the Renderer module. However the
 	// the Core module depends on the Renderer module and hence the Renderer cannot consume the resizing event of the 
@@ -12,25 +19,36 @@ struct TranslatorInterface {
 	// accordingly upon dispatch of the resizing event of the Core module.
 	// Ideally the event system of the Core module also takes care of firing it's own resizing event when the resizing
 	// event is dispatched using the event definition from the Renderer module.
-	template<typename EventType, EventType event>
-	void translateMessage(void* param) { /* This is empty, so it should be optimized away for all events that don't have a sibling counterpart in another module */ };
+	template<EventType event>
+	void translateMessage(void* param);// { BRWL_CHECK(false, BRWL_CHAR_LITERAL("boom"));/* This is empty, so it should be optimized away for all events that don't have a sibling counterpart in another module */ };
+private:
+	// this has to be specialized in order to allow one Translator for events from module A to access the plain event bus from a module B
+	template<typename ForeignEventType>
+	typename EventBusSwitch<ForeignEventType>::BusT& getBus();/* {
+		// fail on instantiation
+		static_assert(std::false_type && std::is_same_v<EventType, int>, "You need to implement this version of getBus.");
+	}*/
 };
 
 template<typename EventType>
 class EventBusSwitch {
 	static_assert(Utils::is_enum_class<EventType>::value);
+	friend struct Translator<EventType>;
 	//static_assert(std::is_base_of_v<EventBusSwitch<EventType, ChildEventSystem>, ChildEventSystem>);
 
 	typedef EventBus<EventType> BusT;
 
 public:
-	EventBusSwitch(TranslatorInterface* translator) : translator(translator)
+	EventBusSwitch(Translator<EventType>* translator) : translator(translator)
 	{ }
 
 	template<EventType event>
 	void postEvent(void* param) {
-		bus.postEvent(event, param);
-		translator->translateMessage<EventType, event>(param);
+		if (!bus.postEvent(event, param))
+		{
+			// if not consumed in the local module, then continue sending it to others
+			translator->translateMessage<event>(param);
+		}
 	}
 
 	typename BusT::Handle registerListener(EventType event, typename BusT::Listener callback)
@@ -50,16 +68,17 @@ public:
 	}
 
 	
-private:
+protected:
 
 	BusT bus;
-	TranslatorInterface* translator;
+	Translator<EventType>* translator;
 };
 
-template<typename... EventTypes>
+template<typename DerivedType, typename... EventTypes>
 class EventSystem : public EventBusSwitch<EventTypes>... {
+	//TranslatorType<EventTypes>... // todo: assert on sub type relation between Translator Type and Translator<EventTypes>...
 public:
-	EventSystem() : EventBusSwitch<EventTypes>(this)... { }
+	EventSystem(DerivedType* derivedThis) : EventBusSwitch<EventTypes>(derivedThis)... { }
 
 	bool hasAnyListeners()
 	{

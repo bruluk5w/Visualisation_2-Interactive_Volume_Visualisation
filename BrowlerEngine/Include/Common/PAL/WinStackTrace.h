@@ -22,7 +22,7 @@ public:
         BRWL_CHAR file[MAX_PATH];
         unsigned int line;
     } stackInfo[maxTraceDepth];
-    USHORT traceDepth;
+    unsigned short traceDepth;
 };
 
 

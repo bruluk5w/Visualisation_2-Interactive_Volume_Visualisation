@@ -22,6 +22,7 @@ bool MetaEngine::checkHandle(EngineHandle handle, const BRWL_CHAR*& errorMsg)
 		return false;
 	}
 
+	errorMsg = nullptr;
 	return true;
 }
 
@@ -32,7 +33,7 @@ Engine* MetaEngine::getEngine(EngineHandle handle)
 	return engines[handle]->engine.get();
 }
 
-MetaEngine::MetaEngine(PlatformGlobalsPtr globals) :
+MetaEngine::MetaEngine(PlatformGlobals* globals) :
 	isInitialized(false),
 	metaEngineLock(),
 	defaultEngineHandle(maxEngine),
@@ -65,6 +66,27 @@ void MetaEngine::initialize()
 void MetaEngine::shutDown() {
 	//Todo: wait for all frames to end remove all engines
 	// Watch out for deadlocks
+	for (unsigned int i = 0; i < countof(engines) && engines[i] != nullptr; ++i)
+	{
+		std::unique_ptr<EngineData>& engineData = engines[i];
+		std::unique_ptr<Thread<void>>& thread = frameThreads[i];
+		EngineRunMode mode = engineData->engine->getRunMode();
+		BRWL_EXCEPTION((mode != EngineRunMode::SYNCHRONIZED && mode != EngineRunMode::META_ENGINE_MAIN_THREAD) ||
+			(thread->getState() == ThreadState::READY || thread->getState() == ThreadState::TERMINATED), BRWL_CHAR_LITERAL("Invalid thread state on shutdown"));
+		if (mode == EngineRunMode::DETATCHED)
+		{
+			engineData->threaded = false; // signal termination to thread
+		}
+	}
+
+	for (unsigned int i = 0; i < countof(engines) && engines[i] != nullptr; ++i)
+	{
+		std::unique_ptr<EngineData>& engineData = engines[i];
+		std::unique_ptr<Thread<void>>& thread = frameThreads[i];
+
+		thread->join();
+		thread->rewind();
+	}
 }
 
 void MetaEngine::update()
@@ -74,28 +96,38 @@ void MetaEngine::update()
 	// here run the main loops of the single engines in parallel threads 
 	for (unsigned int i = 0; i < countof(engines) && engines[i] != nullptr; ++i)
 	{
-		EngineRunMode mode = engines[i]->engine->getRunMode();
+		std::unique_ptr<Thread<void>>& thread = frameThreads[i];
+		std::unique_ptr<EngineData>& engineData = engines[i];
+		EngineRunMode mode = engineData->engine->getRunMode();
 		if (mode == EngineRunMode::SYNCHRONIZED)
 		{
-			if (frameThreads[i] == nullptr)
+			if (thread == nullptr)
 			{
-				frameThreads[i] = std::make_unique<Thread<void>>([this, i] {
-					engine = engines[i]->engine.get();  // set (per thread) global pointer to currently running engine
-					engines[i]->tickProvider->nextFrame();
+				thread = std::make_unique<Thread<void>>([this, &engineData] {
+					engine = engineData->engine.get();  // set (per thread) global pointer to currently running engine
+					engineData->tickProvider->nextFrame();
 					engine->update();
 					engine = nullptr;
 				}, nullptr);
 			}
-
-			BRWL_EXCEPTION(frameThreads[i]->getState() == ThreadState::READY, BRWL_CHAR_LITERAL("Something is fishy, the thread is RUNNING but it should be set to READY"));
-
-			bool successDispatch = frameThreads[i]->run();
-			BRWL_EXCEPTION(successDispatch, BRWL_CHAR_LITERAL("Failed to start frame thread!"));
 		}
 		else if (mode == EngineRunMode::DETATCHED)
 		{
-			// TODO: check detached threads whether some are new and have to kicked off
+			if (thread == nullptr)
+			{
+				engineData->threaded = true;
+				thread = std::make_unique<Thread<void>>(std::bind(&MetaEngine::detachedRun, this, engineData.get()), nullptr);
+			}
+			else if (thread->getState() == ThreadState::RUNNING)
+			{
+				continue;
+			}
 		}
+
+		BRWL_EXCEPTION(frameThreads[i]->getState() == ThreadState::READY, BRWL_CHAR_LITERAL("Something is fishy, the thread is RUNNING but it should be set to READY"));
+
+		bool successDispatch = frameThreads[i]->run();
+		BRWL_EXCEPTION(successDispatch, BRWL_CHAR_LITERAL("Failed to start frame thread!"));
 	}
 
 	// run those threads sequentially which want to run on the main thread
@@ -121,9 +153,23 @@ void MetaEngine::update()
 	}
 }
 
-void MetaEngine::detachedRun()
+void MetaEngine::detachedRun(EngineData* engineData)
 {
+	engine = engineData->engine.get();  // set (per thread) global pointer to currently running engine
 
+	if (!engine->IsInitialized())
+	{
+		engine->threadInit();
+	}
+
+	while (engineData->threaded)
+	{
+		Sleep(10);
+		engineData->tickProvider->nextFrame();
+		engineData->engine->update();
+	}
+
+	engine = nullptr;
 }
 
 bool MetaEngine::createEngine(EngineHandle& handle, const char* settingsFile/* = nullptr*/)
@@ -155,11 +201,11 @@ bool MetaEngine::createEngine(EngineHandle& handle, const char* settingsFile/* =
 void MetaEngine::setEngineRunMode(EngineHandle handle, EngineRunMode runMode)
 {
 	const BRWL_CHAR* msg;
- 	BRWL_EXCEPTION(!checkHandle(handle, msg), msg);
+ 	BRWL_EXCEPTION(checkHandle(handle, msg), msg);
 	engines[handle]->engine->writeAccessMetaEngine().setRunMode(runMode);
 }
 
-MetaEngine::EngineData::EngineData(std::unique_ptr<TickProvider>& tickProvider, PlatformGlobalsPtr globals, bool threaded) :
+MetaEngine::EngineData::EngineData(std::unique_ptr<TickProvider>& tickProvider, PlatformGlobals* globals, bool threaded) :
 	tickProvider(std::move(tickProvider)),
 	engine(std::make_unique<Engine>(this->tickProvider.get(), globals)),
 	threaded(threaded)

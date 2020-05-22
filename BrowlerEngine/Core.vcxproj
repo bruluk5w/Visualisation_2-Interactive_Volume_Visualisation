@@ -34,6 +34,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Source\Core\BrowlerEngine.cpp" />
+    <ClCompile Include="Source\Core\EventSystem.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="Source\Core\MetaEngine.cpp" />
     <ClCompile Include="Source\Core\PAL\WinGlobals.cpp" />
     <ClCompile Include="Source\Core\PAL\WinTickProvider.cpp" />
@@ -49,13 +53,16 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="Include\Core\Globals.h" />
+    <ClInclude Include="Include\Core\GlobalsFwd.h" />
     <ClInclude Include="Include\Core\PAL\WinGlobals.h" />
     <ClInclude Include="Include\Core\PAL\WinThread.h" />
     <ClInclude Include="Include\Core\PAL\WinWindow.h" />
     <ClInclude Include="Include\Core\Thread.h" />
+    <ClInclude Include="Include\Core\ThreadFwd.h" />
     <ClInclude Include="Include\Core\ThreadState.h" />
     <ClInclude Include="Include\Core\Timer.h" />
     <ClInclude Include="Include\Core\Window.h" />
+    <ClInclude Include="Include\Core\WindowFwd.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
