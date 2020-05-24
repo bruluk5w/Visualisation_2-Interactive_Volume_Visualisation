@@ -11,6 +11,7 @@ BRWL_NS
 
 Engine::Engine( TickProvider* tickProvider, PlatformGlobals* globals) :
 	logger(nullptr),
+	time(nullptr),
 	eventSystem(nullptr),
 	window(nullptr),
 	renderer(nullptr),
@@ -41,7 +42,7 @@ bool Engine::init(const char* settingsFile)
 
 void Engine::threadInit()
 {
-	window->create(0, 0, 600, 1200);
+	window->create(100, 100, 600, 1200);
 	isInitialized = true;
 }
 

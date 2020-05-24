@@ -62,9 +62,6 @@ struct WinWindowImpl
         );
 
         BRWL_EXCEPTION(hWnd, BRWL_CHAR_LITERAL("Failed to create Window!"));
-        if (!hWnd) {
-            PAL::ShowLastWindowsError();
-        }
 
         getScreenSpaceClientRect(hWnd, rect);
         x = rect.left;

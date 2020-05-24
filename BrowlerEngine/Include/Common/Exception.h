@@ -23,7 +23,7 @@ BRWL_STR getExceptionString(const BRWL_CHAR* const test, const BRWL_CHAR* const 
 	} \
 })()
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || 0
 
 #define BRWL_CHECK(test, msg) do { \
 static bool thrown = false; \
