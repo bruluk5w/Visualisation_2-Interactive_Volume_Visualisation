@@ -7,7 +7,11 @@ Renderer::Renderer(EventBusSwitch<Event>* eventSystem) :
 	eventSystem(eventSystem),
 	windowResizeEventHandle(0)
 {
-	windowResizeEventHandle = eventSystem->registerListener(Event::WINDOW_RESIZE, [](Event, void* param) -> bool {BRWL_CHECK(false, L"Resize");  return false; });
+	windowResizeEventHandle = eventSystem->registerListener(Event::WINDOW_RESIZE, [](Event, void* param) -> bool
+		{
+			BRWL_CHECK(false, L"Resize"); 
+			return false;
+		});
 }
 
 Renderer::~Renderer()

@@ -6,7 +6,7 @@
 
 BRWL_NS
 
-
+//#pragma optimize("", off)
 TickProvider::TickProvider() :
 	tick(0),
 	frequency(0),
