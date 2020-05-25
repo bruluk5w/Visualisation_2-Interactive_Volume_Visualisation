@@ -53,6 +53,15 @@
     <ClInclude Include="Include\Common\StackTraceFwd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Common\PAL\WinGlobals.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Common\GlobalsFwd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Common\Globals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Common\Common_Precomp.cpp">
@@ -64,11 +73,14 @@
     <ClCompile Include="Source\Common\Logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Common\WinStackTrace.cpp">
-      <Filter>Source Files\PAL</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Common\EventBus.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Common\PAL\WinGlobals.cpp">
+      <Filter>Source Files\PAL</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Common\PAL\WinStackTrace.cpp">
+      <Filter>Source Files\PAL</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

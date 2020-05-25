@@ -2,8 +2,6 @@
 
 #ifdef BRWL_PLATFORM_WINDOWS
 
-#include "PAL/BrowlerWindowsInclude.h"
-
 BRWL_PAL_NS
 
 class WinStackTrace
@@ -17,9 +15,9 @@ public:
     void* stack[maxTraceDepth];
     struct FrameInfo
     {
-        BRWL_CHAR moduleName[MAX_PATH];
-        BRWL_CHAR functionName[MAX_PATH];
-        BRWL_CHAR file[MAX_PATH];
+        BRWL_CHAR moduleName[260];
+        BRWL_CHAR functionName[260];
+        BRWL_CHAR file[260];
         unsigned int line;
     } stackInfo[maxTraceDepth];
     unsigned short traceDepth;

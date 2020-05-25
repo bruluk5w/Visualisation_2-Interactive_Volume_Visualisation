@@ -5,16 +5,14 @@ BRWL_RENDERER_NS
 
 namespace PAL
 {
-
-	class WinRenderer;
 #ifdef BRWL_PLATFORM_WINDOWS
-	typedef WinRenderer  PlatformRenderer;
+	class WinRenderer;
 #endif
-
 }
 
-
-class Renderer;
+#ifdef BRWL_PLATFORM_WINDOWS
+typedef PAL::WinRenderer Renderer;
+#endif
 
 
 BRWL_RENDERER_NS_END

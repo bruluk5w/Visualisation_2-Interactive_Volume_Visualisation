@@ -115,6 +115,7 @@ BOOL CVisualization2Dlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 	{
+		logEdit.Init();
 		logHandler = std::make_unique<LogHandler>(*this);
 		BRWL::MetaEngine* meta = app.GetMetaEngine();
 		BRWL::MetaEngine::EngineHandle defaultHandle = meta->getDefaultEngineHandle();
@@ -180,9 +181,10 @@ void CVisualization2Dlg::OnDestroy()
 {
 	// TODO: wait for end of frame!
 	BRWL::MetaEngine* meta = app.GetMetaEngine();
-	meta->shutDown();
 	BRWL::Engine* defaultEngine = meta->getEngine(meta->getDefaultEngineHandle());
 	defaultEngine->logger->setOutStream(nullptr);
+	meta->shutDown();
+
 	CDialogEx::OnDestroy();
 }
 
@@ -196,7 +198,6 @@ void CVisualization2Dlg::OnMainMenuBarHelpAbout()
 
 void CVisualization2Dlg::OnMainMenuBarFileExit()
 {
-	app.GetMetaEngine()->shutDown();
 	EndDialog(IDOK);
 }
 

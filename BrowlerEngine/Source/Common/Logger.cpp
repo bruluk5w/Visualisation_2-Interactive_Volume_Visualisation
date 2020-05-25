@@ -30,6 +30,12 @@ const BRWL_CHAR* Logger::logLevelNames[ENUM_CLASS_TO_NUM(Logger::LogLevel::MAX)]
 Logger::Logger() : outStream(&Logger::defaultLogHandler)
 { }
 
+Logger::~Logger()
+{
+	BRWL_EXCEPTION(outStream != nullptr, BRWL_CHAR_LITERAL("Invalid logger state!"));
+	outStream->flush();
+}
+
 void Logger::debug(const BRWL_CHAR* msg) const
 {
 	log(msg, LogLevel::DEBUG);

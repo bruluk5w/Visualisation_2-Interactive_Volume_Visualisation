@@ -74,8 +74,9 @@ void MetaEngine::shutDown() {
 		std::unique_ptr<EngineData>& engineData = engines[i];
 		std::unique_ptr<Thread<void>>& thread = frameThreads[i];
 		EngineRunMode mode = engineData->engine->getRunMode();
-		BRWL_EXCEPTION((mode != EngineRunMode::SYNCHRONIZED && mode != EngineRunMode::META_ENGINE_MAIN_THREAD) ||
-			(thread->getState() == ThreadState::READY || thread->getState() == ThreadState::TERMINATED), BRWL_CHAR_LITERAL("Invalid thread state on shutdown"));
+		BRWL_EXCEPTION(mode != EngineRunMode::DETATCHED || (thread->getState() == ThreadState::READY || thread->getState() == ThreadState::TERMINATED),
+			BRWL_CHAR_LITERAL("Invalid thread state on shutdown"));
+
 		if (mode == EngineRunMode::DETATCHED)
 		{
 			engineData->threaded = false; // signal termination to thread
@@ -84,11 +85,14 @@ void MetaEngine::shutDown() {
 
 	for (unsigned int i = 0; i < countof(engines) && engines[i] != nullptr; ++i)
 	{
-		std::unique_ptr<EngineData>& engineData = engines[i];
-		std::unique_ptr<Thread<void>>& thread = frameThreads[i];
-
-		thread->join();
-		thread->rewind();
+		const EngineData* const engineData = engines[i].get();
+		EngineRunMode mode = engineData->engine->getRunMode();
+		if (mode == EngineRunMode::DETATCHED)
+		{
+			Thread<void>* const thread = frameThreads[i].get();
+			thread->join();
+			thread->rewind();
+		}
 	}
 }
 
@@ -102,17 +106,23 @@ void MetaEngine::update()
 		std::unique_ptr<Thread<void>>& thread = frameThreads[i];
 		std::unique_ptr<EngineData>& engineData = engines[i];
 		EngineRunMode mode = engineData->engine->getRunMode();
+		BRWL_EXCEPTION(mode == EngineRunMode::DETATCHED, BRWL_CHAR_LITERAL("Only threaded mode suppoerted."));
 		if (mode == EngineRunMode::SYNCHRONIZED)
 		{
-			if (thread == nullptr)
-			{
-				thread = std::make_unique<Thread<void>>([this, &engineData] {
-					engine = engineData->engine.get();  // set (per thread) global pointer to currently running engine
-					engineData->tickProvider->nextFrame();
-					engine->update();
-					engine = nullptr;
-				}, nullptr);
-			}
+			//if (thread == nullptr)
+			//{
+			//	thread = std::make_unique<Thread<void>>([this, &engineData] {
+			//		engine = engineData->engine.get();  // set (per thread) global pointer to currently running engine
+			//		if (!engine->IsInitialized())
+			//		{
+			//			engine->threadInit();
+			//		}
+
+			//		engineData->tickProvider->nextFrame();
+			//		engine->update();
+			//		engine = nullptr;
+			//	}, nullptr);
+			//}
 		}
 		else if (mode == EngineRunMode::DETATCHED)
 		{
@@ -127,33 +137,36 @@ void MetaEngine::update()
 			}
 		}
 
-		BRWL_EXCEPTION(frameThreads[i]->getState() == ThreadState::READY, BRWL_CHAR_LITERAL("Something is fishy, the thread is RUNNING but it should be set to READY"));
-
-		bool successDispatch = frameThreads[i]->run();
-		BRWL_EXCEPTION(successDispatch, BRWL_CHAR_LITERAL("Failed to start frame thread!"));
-	}
-
-	// run those threads sequentially which want to run on the main thread
-	for (unsigned int i = 0; i < countof(engines) && engines[i] != nullptr; ++i)
-	{
-		if (engines[i]->engine->getRunMode() == EngineRunMode::META_ENGINE_MAIN_THREAD)
+		if (mode != EngineRunMode::META_ENGINE_MAIN_THREAD)
 		{
-			engine = engines[i]->engine.get();
-			engines[i]->tickProvider->nextFrame();
-			engine->update();
-			engine = nullptr;
+			BRWL_EXCEPTION(frameThreads[i]->getState() == ThreadState::READY, BRWL_CHAR_LITERAL("Something is fishy, the thread is RUNNING but it should be set to READY"));
+
+			bool successDispatch = frameThreads[i]->run();
+			BRWL_EXCEPTION(successDispatch, BRWL_CHAR_LITERAL("Failed to start frame thread!"));
 		}
 	}
 
-	// join the previously started parallel threads
-	for (unsigned int i = 0; i < countof(engines) && engines[i] != nullptr; ++i)
-	{
-		if (engines[i]->engine->getRunMode() == EngineRunMode::SYNCHRONIZED)
-		{
-			frameThreads[i]->join();
-			frameThreads[i]->rewind();
-		}
-	}
+	//// run those threads sequentially which want to run on the main thread
+	//for (unsigned int i = 0; i < countof(engines) && engines[i] != nullptr; ++i)
+	//{
+	//	if (engines[i]->engine->getRunMode() == EngineRunMode::META_ENGINE_MAIN_THREAD)
+	//	{
+	//		engine = engines[i]->engine.get();
+	//		engines[i]->tickProvider->nextFrame();
+	//		engine->update();
+	//		engine = nullptr;
+	//	}
+	//}
+
+	//// join the previously started parallel threads
+	//for (unsigned int i = 0; i < countof(engines) && engines[i] != nullptr; ++i)
+	//{
+	//	if (engines[i]->engine->getRunMode() == EngineRunMode::SYNCHRONIZED)
+	//	{
+	//		frameThreads[i]->join();
+	//		frameThreads[i]->rewind();
+	//	}
+	//}
 }
 
 void MetaEngine::detachedRun(EngineData* engineData)
@@ -171,6 +184,8 @@ void MetaEngine::detachedRun(EngineData* engineData)
 		engineData->tickProvider->nextFrame();
 		engineData->engine->update();
 	}
+
+	engine->threadDestroy();
 
 	engine = nullptr;
 }

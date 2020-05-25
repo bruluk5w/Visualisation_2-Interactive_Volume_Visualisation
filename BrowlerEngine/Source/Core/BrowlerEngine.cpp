@@ -18,7 +18,7 @@ Engine::Engine( TickProvider* tickProvider, PlatformGlobals* globals) :
 	isInitialized(false),
 	tickProvider(tickProvider),
 	globals(globals),
-	runMode(MetaEngine::EngineRunMode::META_ENGINE_MAIN_THREAD)
+	runMode(MetaEngine::EngineRunMode::DETATCHED)
 { }
 
 Engine::~Engine()
@@ -43,7 +43,18 @@ bool Engine::init(const char* settingsFile)
 void Engine::threadInit()
 {
 	window->create(100, 100, 600, 1200);
+	window->setRenderer(renderer.get());
 	isInitialized = true;
+}
+
+void Engine::threadDestroy()
+{
+	isInitialized = false;
+	if (window)
+	{
+		window->setRenderer(nullptr);
+		window->destroy();
+	}
 }
 
 void Engine::update()
@@ -54,6 +65,10 @@ void Engine::update()
 	if (window && runMode == MetaEngine::EngineRunMode::DETATCHED)
 	{	// only process messages if they are not received from the parent window
 		window->processPlatformMessages();
+	}
+
+	if (renderer && renderer->isInitialized()) {
+		renderer->render();
 	}
 }
 
@@ -92,18 +107,17 @@ void Engine::close()
 	//if (textureRegistry) {
 	//	textureRegistry = nullptr;
 	//}
+
 	// Renderer
 
 	if (renderer)
 	{
-		renderer->destroy();
 		renderer = nullptr;
 	}
 
 	// Window
 	if (window)
 	{
-		window->destroy();
 		window = nullptr;
 	}
 
@@ -152,13 +166,10 @@ bool Engine::internalInit(const char* settingsFile)
 	window = std::make_unique<Window>(globals, eventSystem.get());
 
 	// Renderer
-	renderer = std::make_unique<RENDERER::Renderer>(eventSystem.get());
+	renderer = std::make_unique<RENDERER::Renderer>(eventSystem.get(), globals);
 	renderer->setLogger(logger);
-	if (!BRWL_VERIFY(renderer->init(), BRWL_CHAR_LITERAL("Failed to initialize renderer!")))
-	{
-		return false;
-	}
 
+	
 	//if (!VERIFY(window->create(
 	//	settings->window.width,
 	//	settings->window.height,
