@@ -12,6 +12,7 @@ public:
 	TickProvider();
 
 	void nextFrame();
+	uint64_t forceGetTick();
 
 	uint64_t tick;
 	uint64_t frequency;
@@ -83,6 +84,8 @@ public:
 	float getDeltaTimeF() const { return (float)deltaTime; }
 	double getUnmodifiedTime() const { return unmodifiedTime; }
 	float getUnmodifiedTimeF() const { return (float)unmodifiedTime; }
+	double forceGetUnmodifiedTime() const {return (double)tickProvider->forceGetTick() - startTick / (double)tickProvider->frequency; }
+	float forceGetUnmodifiedTimeF() const {return (float)((double)(tickProvider->forceGetTick() - startTick) / (double)tickProvider->frequency); }
 	double getDeltaUnmodifiedTime() const { return deltaUnmodifiedTime; }
 	float getDeltaUnmodifiedTimeF() const { return (float)deltaUnmodifiedTime; }
 

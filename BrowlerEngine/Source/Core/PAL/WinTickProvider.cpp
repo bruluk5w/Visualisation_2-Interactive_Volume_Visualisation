@@ -2,8 +2,6 @@
 
 #ifdef BRWL_PLATFORM_WINDOWS
 
-#include "Common/PAL/BrowlerWindowsInclude.h"
-
 BRWL_NS
 
 //#pragma optimize("", off)
@@ -28,6 +26,13 @@ void TickProvider::nextFrame()
 	{
 		timer->onTickUpdated();
 	}
+}
+
+uint64_t TickProvider::forceGetTick()
+{
+	LARGE_INTEGER x;
+	QueryPerformanceCounter(&x);
+	return x.QuadPart;
 }
 
 

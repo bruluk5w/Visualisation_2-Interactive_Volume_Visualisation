@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/GlobalsFwd.h"
+#include "Common/GlobalsFwd.h"
 
 BRWL_NS
 class MetaEngine;

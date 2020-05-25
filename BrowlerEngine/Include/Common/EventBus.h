@@ -50,6 +50,8 @@ public:
 		if (handle < listeners.size() && listeners[handle] != nullptr)
 		{
 			listeners[handle] = nullptr;
+			// maybe there is a better value, since 0 could be a handle
+			handle = 0;
 			return true;
 		}
 

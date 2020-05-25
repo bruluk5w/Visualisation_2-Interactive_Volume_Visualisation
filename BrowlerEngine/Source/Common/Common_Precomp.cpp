@@ -1,6 +1,5 @@
 #include "Common_Precomp.h"
 
-#include "PAL/BrowlerWindowsInclude.h"
 #include <clocale>
 
 #ifdef BRWL_USE_DEBUG_SYMBOLS

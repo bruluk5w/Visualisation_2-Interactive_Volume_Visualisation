@@ -30,9 +30,6 @@
     <ClCompile Include="Source\Core\MetaEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Core\PAL\WinGlobals.cpp">
-      <Filter>Source Files\PAL</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Core\PAL\WinTickProvider.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
@@ -47,14 +44,8 @@
     <ClInclude Include="Include\Core\Core_Precomp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Core\PAL\WinGlobals.h">
-      <Filter>Header Files\PAL</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Core\PAL\WinThread.h">
       <Filter>Header Files\PAL</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Core\Globals.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Core\Thread.h">
       <Filter>Header Files</Filter>
@@ -89,11 +80,5 @@
     <ClInclude Include="Include\Core\WindowFwd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Core\GlobalsFwd.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

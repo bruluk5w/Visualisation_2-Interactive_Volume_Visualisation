@@ -2,11 +2,15 @@
 
 #ifdef BRWL_PLATFORM_WINDOWS
 
-#include "Common/PAL/BrowlerWindowsInclude.h"
-
 #include "BrowlerEngine.h"
 #include "Timer.h"
-
+#include "Common/Globals.h"
+#include "Renderer/Renderer.h"
+#include "Renderer/RendererParameters.h"
+#ifdef BRWL_USE_DEAR_IM_GUI
+#include "UI/ImGui/imgui.h"
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+#endif
 
 namespace
 {
@@ -74,6 +78,10 @@ struct WinWindowImpl
     }
 
     LRESULT handleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
+#ifdef BRWL_USE_DEAR_IM_GUI
+        if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+            return true;
+#endif
         switch (msg)
         {
         case WM_PAINT:
@@ -101,20 +109,31 @@ struct WinWindowImpl
             break;
         case WM_SIZE:
         {
-            float currentTime = engine->time->getUnmodifiedTimeF();
-            float deltaUpdate = currentTime - lastTimeTransformUpdated;
-            if (deltaUpdate > 0.2) {
-                OnChangeTransform();
-                lastTimeTransformUpdated = currentTime;
+            if (wParam != SIZE_MINIMIZED)
+            {
+                const float currentTime = engine->time->forceGetUnmodifiedTimeF();
+                const float deltaUpdate = currentTime - lastTimeTransformUpdated;
+                if (deltaUpdate > 0.2f) {
+                    OnChangeTransform();
+                    lastTimeTransformUpdated = currentTime;
+                }
             }
+            break;
         }
-        break;
         case WM_ENTERSIZEMOVE:
-            lastTimeTransformUpdated = engine->time->getUnmodifiedTimeF();
+            lastTimeTransformUpdated = engine->time->forceGetUnmodifiedTimeF();
             break;
         case WM_EXITSIZEMOVE:
-            if (lastTimeTransformUpdated < engine->time->getUnmodifiedTime()) OnChangeTransform();
+        {
+            const float currentTime = engine->time->forceGetUnmodifiedTimeF();
+            if (lastTimeTransformUpdated <= currentTime)
+            {
+                lastTimeTransformUpdated = currentTime;
+                OnChangeTransform();
+            }
+
             break;
+        }
         case WM_DESTROY:
             ::PostQuitMessage(0);
             break;
@@ -245,7 +264,8 @@ void RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName)
 WinWindow::WinWindow(PlatformGlobals* globals, EventBusSwitch<Event>* eventSystem) :
     globals(globals),
     eventSystem(eventSystem),
-    impl(nullptr)
+    impl(nullptr),
+    renderer(nullptr)
 {
     BRWL_EXCEPTION(eventSystem, BRWL_CHAR_LITERAL("The EventSystem must not be nullptr."));
     RegisterWindowClass(globals->GetHInstance(), windowClassName);
@@ -254,9 +274,15 @@ WinWindow::WinWindow(PlatformGlobals* globals, EventBusSwitch<Event>* eventSyste
 WinWindow::~WinWindow()
 { }
 
-void WinWindow::create(int x, int y, int width, int height) { impl = std::make_unique<WinWindowImpl>(this, x, y, width, height); }
+void WinWindow::create(int x, int y, int width, int height)
+{
+    impl = std::make_unique<WinWindowImpl>(this, x, y, width, height);
+}
 
-void WinWindow::destroy() { impl = nullptr; }
+void WinWindow::destroy()
+{
+    impl = nullptr;
+}
 
 int WinWindow::x() const { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->x : 0; }
 int WinWindow::y() const { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Window not created yet!")) ? impl->y : 0; }
@@ -266,6 +292,27 @@ int WinWindow::height() const { return BRWL_VERIFY(impl, BRWL_CHAR_LITERAL("Wind
 void WinWindow::processPlatformMessages()
 {
     if (impl) impl->ProcessWindowsMessages();
+}
+
+void WinWindow::setRenderer(RENDERER::Renderer* renderer)
+{
+    BRWL_EXCEPTION(impl, BRWL_CHAR_LITERAL("\"create\" has to be called before setting a renderer."));
+    if (this->renderer)
+    {
+        this->renderer->destroy();
+    }
+    
+    this->renderer = renderer;
+
+    if (this->renderer)
+    {
+        bool success = this->renderer->init({ impl->hWnd });
+        if (!BRWL_VERIFY(success, BRWL_CHAR_LITERAL("Failed to initalize renderer on window.")))
+        {
+            this->renderer->destroy();
+            this->renderer = nullptr;
+        }
+    }
 }
 
 void WinWindow::move(int x, int y, int dx, int dy)

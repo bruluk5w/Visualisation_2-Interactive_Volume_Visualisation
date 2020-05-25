@@ -47,6 +47,7 @@ public:
 	};
 
 	Logger();
+	virtual ~Logger();
 
 	static const BRWL_CHAR* logLevelNames[ENUM_CLASS_TO_NUM(LogLevel::MAX)];
 #ifdef _DEBUG
