@@ -1,10 +1,10 @@
 #pragma once
 
 #ifdef BRWL_PLATFORM_WINDOWS
-
-#include "Globals.h"
+#include "Common/GlobalsFwd.h"
 #include "Common/EventSystem.h"
 #include "Events.h"
+#include "Renderer/RendererFwd.h"
 
 BRWL_PAL_NS
 
@@ -26,6 +26,8 @@ public:
 	// only call this method if the window has been created in it's own thread and 
 	// does not receive message updates from the parent window
 	void processPlatformMessages();
+	// may only be called after "create"
+	void setRenderer(RENDERER::Renderer* renderer);
 
 protected:
 	void move(int x, int y, int dx, int dy);
@@ -33,8 +35,8 @@ protected:
 
 	PlatformGlobals* globals;
 	std::unique_ptr<WinWindowImpl> impl;
-
 	EventBusSwitch<Event>* eventSystem;
+	RENDERER::Renderer* renderer;
 };
 
 

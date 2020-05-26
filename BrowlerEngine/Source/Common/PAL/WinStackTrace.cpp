@@ -2,7 +2,6 @@
 
 #ifdef BRWL_USE_DEBUG_SYMBOLS
 #include "dbghelp.h"
-#include "Exception.h"
 #endif
 
 

@@ -3,7 +3,7 @@
 #include "Thread.h"
 
 #include "EventSystem.h"
-#include "GlobalsFwd.h"
+#include "Common/GlobalsFwd.h"
 #include "WindowFwd.h"
 #include "Renderer/RendererFwd.h"
 #include <mutex>
@@ -78,8 +78,10 @@ public:
 	~Engine();
 	// Called from the thread which is initally creating the Engine
 	bool init(const char* settingsFile);
-	// Called from the thread which will also subsequently call the update method;
+	// Called from the thread which will also subsequently call the update method
 	void threadInit();
+	// Called from the thread which called threadInit
+	void threadDestroy();
 	// Returns true if "init" and "threadInit" succeeded and "close" has not yet been called
 	bool IsInitialized() const { return isInitialized; }
 	void update();

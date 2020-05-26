@@ -8,7 +8,7 @@
 #include "Visualization2Dlg.h"
 
 // engine headers
-#include "Core/PAL/WinGlobals.h"
+#include "Common/PAL/WinGlobals.h"
 #include "Core/Timer.h"
 #include "Core/BrowlerEngine.h"
 #include "Core/ApplicationEndoints.h"
