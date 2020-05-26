@@ -20,10 +20,10 @@ namespace PAL
 	protected:
 
 		// Helper methods
-		bool CreateDeviceD3D(HWND hWnd);
-		void CleanupDeviceD3D();
+		bool CreateDevice(HWND hWnd);
+		void DestroyDevice();
 		void CreateRenderTarget();
-		void CleanupRenderTarget();
+		void DestroyRenderTarget();
 		void WaitForLastSubmittedFrame();
 		struct FrameContext;
 		FrameContext* WaitForNextFrameResources();

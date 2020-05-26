@@ -24,11 +24,21 @@ namespace PAL
         BaseRenderer(eventSystem, globals)
     {
 #ifdef DX12_ENABLE_DEBUG_LAYER
-        ComPtr<ID3D12Debug> pdx12Debug;
-        if (BRWL_VERIFY(D3D12GetDebugInterface(IID_PPV_ARGS(&pdx12Debug)) >= 0, BRWL_CHAR_LITERAL("Failed to enable d3d debug layer")))
+        ComPtr<ID3D12Debug> debugController0;
+        if (BRWL_VERIFY(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController0)) >= 0, BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
         {
-            pdx12Debug->EnableDebugLayer();
+            debugController0->EnableDebugLayer();
+#ifdef _DEBUG
+            ComPtr<ID3D12Debug1> debugController1;
+            if (BRWL_VERIFY(debugController0->QueryInterface(IID_PPV_ARGS(&debugController1)), BRWL_CHAR_LITERAL("Failed to enable GPU-based validation.")))
+            {
+                debugController1->SetEnableGPUBasedValidation(true);
+            }
+#endif
         }
+
+
+
 #endif
     }
 
@@ -40,9 +50,9 @@ namespace PAL
         }
 
         // Initialize Direct3D
-        if (!CreateDeviceD3D(params->hWnd))
+        if (!CreateDevice(params->hWnd))
         {
-            CleanupDeviceD3D();
+            DestroyDevice();
             return false;;
         }
 
@@ -148,7 +158,7 @@ namespace PAL
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
 
-        CleanupDeviceD3D();
+        DestroyDevice();
 
         BaseRenderer::destroy(force);
     }
@@ -157,7 +167,7 @@ namespace PAL
 
     // Helper functions
 
-    bool WinRenderer::CreateDeviceD3D(HWND hWnd)
+    bool WinRenderer::CreateDevice(HWND hWnd)
     {
         // Setup swap chain
         DXGI_SWAP_CHAIN_DESC1 sd;
@@ -262,9 +272,9 @@ namespace PAL
         return true;
     }
 
-    void WinRenderer::CleanupDeviceD3D()
+    void WinRenderer::DestroyDevice()
     {
-        CleanupRenderTarget();
+        DestroyRenderTarget();
         if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = nullptr; }
         if (g_hSwapChainWaitableObject != NULL) { CloseHandle(g_hSwapChainWaitableObject); }
         for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
@@ -298,7 +308,7 @@ namespace PAL
         }
     }
 
-    void WinRenderer::CleanupRenderTarget()
+    void WinRenderer::DestroyRenderTarget()
     {
         WaitForLastSubmittedFrame();
 
@@ -374,7 +384,7 @@ namespace PAL
     {
         WaitForLastSubmittedFrame();
         ImGui_ImplDX12_InvalidateDeviceObjects();
-        CleanupRenderTarget();
+        DestroyRenderTarget();
         ResizeSwapChain(params->hWnd, width, height);
         CreateRenderTarget();
         ImGui_ImplDX12_CreateDeviceObjects();

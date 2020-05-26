@@ -1,6 +1,5 @@
 #pragma once
 
-// reference additional headers your program requires here
 #include "Common/Common_Precomp.h"
 
 #define RENDERER Renderer

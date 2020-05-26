@@ -1,3 +1,5 @@
+#pragma once
+
 #define BRWL_NS namespace BRWL {
 	
 #define BRWL_NS_END }
