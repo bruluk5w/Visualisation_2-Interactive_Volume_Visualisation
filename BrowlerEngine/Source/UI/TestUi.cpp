@@ -7,6 +7,7 @@ BRWL_NS
 
 void MakeTestUI()
 {
+#ifdef BRWL_USE_DEAR_IM_GUI
     static bool show_demo_window = true;
     static bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -47,6 +48,7 @@ void MakeTestUI()
             show_another_window = false;
         ImGui::End();
     }
+#endif // BRWL_USE_DEAR_IM_GUI
 }
 
 BRWL_NS_END

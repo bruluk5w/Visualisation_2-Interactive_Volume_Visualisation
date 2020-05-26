@@ -172,8 +172,8 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PrecompiledHeaderFile>Common_Precomp.h</PrecompiledHeaderFile>
-      <ForcedIncludeFiles>Common_Precomp.h</ForcedIncludeFiles>
+      <PrecompiledHeaderFile>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -196,8 +196,8 @@
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PrecompiledHeaderFile>Common_Precomp.h</PrecompiledHeaderFile>
-      <ForcedIncludeFiles>Common_Precomp.h</ForcedIncludeFiles>
+      <PrecompiledHeaderFile>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -222,8 +222,8 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PrecompiledHeaderFile>Common_Precomp.h</PrecompiledHeaderFile>
-      <ForcedIncludeFiles>Common_Precomp.h</ForcedIncludeFiles>
+      <PrecompiledHeaderFile>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -250,8 +250,8 @@
       <PreprocessorDefinitions>SUBMISSION;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PrecompiledHeaderFile>Common_Precomp.h</PrecompiledHeaderFile>
-      <ForcedIncludeFiles>Common_Precomp.h</ForcedIncludeFiles>
+      <PrecompiledHeaderFile>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -277,8 +277,8 @@
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PrecompiledHeaderFile>Common_Precomp.h</PrecompiledHeaderFile>
-      <ForcedIncludeFiles>Common_Precomp.h</ForcedIncludeFiles>
+      <PrecompiledHeaderFile>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -305,8 +305,8 @@
       <PreprocessorDefinitions>SUBMISSION;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PrecompiledHeaderFile>Common_Precomp.h</PrecompiledHeaderFile>
-      <ForcedIncludeFiles>Common_Precomp.h</ForcedIncludeFiles>
+      <PrecompiledHeaderFile>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>$(ProjectDir)Include\$(ProjectName)\$(ProjectName)_Precomp.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
