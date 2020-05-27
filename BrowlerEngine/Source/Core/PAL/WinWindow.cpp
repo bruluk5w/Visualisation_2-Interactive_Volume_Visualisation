@@ -306,7 +306,7 @@ void WinWindow::setRenderer(RENDERER::Renderer* renderer)
 
     if (this->renderer)
     {
-        bool success = this->renderer->init({ impl->hWnd });
+        bool success = this->renderer->init({ impl->hWnd, {impl->width, impl->height} });
         if (!BRWL_VERIFY(success, BRWL_CHAR_LITERAL("Failed to initalize renderer on window.")))
         {
             this->renderer->destroy();

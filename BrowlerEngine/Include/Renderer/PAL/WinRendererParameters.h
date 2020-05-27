@@ -11,6 +11,9 @@ namespace PAL
 	struct WinRendererParameters
 	{
 		HWND hWnd;
+		struct Dimensions {
+			int width, height;
+		} initialDimensions;
 	};
 
 }

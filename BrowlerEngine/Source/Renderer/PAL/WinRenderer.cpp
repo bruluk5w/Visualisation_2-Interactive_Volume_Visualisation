@@ -2,6 +2,8 @@
 
 #ifdef BRWL_PLATFORM_WINDOWS
 
+#include "Common/Logger.h"
+
 // DX12 additional headers
 #include <DirectXMath.h>
 #include <PAL/d3dx12.h>
@@ -15,30 +17,67 @@
 #include "UI/TestUi.h"
 #endif
 
+#include "Common/BrwlMath.h"
+
+namespace
+{
+    bool g_useSoftwareRasterizer = false;
+
+    const BRWL_CHAR* GetDeviceRemovedReasonString(HRESULT reason){
+        switch (reason)
+        {
+        case DXGI_ERROR_DEVICE_HUNG: return BRWL_CHAR_LITERAL("DEVICE HUNG"); 
+        case DXGI_ERROR_DEVICE_REMOVED: return BRWL_CHAR_LITERAL("DEVICE REMOVED");
+        case DXGI_ERROR_DEVICE_RESET: return BRWL_CHAR_LITERAL("DEVICE RESET");
+        case DXGI_ERROR_DRIVER_INTERNAL_ERROR: return BRWL_CHAR_LITERAL("DRIVER INTERNAL ERROR");
+        case DXGI_ERROR_INVALID_CALL: return BRWL_CHAR_LITERAL("INVALID CALL");
+        case S_OK: return BRWL_CHAR_LITERAL("Huh... actually everything should be fine.");
+        default: return BRWL_CHAR_LITERAL("Unknown Reason.");
+        }
+
+        BRWL_UNREACHABLE();
+    }
+}
+
 BRWL_RENDERER_NS
 
 namespace PAL
 {
 
+    const D3D_FEATURE_LEVEL WinRenderer::featureLevel = D3D_FEATURE_LEVEL_11_0;
+    const Vec4 WinRenderer::clearColor = Vec4(0.5, 0.5, 0.5, 1.0);
+
+
     WinRenderer::WinRenderer(EventBusSwitch<Event>* eventSystem, PlatformGlobals* globals) :
-        BaseRenderer(eventSystem, globals)
+        BaseRenderer(eventSystem, globals),
+		dxgiFactory(nullptr),
+		dxgiAdapter(nullptr),
+		device(nullptr),
+		rtvHeap(nullptr),
+		srvHeap(nullptr),
+        frameContext{},
+        frameIndex(0),
+        currentFramebufferWidth(0),
+        currentFramebufferHeight(0),
+        commandQueue(nullptr),
+        commandList(nullptr),
+        frameFence(nullptr),
+        frameFenceEvent(NULL),
+        frameFenceLastValue(0)
     {
 #ifdef DX12_ENABLE_DEBUG_LAYER
         ComPtr<ID3D12Debug> debugController0;
-        if (BRWL_VERIFY(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController0)) >= 0, BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
+        if (BRWL_VERIFY(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController0))), BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
         {
             debugController0->EnableDebugLayer();
 #ifdef _DEBUG
             ComPtr<ID3D12Debug1> debugController1;
-            if (BRWL_VERIFY(debugController0->QueryInterface(IID_PPV_ARGS(&debugController1)), BRWL_CHAR_LITERAL("Failed to enable GPU-based validation.")))
+            if (BRWL_VERIFY(SUCCEEDED(debugController0.As(&debugController1)), BRWL_CHAR_LITERAL("Failed to enable GPU-based validation.")))
             {
                 debugController1->SetEnableGPUBasedValidation(true);
             }
 #endif
         }
-
-
-
 #endif
     }
 
@@ -50,9 +89,9 @@ namespace PAL
         }
 
         // Initialize Direct3D
-        if (!CreateDevice(params->hWnd))
+        if (!createDevice(params->initialDimensions.width, params->initialDimensions.height))
         {
-            DestroyDevice();
+            destroyDevice();
             return false;;
         }
 
@@ -71,10 +110,7 @@ namespace PAL
 
         // Setup Platform/Renderer bindings
         ImGui_ImplWin32_Init(params->hWnd);
-        ImGui_ImplDX12_Init(g_pd3dDevice, NUM_FRAMES_IN_FLIGHT,
-            DXGI_FORMAT_R8G8B8A8_UNORM, g_pd3dSrvDescHeap,
-            g_pd3dSrvDescHeap->GetCPUDescriptorHandleForHeapStart(),
-            g_pd3dSrvDescHeap->GetGPUDescriptorHandleForHeapStart());
+        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, srvHeap, srvHeap->GetCPUDescriptorHandleForHeapStart(), srvHeap->GetGPUDescriptorHandleForHeapStart());
 
         // Load Fonts
         // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
@@ -96,8 +132,14 @@ namespace PAL
 
     void WinRenderer::render()
     {
-        BaseRenderer::render();
+        if (!currentFramebufferHeight || !currentFramebufferWidth)
+        {
+            logger->info(BRWL_CHAR_LITERAL("Nothing to render, framebuffer too small."));
+            return;
+        }
 
+        BaseRenderer::render();
+        // Create render data
 #ifdef BRWL_USE_DEAR_IM_GUI
 
         // Render Gui last
@@ -106,12 +148,12 @@ namespace PAL
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-       // MakeTestUI();
+        MakeTestUI();
+        ImGui::Render();
+#endif
+        // Render
 
-        // Rendering
-        static const ImVec4 clearColor(0.45f, 0.55f, 0.60f, 1.00f);
-
-        FrameContext* frameCtxt = WaitForNextFrameResources();
+        FrameContext* frameCtxt = waitForNextFrameResources();
         UINT backBufferIdx = g_pSwapChain->GetCurrentBackBufferIndex();
         frameCtxt->CommandAllocator->Reset();
 
@@ -123,42 +165,69 @@ namespace PAL
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-        g_pd3dCommandList->Reset(frameCtxt->CommandAllocator.Get(), nullptr);
-        g_pd3dCommandList->ResourceBarrier(1, &barrier);
-        g_pd3dCommandList->ClearRenderTargetView(g_mainRenderTargetDescriptor[backBufferIdx], (float*)&clearColor, 0, nullptr);
-        g_pd3dCommandList->OMSetRenderTargets(1, &g_mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
-        g_pd3dCommandList->SetDescriptorHeaps(1, &g_pd3dSrvDescHeap);
-        ImGui::Render();
-        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_pd3dCommandList.Get());
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-        g_pd3dCommandList->ResourceBarrier(1, &barrier);
-        g_pd3dCommandList->Close();
+        commandList->Reset(frameCtxt->CommandAllocator.Get(), nullptr);
+        commandList->ResourceBarrier(1, &barrier);
+        commandList->ClearRenderTargetView(g_mainRenderTargetDescriptor[backBufferIdx], (float*)&clearColor, 0, nullptr);
+        commandList->OMSetRenderTargets(1, &g_mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
+        commandList->SetDescriptorHeaps(1, srvHeap.GetAddressOf());
 
-        ID3D12CommandList* const ppCommandLists[] = { g_pd3dCommandList.Get() };
-        g_pd3dCommandQueue->ExecuteCommandLists(1, ppCommandLists);
+        // ========= START DRAW SCENE ========= //
 
-        g_pSwapChain->Present(1, 0); // Present with vsync
-        //g_pSwapChain->Present(0, 0); // Present without vsync
-
-        UINT64 fenceValue = g_fenceLastSignaledValue + 1;
-        g_pd3dCommandQueue->Signal(g_fence.Get(), fenceValue);
-        g_fenceLastSignaledValue = fenceValue;
-        frameCtxt->FenceValue = fenceValue;
-
+#ifdef BRWL_USE_DEAR_IM_GUI
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 #endif // BRWL_USE_DEAR_IM_GUI
 
+        // =========  END DRAW SCENE  ========= //
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+        commandList->ResourceBarrier(1, &barrier);
+        commandList->Close();
+
+        ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
+        commandQueue->ExecuteCommandLists(1, ppCommandLists);
+
+        const HRESULT result = g_pSwapChain->Present(1, 0); // Present with vsync
+        //g_pSwapChain->Present(0, 0); // Present without vsync
+
+        if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET)
+        {
+            // TODO: test this https://docs.microsoft.com/en-us/windows/uwp/gaming/handling-device-lost-scenarios
+            const BRWL_CHAR* msg = nullptr;
+            if (result == DXGI_ERROR_DEVICE_REMOVED) msg = BRWL_CHAR_LITERAL("DEVICE REMOVED!");
+            if (result == DXGI_ERROR_DEVICE_RESET) msg = BRWL_CHAR_LITERAL("DEVICE RESET!");
+            {
+                Logger::ScopedMultiLog m(logger.get(), Logger::LogLevel::ERROR);
+                logger->error(msg, &m);
+                logger->error(GetDeviceRemovedReasonString(device->GetDeviceRemovedReason()), &m);
+            }
+
+        }
+
+        UINT64 fenceValue = frameFenceLastValue + 1;
+        commandQueue->Signal(frameFence.Get(), fenceValue);
+        frameFenceLastValue = fenceValue;
+        frameCtxt->FenceValue = fenceValue;
+
+
+        if (!dxgiFactory->IsCurrent())
+        {
+            // TODO: FLUSH?
+            logger->warning(BRWL_CHAR_LITERAL("Graphics adapters changed! Rescanning..."));
+            destroyDevice();
+            createDevice(currentFramebufferWidth, currentFramebufferHeight);
+            // Output information is cached on the DXGI Factory. If it is stale we need to create a new factory.
+        }
     }
 
     void WinRenderer::destroy(bool force /*= false*/)
     {
 
-        WaitForLastSubmittedFrame();
+        waitForLastSubmittedFrame();
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
 
-        DestroyDevice();
+        destroyDevice();
 
         BaseRenderer::destroy(force);
     }
@@ -167,15 +236,195 @@ namespace PAL
 
     // Helper functions
 
-    bool WinRenderer::CreateDevice(HWND hWnd)
+    bool WinRenderer::createDevice(unsigned int framebufferWidth /*=0 */, unsigned int framebufferHeight /*=0 */)
     {
+#ifndef __dxgi1_6_h__
+#error Dude please get a Windows 10 and update, this was like 2018
+#endif
+
+        UINT flags = 0;
+#if defined(_DEBUG)
+        flags = DXGI_CREATE_FACTORY_DEBUG;
+#endif
+        ComPtr<IDXGIFactory2> dxgiFactory2;
+
+        if (!BRWL_VERIFY(CreateDXGIFactory2(flags, IID_PPV_ARGS(dxgiFactory2.ReleaseAndGetAddressOf())) == S_OK, BRWL_CHAR_LITERAL("Failed to create DXGIFactory2.")))
+        {
+            return false;
+        }
+        if (!BRWL_VERIFY(dxgiFactory2.As(&dxgiFactory) == S_OK, BRWL_CHAR_LITERAL("Failed to retrieve DXGIFactory6.")))
+        {
+            return false;
+        }
+
+
+        if (g_useSoftwareRasterizer)
+        {
+            ComPtr<IDXGIAdapter1> dxgiAdapter1;
+            if (!BRWL_VERIFY(dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&dxgiAdapter1)) == S_OK, BRWL_CHAR_LITERAL("Failed to get software rasterizer.")))
+            {
+                return false;
+            }
+            //if(!BRWL_VERIFY( == S_OK, BRWL_CHAR_LITERAL("")))
+            if (!BRWL_VERIFY(dxgiAdapter1.As(&dxgiAdapter) == S_OK, BRWL_CHAR_LITERAL("Failed to get software rasterizer as DXGIAdapter4.")))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            ComPtr<IDXGIAdapter4> dxgiAdapter4;
+            HRESULT enumerationResult;
+            for (unsigned int i = 0; (enumerationResult = dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(dxgiAdapter4.ReleaseAndGetAddressOf()))) == S_OK; ++i)
+            {
+                DXGI_ADAPTER_DESC1 desc;
+                if (!BRWL_VERIFY(SUCCEEDED(dxgiAdapter4->GetDesc1(&desc)), BRWL_CHAR_LITERAL("Failed to get adapter description.")))
+                {
+                    return false;
+                }
+
+                if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) continue;
+
+                // Create device and keep it if it supports the requested feature level
+                if (BRWL_VERIFY(SUCCEEDED(D3D12CreateDevice(dxgiAdapter.Get(), featureLevel, IID_PPV_ARGS(device.ReleaseAndGetAddressOf()))), BRWL_CHAR_LITERAL("Failed to create D3D12Device.")))
+                {
+                    dxgiAdapter = dxgiAdapter4;
+                    BRWL_CHAR buff[256] = { 0 };
+                    BRWL_SNPRINTF(buff, countof(buff), L"Direct3D12 Adapter (%u): VendorId:%04X, DeviceId:%04X, Description%ls\n", i, desc.VendorId, desc.DeviceId, desc.Description);
+                    logger->info(buff);
+                    break;
+                }
+
+                // continue trying the others, in case someone has an old potato discrete GPU but a shiny new CPU with integrated graphics, then, well, let's go with that...
+            }
+
+            if (!BRWL_VERIFY(enumerationResult == S_OK, BRWL_CHAR_LITERAL("Could not find a graphics adapter which supports all the requirements.")))
+            {
+                return false;
+            }
+        }
+
+#if defined(_DEBUG)
+        // Enable debug messages in debug mode.
+        ComPtr<ID3D12InfoQueue> pInfoQueue;
+        if (BRWL_VERIFY(SUCCEEDED(device.As(&pInfoQueue)), BRWL_CHAR_LITERAL("Failed to get debug info queue.")))
+        {
+            pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+            pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+            pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+            // Suppress whole categories of messages
+            //D3D12_MESSAGE_CATEGORY Categories[] = {};
+
+            // Suppress messages based on their severity level
+            D3D12_MESSAGE_SEVERITY Severities[] =
+            {
+                D3D12_MESSAGE_SEVERITY_INFO
+            };
+
+            // Suppress individual messages by their ID
+            D3D12_MESSAGE_ID DenyIds[] = {
+                D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,   // I'm really not sure how to avoid this message.
+                D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,                         // This warning occurs when using capture frame while graphics debugging.
+                D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE,                       // This warning occurs when using capture frame while graphics debugging.
+            };
+
+            D3D12_INFO_QUEUE_FILTER NewFilter = {};
+            //NewFilter.DenyList.NumCategories = _countof(Categories);
+            //NewFilter.DenyList.pCategoryList = Categories;
+            NewFilter.DenyList.NumSeverities = _countof(Severities);
+            NewFilter.DenyList.pSeverityList = Severities;
+            NewFilter.DenyList.NumIDs = _countof(DenyIds);
+            NewFilter.DenyList.pIDList = DenyIds;
+
+            if (!BRWL_VERIFY(SUCCEEDED(pInfoQueue->PushStorageFilter(&NewFilter)), BRWL_CHAR_LITERAL("Failed to set debug info queue filter.")))
+            {
+                return false;
+            }
+        }
+#endif // defined(_DEBUG)
+        {
+            D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+
+            desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+            desc.NumDescriptors = numBackBuffers;
+            desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+            desc.NodeMask = 1;
+            if (!BRWL_VERIFY(SUCCEEDED(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&rtvHeap))), BRWL_CHAR_LITERAL("Failed to create render target view descriptor heap.")))
+            {
+                return false;
+            }
+
+            SIZE_T rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+            for (UINT i = 0; i < numBackBuffers; i++)
+            {
+                g_mainRenderTargetDescriptor[i] = rtvHandle;
+                rtvHandle.ptr += rtvDescriptorSize;
+            }
+        }
+        
+
+
+        {
+            D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+
+            desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            desc.NumDescriptors = 1;
+            desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+            if (!BRWL_VERIFY(SUCCEEDED(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&srvHeap))), BRWL_CHAR_LITERAL("Failed to create srv descriptor heap.")))
+            {
+                return false;
+            }
+        }
+
+        {
+            D3D12_COMMAND_QUEUE_DESC desc = {};
+            desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+            desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+            desc.NodeMask = 1;
+            if (!BRWL_VERIFY(SUCCEEDED(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&commandQueue))), BRWL_CHAR_LITERAL("Failed to create direct command queue.")))
+            {
+                return false;
+            }
+        }
+
+        for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++) {
+            if (!BRWL_VERIFY(SUCCEEDED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&frameContext[i].CommandAllocator))), BRWL_CHAR_LITERAL("Failed to create direct command allocator.")))
+            {
+                return false;
+            }            
+        }
+        
+        if (!BRWL_VERIFY(SUCCEEDED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, frameContext[0].CommandAllocator.Get(), NULL, IID_PPV_ARGS(&commandList))), BRWL_CHAR_LITERAL("Failed to create command list.")))
+        {
+            return false;
+        }
+
+        if (!BRWL_VERIFY(SUCCEEDED(commandList->Close()), BRWL_CHAR_LITERAL("Failed to close command list.")))
+        {
+            return false;
+        }
+
+        if (!BRWL_VERIFY(SUCCEEDED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&frameFence))), BRWL_CHAR_LITERAL("Failed to create frame fence object.")))
+        {
+            return false;
+        }
+
+        frameFenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+        if (!BRWL_VERIFY(frameFenceEvent != NULL, BRWL_CHAR_LITERAL("Failed to create frame fence event.")))
+        {
+            return false;
+        }
+
+
+
         // Setup swap chain
         DXGI_SWAP_CHAIN_DESC1 sd;
         {
-            ZeroMemory(&sd, sizeof(sd));
-            sd.BufferCount = NUM_BACK_BUFFERS;
-            sd.Width = 0;
-            sd.Height = 0;
+            memset(&sd, 0, sizeof(sd));
+            sd.BufferCount = numBackBuffers;
+            sd.Width = framebufferWidth;
+            sd.Height = framebufferHeight;
             sd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
             sd.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
             sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -187,108 +436,40 @@ namespace PAL
             sd.Stereo = FALSE;
         }
 
-#ifdef DX12_ENABLE_DEBUG_LAYER
-        ID3D12Debug* pdx12Debug = NULL;
-        if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&pdx12Debug))))
-        {
-            pdx12Debug->EnableDebugLayer();
-            pdx12Debug->Release();
-        }
-#endif
-
-        D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
-        if (D3D12CreateDevice(NULL, featureLevel, IID_PPV_ARGS(&g_pd3dDevice)) != S_OK)
+        ComPtr<IDXGISwapChain1> swapChain1;
+        if( dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), params->hWnd, &sd, NULL, NULL, &swapChain1) != S_OK ||
+            swapChain1->QueryInterface(IID_PPV_ARGS(&g_pSwapChain)) != S_OK)
             return false;
+        g_pSwapChain->SetMaximumFrameLatency(numBackBuffers);
+        g_hSwapChainWaitableObject = g_pSwapChain->GetFrameLatencyWaitableObject();
+        
 
-        {
-            D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-            desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-            desc.NumDescriptors = NUM_BACK_BUFFERS;
-            desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-            desc.NodeMask = 1;
-            if (g_pd3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&g_pd3dRtvDescHeap)) != S_OK)
-                return false;
-
-            SIZE_T rtvDescriptorSize = g_pd3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_pd3dRtvDescHeap->GetCPUDescriptorHandleForHeapStart();
-            for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
-            {
-                g_mainRenderTargetDescriptor[i] = rtvHandle;
-                rtvHandle.ptr += rtvDescriptorSize;
-            }
-        }
-
-        {
-            D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-            desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-            desc.NumDescriptors = 1;
-            desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-            if (g_pd3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&g_pd3dSrvDescHeap)) != S_OK)
-                return false;
-        }
-
-        {
-            D3D12_COMMAND_QUEUE_DESC desc = {};
-            desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-            desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-            desc.NodeMask = 1;
-            if (g_pd3dDevice->CreateCommandQueue(&desc, IID_PPV_ARGS(&g_pd3dCommandQueue)) != S_OK)
-                return false;
-        }
-
-        for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++) {
-            HRESULT res = g_pd3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_frameContext[i].CommandAllocator));
-            if (res != S_OK)
-                return false;
-        }
-
-        if (g_pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_frameContext[0].CommandAllocator.Get(), NULL, IID_PPV_ARGS(&g_pd3dCommandList)) != S_OK ||
-            g_pd3dCommandList->Close() != S_OK)
-            return false;
-
-        if (g_pd3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_fence)) != S_OK)
-            return false;
-
-        g_fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-        if (g_fenceEvent == NULL)
-            return false;
-
-        {
-            ComPtr<IDXGIFactory4> dxgiFactory;
-            ComPtr<IDXGISwapChain1> swapChain1;
-            UINT flags = 0;
-#if defined(_DEBUG)
-            flags = DXGI_CREATE_FACTORY_DEBUG;
-#endif
-            if (CreateDXGIFactory2(flags, IID_PPV_ARGS(&dxgiFactory)) != S_OK ||
-                dxgiFactory->CreateSwapChainForHwnd(g_pd3dCommandQueue.Get(), hWnd, &sd, NULL, NULL, &swapChain1) != S_OK ||
-                swapChain1->QueryInterface(IID_PPV_ARGS(&g_pSwapChain)) != S_OK)
-                return false;
-            g_pSwapChain->SetMaximumFrameLatency(NUM_BACK_BUFFERS);
-            g_hSwapChainWaitableObject = g_pSwapChain->GetFrameLatencyWaitableObject();
-        }
-
-        CreateRenderTarget();
+        createRenderTarget();
+        currentFramebufferWidth = framebufferWidth;
+        currentFramebufferHeight = framebufferHeight;
         return true;
     }
 
-    void WinRenderer::DestroyDevice()
+    void WinRenderer::destroyDevice()
     {
-        DestroyRenderTarget();
-        if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = nullptr; }
+        //DestroyRenderTarget();
+        g_pSwapChain = nullptr;
         if (g_hSwapChainWaitableObject != NULL) { CloseHandle(g_hSwapChainWaitableObject); }
         for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
-            if (g_frameContext[i].CommandAllocator) { g_frameContext[i].CommandAllocator->Release(); g_frameContext[i].CommandAllocator = nullptr; }
-        if (g_pd3dCommandQueue) { g_pd3dCommandQueue->Release(); g_pd3dCommandQueue = nullptr; }
-        if (g_pd3dCommandList) { g_pd3dCommandList->Release(); g_pd3dCommandList = nullptr; }
-        if (g_pd3dRtvDescHeap) { g_pd3dRtvDescHeap->Release(); g_pd3dRtvDescHeap = nullptr; }
-        if (g_pd3dSrvDescHeap) { g_pd3dSrvDescHeap->Release(); g_pd3dSrvDescHeap = nullptr; }
-        if (g_fence) { g_fence->Release(); g_fence = nullptr; }
-        if (g_fenceEvent) { CloseHandle(g_fenceEvent); g_fenceEvent = nullptr; }
-        if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
+        {
+            frameContext[i].CommandAllocator = nullptr;
+        }
+        commandQueue = nullptr;
+        commandList = nullptr;
+        rtvHeap = nullptr;
+        srvHeap = nullptr;
+        frameFence = nullptr;
+        if (frameFenceEvent) { CloseHandle(frameFenceEvent); frameFenceEvent = nullptr; }
+
+        device = nullptr;
 
 #ifdef DX12_ENABLE_DEBUG_LAYER
-        IDXGIDebug1* pDebug = NULL;
+        ComPtr<IDXGIDebug1> pDebug;
         if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pDebug))))
         {
             pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_SUMMARY);
@@ -297,56 +478,58 @@ namespace PAL
 #endif
     }
 
-    void WinRenderer::CreateRenderTarget()
+    void WinRenderer::createRenderTarget()
     {
-        for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
+        for (UINT i = 0; i < numBackBuffers; i++)
         {
             ComPtr<ID3D12Resource> pBackBuffer = nullptr;
             g_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
-            g_pd3dDevice->CreateRenderTargetView(pBackBuffer.Get(), NULL, g_mainRenderTargetDescriptor[i]);
+            device->CreateRenderTargetView(pBackBuffer.Get(), NULL, g_mainRenderTargetDescriptor[i]);
             g_mainRenderTargetResource[i] = pBackBuffer;
         }
     }
 
-    void WinRenderer::DestroyRenderTarget()
+    void WinRenderer::destroyRenderTarget()
     {
-        WaitForLastSubmittedFrame();
+        waitForLastSubmittedFrame();
 
-        for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
-            if (g_mainRenderTargetResource[i]) { g_mainRenderTargetResource[i]->Release(); g_mainRenderTargetResource[i] = nullptr; }
+        for (UINT i = 0; i < numBackBuffers; i++)
+        {
+            g_mainRenderTargetResource[i] = nullptr;
+        }
     }
 
-    void WinRenderer::WaitForLastSubmittedFrame()
+    void WinRenderer::waitForLastSubmittedFrame()
     {
-        FrameContext* frameCtxt = &g_frameContext[g_frameIndex % NUM_FRAMES_IN_FLIGHT];
+        FrameContext* frameCtxt = &frameContext[frameIndex % NUM_FRAMES_IN_FLIGHT];
 
         UINT64 fenceValue = frameCtxt->FenceValue;
         if (fenceValue == 0)
             return; // No fence was signaled
 
         frameCtxt->FenceValue = 0;
-        if (g_fence->GetCompletedValue() >= fenceValue)
+        if (frameFence->GetCompletedValue() >= fenceValue)
             return;
 
-        g_fence->SetEventOnCompletion(fenceValue, g_fenceEvent);
-        WaitForSingleObject(g_fenceEvent, INFINITE);
+        frameFence->SetEventOnCompletion(fenceValue, frameFenceEvent);
+        WaitForSingleObject(frameFenceEvent, INFINITE);
     }
 
-    WinRenderer::FrameContext* WinRenderer::WaitForNextFrameResources()
+    WinRenderer::FrameContext* WinRenderer::waitForNextFrameResources()
     {
-        UINT nextFrameIndex = g_frameIndex + 1;
-        g_frameIndex = nextFrameIndex;
+        UINT nextFrameIndex = frameIndex + 1;
+        frameIndex = nextFrameIndex;
 
         HANDLE waitableObjects[] = { g_hSwapChainWaitableObject, NULL };
         DWORD numWaitableObjects = 1;
 
-        FrameContext* frameCtxt = &g_frameContext[nextFrameIndex % NUM_FRAMES_IN_FLIGHT];
+        FrameContext* frameCtxt = &frameContext[nextFrameIndex % NUM_FRAMES_IN_FLIGHT];
         UINT64 fenceValue = frameCtxt->FenceValue;
         if (fenceValue != 0) // means no fence was signaled
         {
             frameCtxt->FenceValue = 0;
-            g_fence->SetEventOnCompletion(fenceValue, g_fenceEvent);
-            waitableObjects[1] = g_fenceEvent;
+            frameFence->SetEventOnCompletion(fenceValue, frameFenceEvent);
+            waitableObjects[1] = frameFenceEvent;
             numWaitableObjects = 2;
         }
 
@@ -355,26 +538,38 @@ namespace PAL
         return frameCtxt;
     }
 
-    void WinRenderer::ResizeSwapChain(HWND hWnd, int width, int height)
+    void WinRenderer::resizeSwapChain(HWND hWnd, int width, int height)
     {
+        BRWL_EXCEPTION(width >= 0 && height >= 0, BRWL_CHAR_LITERAL("Invalid dimensions."));
+        // Flush the GPU queue to make sure the swap chain's back buffers
+        // are not being referenced by an in-flight command list.
+        //Flush(commandQueue, g_Fence, g_FenceValue, g_FenceEvent);
+
+        if (!dxgiFactory->IsCurrent())
+        {
+            // TODO: FLUSH?
+            logger->warning(BRWL_CHAR_LITERAL("Graphics adapters changed! Rescanning..."));
+            destroyDevice();
+            createDevice(currentFramebufferWidth, currentFramebufferHeight);
+            // Output information is cached on the DXGI Factory. If it is stale we need to create a new factory.
+            return;
+        }
         DXGI_SWAP_CHAIN_DESC1 sd;
         g_pSwapChain->GetDesc1(&sd);
-        sd.Width = width;
-        sd.Height = height;
+        g_pSwapChain->ResizeBuffers(sd.BufferCount, width, height, sd.Format, sd.Flags);
+        //sd.Width = width;
+        //sd.Height = height;
+        //g_pSwapChain->Release();
 
-        IDXGIFactory4* dxgiFactory = NULL;
-        g_pSwapChain->GetParent(IID_PPV_ARGS(&dxgiFactory));
+        //CloseHandle(g_hSwapChainWaitableObject);
 
-        g_pSwapChain->Release();
-        CloseHandle(g_hSwapChainWaitableObject);
+        //ComPtr<IDXGISwapChain1> swapChain1;
+        //dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), hWnd, &sd, NULL, NULL, &swapChain1);
+        //swapChain1->QueryInterface(IID_PPV_ARGS(&g_pSwapChain));
+        //swapChain1->Release();
+        //dxgiFactory->Release();
 
-        IDXGISwapChain1* swapChain1 = NULL;
-        dxgiFactory->CreateSwapChainForHwnd(g_pd3dCommandQueue.Get(), hWnd, &sd, NULL, NULL, &swapChain1);
-        swapChain1->QueryInterface(IID_PPV_ARGS(&g_pSwapChain));
-        swapChain1->Release();
-        dxgiFactory->Release();
-
-        g_pSwapChain->SetMaximumFrameLatency(NUM_BACK_BUFFERS);
+        //g_pSwapChain->SetMaximumFrameLatency(numBackBuffers);
 
         g_hSwapChainWaitableObject = g_pSwapChain->GetFrameLatencyWaitableObject();
         assert(g_hSwapChainWaitableObject != NULL);
@@ -382,12 +577,15 @@ namespace PAL
 
     void WinRenderer::OnFramebufferResize(int width, int height)
     {
-        WaitForLastSubmittedFrame();
+        currentFramebufferWidth = width;
+        currentFramebufferHeight = height;
+        waitForLastSubmittedFrame();
         ImGui_ImplDX12_InvalidateDeviceObjects();
-        DestroyRenderTarget();
-        ResizeSwapChain(params->hWnd, width, height);
-        CreateRenderTarget();
+        destroyRenderTarget();
+        resizeSwapChain(params->hWnd, width, height);
+        createRenderTarget();
         ImGui_ImplDX12_CreateDeviceObjects();
+        render();
     }
 
 #pragma endregion //IMGUI COPY

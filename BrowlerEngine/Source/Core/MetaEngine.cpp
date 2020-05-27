@@ -74,8 +74,6 @@ void MetaEngine::shutDown() {
 		std::unique_ptr<EngineData>& engineData = engines[i];
 		std::unique_ptr<Thread<void>>& thread = frameThreads[i];
 		EngineRunMode mode = engineData->engine->getRunMode();
-		BRWL_EXCEPTION(mode != EngineRunMode::DETATCHED || (thread->getState() == ThreadState::READY || thread->getState() == ThreadState::TERMINATED),
-			BRWL_CHAR_LITERAL("Invalid thread state on shutdown"));
 
 		if (mode == EngineRunMode::DETATCHED)
 		{
@@ -87,13 +85,17 @@ void MetaEngine::shutDown() {
 	{
 		const EngineData* const engineData = engines[i].get();
 		EngineRunMode mode = engineData->engine->getRunMode();
+		Thread<void>* const thread = frameThreads[i].get();
 		if (mode == EngineRunMode::DETATCHED)
 		{
-			Thread<void>* const thread = frameThreads[i].get();
 			thread->join();
 			thread->rewind();
 		}
+
+		BRWL_EXCEPTION(mode != EngineRunMode::DETATCHED || (thread->getState() == ThreadState::READY || thread->getState() == ThreadState::TERMINATED),
+			BRWL_CHAR_LITERAL("Invalid thread state on shutdown"));
 	}
+
 }
 
 void MetaEngine::update()
