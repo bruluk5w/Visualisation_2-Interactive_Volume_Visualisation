@@ -157,7 +157,10 @@
       <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <PreBuildEvent>
-      <Command>md $(SolutionDir)Shaders\Compiled</Command>
+      <Command>set compiled_folder = "$(SolutionDir)Shaders\Compiled"
+if not exist %compiled_folder (
+    md %compiled_folder%
+)</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -189,7 +192,12 @@
       <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <PreBuildEvent>
-      <Command>md $(SolutionDir)Shaders\Compiled</Command>
+      <Command>
+		set compiled_folder = "$(SolutionDir)Shaders\Compiled"
+		if not exist %compiled_folder (
+			md %compiled_folder%
+		)
+	</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -226,7 +234,10 @@
       <EnableDebuggingInformation>true</EnableDebuggingInformation>
     </FxCompile>
     <PreBuildEvent>
-      <Command>md $(SolutionDir)Shaders\Compiled</Command>
+      <Command>set compiled_folder = "$(SolutionDir)Shaders\Compiled"
+if not exist %compiled_folder (
+    md %compiled_folder%
+)</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|Win32'">
@@ -262,7 +273,10 @@
       <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <PreBuildEvent>
-      <Command>md $(SolutionDir)Shaders\Compiled</Command>
+      <Command>set compiled_folder = "$(SolutionDir)Shaders\Compiled"
+if not exist %compiled_folder (
+    md %compiled_folder%
+)</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -299,7 +313,10 @@
       <EnableDebuggingInformation>true</EnableDebuggingInformation>
     </FxCompile>
     <PreBuildEvent>
-      <Command>md $(SolutionDir)Shaders\Compiled</Command>
+      <Command>set compiled_folder = "$(SolutionDir)Shaders\Compiled"
+if not exist %compiled_folder (
+    md %compiled_folder%
+)</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">
@@ -335,7 +352,10 @@
       <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <PreBuildEvent>
-      <Command>md $(SolutionDir)Shaders\Compiled</Command>
+      <Command>set compiled_folder = "$(SolutionDir)Shaders\Compiled"
+if not exist %compiled_folder (
+    md %compiled_folder%
+)</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

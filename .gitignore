@@ -40,6 +40,13 @@ BrowlerEngine/build/**
 BrowlerEngine/Visualization2/build/**
 *.i
 
+#Files for incremental linking
+*.iob
+*.ipdb
+
+#pdb files
+*.pdb
+
 # Compiled Shaders
 *.vs.h
 *.ps.h
