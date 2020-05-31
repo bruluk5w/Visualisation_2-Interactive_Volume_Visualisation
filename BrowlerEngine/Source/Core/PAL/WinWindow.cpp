@@ -135,8 +135,10 @@ struct WinWindowImpl
             break;
         }
         case WM_DESTROY:
+            wrapper->destroy();
+            // here we already destroyed ourself, so we should not access any memory anymore
             ::PostQuitMessage(0);
-            break;
+            return 0;
         default:
             return ::DefWindowProcW(hWnd, msg, wParam, lParam);
         }
@@ -281,6 +283,9 @@ void WinWindow::create(int x, int y, int width, int height)
 
 void WinWindow::destroy()
 {
+    // if we quit from within the window (by closing it e.g. via the standard close button),
+    // we need to deconstruct ourself
+    setRenderer(nullptr);
     impl = nullptr;
 }
 
@@ -296,7 +301,7 @@ void WinWindow::processPlatformMessages()
 
 void WinWindow::setRenderer(RENDERER::Renderer* renderer)
 {
-    BRWL_EXCEPTION(impl, BRWL_CHAR_LITERAL("\"create\" has to be called before setting a renderer."));
+    BRWL_EXCEPTION(impl || renderer == nullptr, BRWL_CHAR_LITERAL("\"create\" has to be called before setting a renderer."));
     if (this->renderer)
     {
         this->renderer->destroy();
@@ -306,7 +311,7 @@ void WinWindow::setRenderer(RENDERER::Renderer* renderer)
 
     if (this->renderer)
     {
-        bool success = this->renderer->init({ impl->hWnd });
+        bool success = this->renderer->init({ impl->hWnd, {impl->width, impl->height} });
         if (!BRWL_VERIFY(success, BRWL_CHAR_LITERAL("Failed to initalize renderer on window.")))
         {
             this->renderer->destroy();

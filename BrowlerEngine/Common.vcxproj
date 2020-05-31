@@ -27,6 +27,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Include\Common\BrwlMath.h" />
+    <ClInclude Include="Include\Common\BrwlMathFwd.h" />
     <ClInclude Include="Include\Common\Common_Precomp.h" />
     <ClInclude Include="Include\Common\EventBus.h" />
     <ClInclude Include="Include\Common\Events.h">
@@ -66,6 +68,9 @@
     <ClCompile Include="Source\Common\Logger.cpp" />
     <ClCompile Include="Source\Common\PAL\WinGlobals.cpp" />
     <ClCompile Include="Source\Common\PAL\WinStackTrace.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -323,5 +328,12 @@
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="packages\directxmath.2020.4.23.1\build\native\directxmath.targets" Condition="Exists('packages\directxmath.2020.4.23.1\build\native\directxmath.targets')" />
   </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\directxmath.2020.4.23.1\build\native\directxmath.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\directxmath.2020.4.23.1\build\native\directxmath.targets'))" />
+  </Target>
 </Project>

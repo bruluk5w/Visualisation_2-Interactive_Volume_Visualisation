@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 namespace std {
 	template <class _Elem, class _Traits> class basic_ostream;
 	using ostream = basic_ostream<char, char_traits<char>>;
@@ -45,6 +47,19 @@ public:
 		MAX,
 		MIN = DEBUG
 	};
+	
+	// When using ScopedMultiLog ALWAYS pass the instance to the logging functions for all calls to the logger in the
+	// same scope as where the ScopedMultiLog instance resides!
+	// Else a deadlock will occur in the logging function waiting for the ScopedMultiLog to release the logging stream.
+	struct ScopedMultiLog
+	{
+		friend class Logger;
+		ScopedMultiLog(Logger* l, Logger::LogLevel level);
+		~ScopedMultiLog();
+
+		Logger* l;
+		Logger::LogLevel lvl;
+	};
 
 	Logger();
 	virtual ~Logger();
@@ -57,15 +72,17 @@ public:
 #endif
 
 
-	void debug(const BRWL_CHAR* msg) const;
-	void info(const BRWL_CHAR* msg) const;
-	void warning(const BRWL_CHAR* msg) const;
-	void error(const BRWL_CHAR* msg) const;
-	void log(const BRWL_CHAR* msg, LogLevel level) const;
+	void debug(const BRWL_CHAR* msg, ScopedMultiLog* multiLog = nullptr) const;
+	void info(const BRWL_CHAR* msg, ScopedMultiLog* multiLog = nullptr) const;
+	void warning(const BRWL_CHAR* msg, ScopedMultiLog* multiLog = nullptr) const;
+	void error(const BRWL_CHAR* msg, ScopedMultiLog* multiLog = nullptr) const;
+	void log(const BRWL_CHAR* msg, LogLevel level, ScopedMultiLog* multiLog = nullptr) const;
 
 	void setOutStream(ILogHandler* logHandler);
 
 protected:
+	mutable std::mutex logMutex;
+	mutable ScopedMultiLog* activeMultiLog;
 	ILogHandler* outStream;
 };
 BRWL_NS_END

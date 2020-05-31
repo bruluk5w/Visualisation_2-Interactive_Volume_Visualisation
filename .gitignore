@@ -40,6 +40,13 @@ BrowlerEngine/build/**
 BrowlerEngine/Visualization2/build/**
 *.i
 
+# Compiled Shaders
+*.vs.h
+*.ps.h
+
+#im gui ini file
+imgui.ini
+
 
 # NuGet Packages
 *.nupkg

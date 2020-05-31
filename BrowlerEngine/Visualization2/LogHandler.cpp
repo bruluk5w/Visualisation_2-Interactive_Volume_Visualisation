@@ -5,8 +5,12 @@ std::mutex LogHandler::poolMutex = std::mutex();
 
 BRWL::ILogHandler& LogHandler::operator<<(const BRWL_CHAR* msg)
 {
-	std::scoped_lock(writeMutex);
-	buffer.append(msg);
+	if (msg != nullptr)
+	{
+		std::scoped_lock(writeMutex);
+		buffer.append(msg);
+	}
+
 	return *this;
 }
 

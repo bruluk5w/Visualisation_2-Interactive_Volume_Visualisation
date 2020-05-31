@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <!-- Include definitions from dxc.xml, which defines the DXCShader item. -->
+    <PropertyPageSchema Include="$(MSBuildThisFileDirectory)dxc.xml" />
+    <!-- Hook up DXCShader items to be built by the DXC target. -->
+    <AvailableItemName Include="DXCShader">
+      <Targets>DXC</Targets>
+    </AvailableItemName>
+  </ItemGroup>
+
+  <Target
+    Name="DXC"
+    Condition="'@(DXCShader)' != ''"
+    BeforeTargets="ClCompile">
+
+    <Message Importance="High" Text="Building shaders!!!" />
+	
+    <!-- Find all shader headers (.hlsli files) -->
+    <ItemGroup>
+      <ShaderHeader Include="*.hlsli" />
+    </ItemGroup>
+
+    <!-- Setup metadata for custom build tool -->
+    <ItemGroup>
+      <DXCShader>
+        <Message>%(Filename)%(Extension)</Message>
+        <Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`vs`))' == 'True'">
+          "$(WDKBinRoot)\x86\dxc.exe" -T vs_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename).h -Vn %(Filename)_vs 
+        </Command>
+        <Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`ps`))' == 'True'">
+		  "$(WDKBinRoot)\x86\dxc.exe" -T ps_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename).h -Vn %(Filename)_ps
+		</Command>
+        <AdditionalInputs>$(ShaderHeaders)</AdditionalInputs>
+        <Outputs>%(Filename).h;</Outputs>
+      </DXCShader>
+    </ItemGroup>
+
+    <!-- Compile by forwarding to the Custom Build Tool infrastructure,
+         so it will take care of .tlogs and error/warning parsing -->
+    <CustomBuild
+      Sources="@(DXCShader)"
+      MinimalRebuildFromTracking="true"
+      TrackerLogDirectory="$(TLogLocation)"
+      ErrorListRegex="(?'FILENAME'.+):(?'LINE'\d+):(?'COLUMN'\d+): (?'CATEGORY'error|warning): (?'TEXT'.*)" />
+  </Target>
+</Project>
