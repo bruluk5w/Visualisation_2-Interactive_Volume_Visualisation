@@ -81,6 +81,17 @@ namespace PAL
 #endif
     }
 
+    WinRenderer::~WinRenderer()
+    {
+#ifdef DX12_ENABLE_DEBUG_LAYER
+        ComPtr<IDXGIDebug1> pDebug;
+        if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pDebug))))
+        {
+            pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_SUMMARY | DXGI_DEBUG_RLO_IGNORE_INTERNAL | DXGI_DEBUG_RLO_DETAIL));
+        }
+#endif
+    }
+
     bool WinRenderer::init(const WinRendererParameters rendererParameters)
     {
         if (!BRWL_VERIFY(BaseRenderer::init(rendererParameters), BRWL_CHAR_LITERAL("Failed to init BaseRenderer")))
@@ -288,18 +299,39 @@ namespace PAL
                 // Create device and keep it if it supports the requested feature level
                 if (BRWL_VERIFY(SUCCEEDED(D3D12CreateDevice(dxgiAdapter.Get(), featureLevel, IID_PPV_ARGS(device.ReleaseAndGetAddressOf()))), BRWL_CHAR_LITERAL("Failed to create D3D12Device.")))
                 {
+                    Logger::LogLevel logLvl = Logger::LogLevel::INFO;
+                    // check root signature version 1_1 support
+                    D3D12_FEATURE_DATA_ROOT_SIGNATURE highestVersion = { D3D_ROOT_SIGNATURE_VERSION_1_1 };
+                    const BRWL_CHAR* errorMsg = nullptr;
+                    if (!SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &highestVersion, sizeof(highestVersion))), errorMsg)
+                    {
+                        logLvl = Logger::LogLevel::WARNING;
+                        errorMsg = BRWL_CHAR_LITERAL("Rejected: No support for DX12 root signature version 1_1. Please update driver.");
+                    }
+
+                    Logger::ScopedMultiLog ml(logger.get(), logLvl);
                     dxgiAdapter = dxgiAdapter4;
                     BRWL_CHAR buff[256] = { 0 };
-                    BRWL_SNPRINTF(buff, countof(buff), L"Direct3D12 Adapter (%u): VendorId:%04X, DeviceId:%04X, Description%ls\n", i, desc.VendorId, desc.DeviceId, desc.Description);
-                    logger->info(buff);
-                    break;
+                    BRWL_SNPRINTF(buff, countof(buff), BRWL_CHAR_LITERAL("Direct3D12 Adapter (%u): VendorId: %04X, DeviceId: %04X, Description: %ls"), i, desc.VendorId, desc.DeviceId, desc.Description);
+                    logger->log(buff, logLvl, &ml);
+                    logger->log(BRWL_NEWLINE, logLvl, &ml);
+                    logger->log(errorMsg, logLvl, &ml);
+                    if (errorMsg == nullptr)
+                    {
+                        BRWL_SNPRINTF(buff, countof(buff), BRWL_CHAR_LITERAL("Dedicated Video Memory: %zuMB, Dedicated System Memory: %zuMB, Shared System Memory: %zuMB"), desc.DedicatedVideoMemory / 1048576, desc.DedicatedSystemMemory / 1048576, desc.SharedSystemMemory / 1048576);
+                        logger->log(buff, logLvl, &ml);
+                        break;
+                    }
                 }
 
                 // continue trying the others, in case someone has an old potato discrete GPU but a shiny new CPU with integrated graphics, then, well, let's go with that...
             }
 
-            if (!BRWL_VERIFY(enumerationResult == S_OK, BRWL_CHAR_LITERAL("Could not find a graphics adapter which supports all the requirements.")))
+            const BRWL_CHAR* errorMsg = BRWL_CHAR_LITERAL("Could not find a graphics adapter which supports all the requirements.");
+
+            if (!BRWL_VERIFY(enumerationResult == S_OK, errorMsg))
             {
+                logger->error(errorMsg);
                 return false;
             }
         }
@@ -342,6 +374,7 @@ namespace PAL
             }
         }
 #endif // defined(_DEBUG)
+
         {
             D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 
@@ -362,8 +395,6 @@ namespace PAL
                 rtvHandle.ptr += rtvDescriptorSize;
             }
         }
-        
-
 
         {
             D3D12_DESCRIPTOR_HEAP_DESC desc = {};
@@ -416,8 +447,6 @@ namespace PAL
             return false;
         }
 
-
-
         // Setup swap chain
         DXGI_SWAP_CHAIN_DESC1 sd;
         {
@@ -443,8 +472,7 @@ namespace PAL
         g_pSwapChain->SetMaximumFrameLatency(numBackBuffers);
         g_hSwapChainWaitableObject = g_pSwapChain->GetFrameLatencyWaitableObject();
         
-
-        createRenderTarget();
+        createRenderTargets();
         currentFramebufferWidth = framebufferWidth;
         currentFramebufferHeight = framebufferHeight;
         return true;
@@ -452,33 +480,43 @@ namespace PAL
 
     void WinRenderer::destroyDevice()
     {
-        //DestroyRenderTarget();
+        destroyRenderTargets();
+        for (UINT i = 0; i < numBackBuffers; i++)
+        {
+            g_mainRenderTargetDescriptor[i] = { 0 };
+        }
+
         g_pSwapChain = nullptr;
-        if (g_hSwapChainWaitableObject != NULL) { CloseHandle(g_hSwapChainWaitableObject); }
+        if (g_hSwapChainWaitableObject != NULL)
+        {
+            CloseHandle(g_hSwapChainWaitableObject);
+            g_hSwapChainWaitableObject = NULL;
+        }
+
         for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
         {
             frameContext[i].CommandAllocator = nullptr;
+            frameContext[i].FenceValue = 0;
         }
+
         commandQueue = nullptr;
         commandList = nullptr;
         rtvHeap = nullptr;
         srvHeap = nullptr;
         frameFence = nullptr;
-        if (frameFenceEvent) { CloseHandle(frameFenceEvent); frameFenceEvent = nullptr; }
+        frameFenceLastValue = 0;
+        if (frameFenceEvent)
+        {
+            CloseHandle(frameFenceEvent);
+            frameFenceEvent = nullptr;
+        }
 
         device = nullptr;
-
-#ifdef DX12_ENABLE_DEBUG_LAYER
-        ComPtr<IDXGIDebug1> pDebug;
-        if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pDebug))))
-        {
-            pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_SUMMARY);
-            pDebug->Release();
-        }
-#endif
+        dxgiAdapter = nullptr;
+        dxgiFactory = nullptr;
     }
 
-    void WinRenderer::createRenderTarget()
+    void WinRenderer::createRenderTargets()
     {
         for (UINT i = 0; i < numBackBuffers; i++)
         {
@@ -486,10 +524,11 @@ namespace PAL
             g_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
             device->CreateRenderTargetView(pBackBuffer.Get(), NULL, g_mainRenderTargetDescriptor[i]);
             g_mainRenderTargetResource[i] = pBackBuffer;
+            g_mainRenderTargetResource[i]->SetName(BRWL_CHAR_LITERAL("RenderTarget"));
         }
     }
 
-    void WinRenderer::destroyRenderTarget()
+    void WinRenderer::destroyRenderTargets()
     {
         waitForLastSubmittedFrame();
 
@@ -540,7 +579,7 @@ namespace PAL
 
     void WinRenderer::resizeSwapChain(HWND hWnd, int width, int height)
     {
-        BRWL_EXCEPTION(width >= 0 && height >= 0, BRWL_CHAR_LITERAL("Invalid dimensions."));
+        BRWL_EXCEPTION(width > 0 && height > 0, BRWL_CHAR_LITERAL("Invalid dimensions."));
         // Flush the GPU queue to make sure the swap chain's back buffers
         // are not being referenced by an in-flight command list.
         //Flush(commandQueue, g_Fence, g_FenceValue, g_FenceEvent);
@@ -554,9 +593,16 @@ namespace PAL
             // Output information is cached on the DXGI Factory. If it is stale we need to create a new factory.
             return;
         }
+
+        destroyRenderTargets();
+
         DXGI_SWAP_CHAIN_DESC1 sd;
-        g_pSwapChain->GetDesc1(&sd);
-        g_pSwapChain->ResizeBuffers(sd.BufferCount, width, height, sd.Format, sd.Flags);
+        HRESULT success = g_pSwapChain->GetDesc1(&sd);
+        BRWL_EXCEPTION(SUCCEEDED(success), BRWL_CHAR_LITERAL("Failed to retrieve swap chain description."));
+        success = g_pSwapChain->ResizeBuffers(sd.BufferCount, width, height, sd.Format, sd.Flags);
+        BRWL_EXCEPTION(SUCCEEDED(success), BRWL_CHAR_LITERAL("Failed to resize swap chain."));
+        createRenderTargets();
+
         //sd.Width = width;
         //sd.Height = height;
         //g_pSwapChain->Release();
@@ -571,19 +617,19 @@ namespace PAL
 
         //g_pSwapChain->SetMaximumFrameLatency(numBackBuffers);
 
-        g_hSwapChainWaitableObject = g_pSwapChain->GetFrameLatencyWaitableObject();
+        //g_hSwapChainWaitableObject = g_pSwapChain->GetFrameLatencyWaitableObject();
         assert(g_hSwapChainWaitableObject != NULL);
     }
 
     void WinRenderer::OnFramebufferResize(int width, int height)
     {
+        width = Utils::max(width, 1);
+        height = Utils::max(height, 1);
         currentFramebufferWidth = width;
         currentFramebufferHeight = height;
         waitForLastSubmittedFrame();
         ImGui_ImplDX12_InvalidateDeviceObjects();
-        destroyRenderTarget();
         resizeSwapChain(params->hWnd, width, height);
-        createRenderTarget();
         ImGui_ImplDX12_CreateDeviceObjects();
         render();
     }

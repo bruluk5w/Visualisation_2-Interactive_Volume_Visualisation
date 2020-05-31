@@ -9,7 +9,7 @@ Logger::DefaultLogHandler Logger::defaultLogHandler(&BRWL_STD_COUT);
 
 ILogHandler& ILogHandler::operator<<(decltype(::std::endl<BRWL_CHAR, std::char_traits<BRWL_CHAR>>) msg)
 {
-	operator<<(BRWL_CHAR_LITERAL("\r\n"));
+	operator<<(BRWL_NEWLINE);
 	flush();
 	return *this;
 }
@@ -42,7 +42,7 @@ Logger::ScopedMultiLog::~ScopedMultiLog()
 {
 	*l->outStream << std::endl;
 	l->activeMultiLog = nullptr;
-	l->logMutex.lock();
+	l->logMutex.unlock();
 }
 
 
@@ -81,7 +81,6 @@ void Logger::log(const BRWL_CHAR* msg, LogLevel level, ScopedMultiLog* multiLog 
 {
 	if (level >= activeLogLevel && outStream != nullptr)
 	{
-		std::mutex m;
 		if (!logMutex.try_lock() && multiLog == activeMultiLog)
 		{
 			BRWL_CHECK(activeMultiLog->lvl == level, BRWL_CHAR_LITERAL("Log with different log levels called during multi log."));

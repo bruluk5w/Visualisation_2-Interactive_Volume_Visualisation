@@ -39,6 +39,9 @@
 BrowlerEngine/build/**
 BrowlerEngine/Visualization2/build/**
 *.i
+# Compiled Shaders
+*.vs.h
+*.ps.h
 
 
 # NuGet Packages

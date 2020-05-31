@@ -79,6 +79,10 @@ using ComPtr = Microsoft::WRL::ComPtr<T>;
 #define BRWL_STRCMP ::std::strcmp
 #endif
 
+#ifdef BRWL_PLATFORM_WINDOWS
+#define BRWL_NEWLINE BRWL_CHAR_LITERAL("\r\n")
+#endif
+
 #ifndef SUBMISSION
 #define BRWL_USE_DEBUG_SYMBOLS
 #endif

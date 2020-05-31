@@ -265,7 +265,7 @@ static void ImGui_ImplDX12_CreateFontsTexture()
         desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         desc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-        ID3D12Resource* pTexture = NULL;
+        ComPtr<ID3D12Resource> pTexture = NULL;
         g_pd3dDevice->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc,
             D3D12_RESOURCE_STATE_COPY_DEST, NULL, IID_PPV_ARGS(&pTexture));
 
@@ -310,14 +310,14 @@ static void ImGui_ImplDX12_CreateFontsTexture()
         srcLocation.PlacedFootprint.Footprint.RowPitch = uploadPitch;
 
         D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
-        dstLocation.pResource = pTexture;
+        dstLocation.pResource = pTexture.Get();
         dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         dstLocation.SubresourceIndex = 0;
 
         D3D12_RESOURCE_BARRIER barrier = {};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition.pResource   = pTexture;
+        barrier.Transition.pResource   = pTexture.Get();
         barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
         barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
@@ -374,7 +374,7 @@ static void ImGui_ImplDX12_CreateFontsTexture()
         srvDesc.Texture2D.MipLevels = desc.MipLevels;
         srvDesc.Texture2D.MostDetailedMip = 0;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, g_hFontSrvCpuDescHandle);
+        g_pd3dDevice->CreateShaderResourceView(pTexture.Get(), &srvDesc, g_hFontSrvCpuDescHandle);
         g_pFontTextureResource = nullptr;
         g_pFontTextureResource = pTexture;
     }

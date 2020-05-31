@@ -19,6 +19,10 @@
     <Filter Include="Source Files\PAL">
       <UniqueIdentifier>{aa3a871e-b48a-4f2d-bc1b-7de143c9db4e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{3a6da605-4282-4bb1-9f06-b8dc9178a5dd}</UniqueIdentifier>
+      <Extensions>hlsl</Extensions>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Renderer\Renderer_Precomp.h">
@@ -80,5 +84,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <DXCShader Include="Shaders\PixelShader.ps.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
+    <DXCShader Include="Shaders\VertexShader.vs.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
   </ItemGroup>
 </Project>

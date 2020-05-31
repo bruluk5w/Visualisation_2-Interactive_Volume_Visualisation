@@ -18,6 +18,7 @@ namespace PAL
 		static const unsigned int numBackBuffers = 3;
 
 		WinRenderer(EventBusSwitch<Event>* eventSystem, PlatformGlobals* globals);
+		virtual ~WinRenderer();
 		virtual bool init(const WinRendererParameters params) override;
 		virtual void render() override;
 		virtual void destroy(bool force = true) override;
@@ -46,8 +47,8 @@ namespace PAL
 		unsigned int				currentFramebufferHeight;
 
 
-		void createRenderTarget();
-		void destroyRenderTarget();
+		void createRenderTargets();
+		void destroyRenderTargets();
 		void waitForLastSubmittedFrame();
 		FrameContext* waitForNextFrameResources();
 		void resizeSwapChain(HWND hWnd, int width, int height);
