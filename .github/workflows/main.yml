@@ -9,13 +9,14 @@ jobs:
     name: Generate
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v2
       - uses: cschleiden/replace-tokens@v1
         with:
           #tokenPrefix: '#prag'
           #tokenSuffix: ' once'
           files: '["**/test.h"]' #'["**/*.h"]'
         env:
-          BLA: '\#pragma once (c) 2020 - Lukas Brunner\\n\\r'
+          BLA: '(c) 2020 - Lukas Brunner\\n\\r'
 
       
 
