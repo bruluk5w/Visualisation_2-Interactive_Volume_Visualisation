@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: cschleiden/replace-tokens@v1
-      - with:
+        with:
           tokenPrefix: '#includ'
           tokenSuffix: '\n\r'
           files: '["**/*test.h"]' #'["**/*.h"]'
