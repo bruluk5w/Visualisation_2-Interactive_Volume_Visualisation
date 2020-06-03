@@ -1,3 +1,3 @@
-#include Hey
+#pragma once
 
 this is some code
