@@ -1,0 +1,21 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Generate File Headers
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:  push
+jobs:
+  generate_file_headers:
+    name: Generate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: cschleiden/replace-tokens@v1
+      - with:
+          tokenPrefix: '#includ'
+          tokenSuffix: '\n\r'
+          files: '["**/*test.h"]' #'["**/*.h"]'
+    env:
+      e: \# (c) 2020 - Lukas Brunner\\n\\r
+
+      
+
