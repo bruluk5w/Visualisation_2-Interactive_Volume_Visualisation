@@ -1,3 +1,2 @@
-
-(c) 2020 - Lukas Brunner\\n\\r
+#pragma once
 this is some code
