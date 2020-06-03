@@ -32,7 +32,7 @@
 		  "$(WDKBinRoot)\x86\dxc.exe" -T ps_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename).h -Vn %(Filename)_ps
 		</Command>
         <AdditionalInputs>$(ShaderHeaders)</AdditionalInputs>
-        <Outputs>%(Filename).h;</Outputs>
+        <Outputs>Shaders/Compiled/%(Filename).h;</Outputs>
       </DXCShader>
     </ItemGroup>
 
