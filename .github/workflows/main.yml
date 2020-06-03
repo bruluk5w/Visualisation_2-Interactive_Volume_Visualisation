@@ -12,15 +12,15 @@ jobs:
       - uses: actions/checkout@v2
       - uses: cschleiden/replace-tokens@v1
         with:
-          #tokenPrefix: '#prag'
-          #tokenSuffix: ' once'
+          tokenPrefix: '#prag'
+          tokenSuffix: ' once'
           files: '["**/test.h"]' #'["**/*.h"]'
         env:
-          BLA: '(c) 2020 - Lukas Brunner\\n\\r'
+          ma: '(c) 2020 - Lukas Brunner\\n\\r'
       - name: Commit Changes
         run: |
-          git config --global user.name 'Your Name'
-          git config --global user.email 'your-username@users.noreply.github.com'
+          git config --global user.name 'Bot'
+          git config --global user.email 'bruluk5w@users.noreply.github.com'
           git commit -am "File Headers"
           git push
       
