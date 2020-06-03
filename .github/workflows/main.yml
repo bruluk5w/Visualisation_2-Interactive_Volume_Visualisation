@@ -9,19 +9,21 @@ jobs:
     name: Generate
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: cschleiden/replace-tokens@v1
-        with:
-          tokenPrefix: '#prag'
-          tokenSuffix: ' once'
-          files: '["**/test.h"]' #'["**/*.h"]'
-        env:
-          ma: '#pragma once //(c) 2020 - Lukas Brunner\r\n'
-      - name: Commit Changes
-        run: |
-          git config --global user.name 'Bot'
-          git config --global user.email 'bruluk5w@users.noreply.github.com'
-          git commit -am "File Headers"
-          git push
-      
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: python -m pip install --upgrade pip setuptools wheel
+    - name: Test with pytest
+      run: |
+        pyhton .tools/autogen.py
+    - name: Commit Changes
+      run: |
+        git config --global user.name 'Bot'
+        git config --global user.email 'bruluk5w@users.noreply.github.com'
+        git commit -am "File Headers"
+        git push
+
 
