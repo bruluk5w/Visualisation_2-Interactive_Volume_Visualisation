@@ -14,8 +14,8 @@ jobs:
           #tokenPrefix: '#prag'
           #tokenSuffix: ' once'
           files: '["**/test.h"]' #'["**/*.h"]'
-    env:
-      BLA: '\#pragma once (c) 2020 - Lukas Brunner\\n\\r'
+        env:
+          BLA: '\#pragma once (c) 2020 - Lukas Brunner\\n\\r'
 
       
 
