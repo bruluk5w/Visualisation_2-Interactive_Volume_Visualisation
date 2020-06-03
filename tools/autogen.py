@@ -19,7 +19,7 @@ def main():
         for file_name in file_names:
             name, ext = os.path.splitext(file_name)
             handler = FILE_HANDLERS.get(ext, None)
-            if handle is not None:
+            if handler is not None:
                 handler(os.path.join(dirpath, f))
 
 if __name__ == '__main__':
