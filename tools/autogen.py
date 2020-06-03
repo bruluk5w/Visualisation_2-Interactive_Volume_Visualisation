@@ -1,6 +1,6 @@
 import os
 
-def handle_h_file(path: string):
+def handle_h_file(path: str):
     with open(path, 'r') as file:
         first_line = file.read().readline()
         if first_line.rstrip('\n').strip() == "#pragma once":
