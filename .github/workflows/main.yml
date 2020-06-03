@@ -11,11 +11,11 @@ jobs:
     steps:
       - uses: cschleiden/replace-tokens@v1
         with:
-          tokenPrefix: '#prag'
-          tokenSuffix: ' once'
+          #tokenPrefix: '#prag'
+          #tokenSuffix: ' once'
           files: '["**/*test.h"]' #'["**/*.h"]'
     env:
-      ma: \#pragma once (c) 2020 - Lukas Brunner\\n\\r
+      BLA: \#pragma once (c) 2020 - Lukas Brunner\\n\\r
 
       
 
