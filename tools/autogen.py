@@ -7,6 +7,7 @@ def handle_h_file(path: str):
             rest_of_file = file.readlines()
             file.truncate(0)
             file.write("#pragma once // (c) 2020 Lukas Brunner")
+            print("Updated File header in {}".format(path))
             for line in rest_of_file:
                 file.write(line)
 
