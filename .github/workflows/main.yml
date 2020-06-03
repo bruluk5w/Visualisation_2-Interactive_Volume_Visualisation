@@ -13,10 +13,10 @@ jobs:
       - uses: cschleiden/replace-tokens@v1
         with:
           tokenPrefix: '#prag'
-          tokenSuffix: ' once'
+          tokenSuffix: ' once\r\n'
           files: '["**/test.h"]' #'["**/*.h"]'
         env:
-          ma: '(c) 2020 - Lukas Brunner\\n\\r'
+          ma: '#pragma once //(c) 2020 - Lukas Brunner\r\n'
       - name: Commit Changes
         run: |
           git config --global user.name 'Bot'
