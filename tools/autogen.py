@@ -5,9 +5,10 @@ def handle_h_file(path: str):
         file.seek(0)
         first_line = file.readline()
         if first_line.rstrip('\n').strip() == "#pragma once":
+            print('Valid match')
             rest_of_file = file.readlines()
-            file.truncate(0)
             file.seek(0)
+            file.truncate(0)
             file.write("#pragma once // (c) 2020 Lukas Brunner")
             print("Updated File header in {}".format(path))
             for line in rest_of_file:
@@ -30,3 +31,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    exit(0)
