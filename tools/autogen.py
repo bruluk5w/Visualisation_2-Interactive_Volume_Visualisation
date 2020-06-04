@@ -1,11 +1,13 @@
 import os
 
 def handle_h_file(path: str):
-    with open(path, 'rw') as file:
+    with open(path, 'r+') as file:
+        file.seek(0)
         first_line = file.read().readline()
         if first_line.rstrip('\n').strip() == "#pragma once":
             rest_of_file = file.readlines()
             file.truncate(0)
+            file.seek(0)
             file.write("#pragma once // (c) 2020 Lukas Brunner")
             print("Updated File header in {}".format(path))
             for line in rest_of_file:
