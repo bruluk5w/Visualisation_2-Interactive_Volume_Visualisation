@@ -17,6 +17,8 @@ BRWL_NS_END
 BRWL_RENDERER_NS
 
 
+class AppRenderer;
+
 class BaseRenderer
 {
 public:
@@ -29,6 +31,12 @@ public:
 	// may be called multiple times
 	virtual void destroy(bool force = false);
 	bool isInitialized() const { return initialized; }
+	template<typename AppRendererT, class... Types>
+	void createAppRenderer(Types&&... args)
+	{
+		if (appRenderer) appRenderer = nullptr;
+		appRenderer = std::make_shared<AppRendererT>(std::forward<Types>(args)...);
+	}
 
 protected:
 	virtual void OnFramebufferResize(int width, int height) = 0;
@@ -39,6 +47,7 @@ protected:
 	std::shared_ptr<Logger> logger;
 	PlatformGlobals* globals;
 	std::unique_ptr<RendererParameters> params;
+	std::shared_ptr<AppRenderer> appRenderer;
 };
 
 

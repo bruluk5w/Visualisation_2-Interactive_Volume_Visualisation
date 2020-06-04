@@ -327,6 +327,10 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Visualization2.h" />
     <ClInclude Include="Visualization2Dlg.h" />
+    <ClInclude Include="Visualization2Renderer.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CLogEdit.cpp" />
@@ -341,6 +345,7 @@
     </ClCompile>
     <ClCompile Include="Visualization2.cpp" />
     <ClCompile Include="Visualization2Dlg.cpp" />
+    <ClCompile Include="Visualization2Renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Visualization2.rc" />
@@ -357,6 +362,9 @@
     </ProjectReference>
     <ProjectReference Include="..\Core.vcxproj">
       <Project>{8d16df7d-5843-4bcc-80fe-b71e4c1ae6d9}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Renderer.vcxproj">
+      <Project>{4e480767-b556-4a96-94a7-2197c922eeb0}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

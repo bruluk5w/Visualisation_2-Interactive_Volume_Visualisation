@@ -1,4 +1,5 @@
-#pragma once // (c) 2020 Lukas Brunner
+// framework.h
+#pragma once
 
 #ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN            // Exclude rarely-used stuff from Windows headers

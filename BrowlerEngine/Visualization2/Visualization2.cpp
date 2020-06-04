@@ -12,7 +12,8 @@
 #include "Core/Timer.h"
 #include "Core/BrowlerEngine.h"
 #include "Core/ApplicationEndoints.h"
-
+#include "Renderer/Renderer.h"
+#include "Visualization2Renderer.h"
 
 namespace
 {
@@ -77,7 +78,11 @@ CVisualization2App::CVisualization2App() :
 
 	metaEngine = std::make_unique<BRWL::MetaEngine>(readOnlyGlobals.get());
 	metaEngine->initialize();
-	metaEngine->setEngineRunMode(metaEngine->getDefaultEngineHandle(), BRWL::MetaEngine::EngineRunMode::DETATCHED);
+	BRWL::MetaEngine::EngineHandle handle = metaEngine->getDefaultEngineHandle();
+	metaEngine->setEngineRunMode(handle, BRWL::MetaEngine::EngineRunMode::DETATCHED);
+	BRWL::Engine* engine = metaEngine->getEngine(handle);
+	BRWL_EXCEPTION(engine->renderer != nullptr, BRWL_CHAR_LITERAL("Renderer not set up."));
+	engine->renderer->createAppRenderer<BRWL::RENDERER::Visualization2Renderer>();
 }
 
 CVisualization2App::~CVisualization2App()

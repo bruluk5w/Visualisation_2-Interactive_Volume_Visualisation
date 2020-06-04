@@ -1,4 +1,5 @@
-#pragma once // (c) 2020 Lukas Brunner
+// targetver.h
+#pragma once
 
 // Including SDKDDKVer.h defines the highest available Windows platform.
 

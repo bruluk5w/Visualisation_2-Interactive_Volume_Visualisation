@@ -185,6 +185,7 @@ namespace PAL
         // ========= START DRAW SCENE ========= //
 
 #ifdef BRWL_USE_DEAR_IM_GUI
+        BaseRenderer::render();
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 #endif // BRWL_USE_DEAR_IM_GUI
 
