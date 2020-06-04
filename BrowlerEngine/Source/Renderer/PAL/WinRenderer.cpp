@@ -15,7 +15,8 @@
 #include "PAL/imgui_impl_dx12.h"
 #include "PAL/imgui_impl_win32.h"
 #include "UI/TestUi.h"
-#endif
+extern ImGuiContext* GImGui;
+#endif // BRWL_USE_DEAR_IM_GUI
 
 #include "Common/BrwlMath.h"
 
@@ -237,7 +238,10 @@ namespace PAL
         waitForLastSubmittedFrame();
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
+        if (GImGui != NULL)
+        {
+            ImGui::DestroyContext();
+        }
 
         destroyDevice();
 

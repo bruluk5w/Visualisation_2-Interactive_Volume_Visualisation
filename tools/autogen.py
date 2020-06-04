@@ -9,12 +9,12 @@ def handle_h_file(path: str):
 
         print(first_line)
         if first_line.rstrip('\n').strip() == "#pragma once":
-            print('Valid match')
+            print("Updating file header in {}".format(path))
+            print('Valid match:\n{}'.format(first_line))
             rest_of_file = file.readlines()
             file.seek(0)
             file.truncate(0)
             file.write("#pragma once // (c) 2020 Lukas Brunner\n")
-            print("Updated File header in {}".format(path))
             for line in rest_of_file:
                 file.write(line)
 
@@ -30,7 +30,6 @@ def main():
             handler = FILE_HANDLERS.get(ext, None)
             if handler is not None:
                 file_path = os.path.join(folder, file_name)
-                print('Checking {}'.format(file_path))
                 handler(file_path)
 
 if __name__ == '__main__':
