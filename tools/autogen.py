@@ -7,7 +7,6 @@ def handle_h_file(path: str):
         while first_line == '\n':
             first_line = file.readline()
 
-        print(first_line)
         if first_line.rstrip('\n').strip() == "#pragma once":
             print("Updating file header in {}".format(path))
             print('Valid match:\n{}'.format(first_line))
