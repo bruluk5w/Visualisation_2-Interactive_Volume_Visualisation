@@ -20,10 +20,13 @@ FILE_HANDLERS = {
 def main():
     for folder, folder_names, file_names in os.walk("./"):
         for file_name in file_names:
+
             name, ext = os.path.splitext(file_name)
             handler = FILE_HANDLERS.get(ext, None)
             if handler is not None:
-                handler(os.path.join(folder, file_name))
+                file_path = os.path.join(folder, file_name)
+                print('Checking {}'.format(file_path))
+                handler(file_path)
 
 if __name__ == '__main__':
     main()
