@@ -19,7 +19,7 @@ def handle_h_file(path: str):
                 file.write(line)
 
 FILE_HANDLERS = {
-    '.test': handle_h_file
+    '.h': handle_h_file
 }
 
 def main():
