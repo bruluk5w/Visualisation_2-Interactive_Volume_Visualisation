@@ -4,7 +4,8 @@ def handle_h_file(path: str):
     with open(path, 'r+') as file:
         file.seek(0)
         first_line = file.readline()
-        if first_line.rstrip('\n').strip() == "#pragma once":
+        print(first_line)
+        if first_line.rstrip('\r\n').strip() == "#pragma once":
             print('Valid match')
             rest_of_file = file.readlines()
             file.seek(0)
