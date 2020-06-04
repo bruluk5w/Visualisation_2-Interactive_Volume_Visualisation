@@ -23,6 +23,7 @@ namespace PAL
 		virtual ~WinRenderer();
 		virtual bool init(const WinRendererParameters params) override;
 		virtual void render() override;
+		virtual void draw() override;
 		virtual void destroy(bool force = true) override;
 	protected:
 		static const Vec4 clearColor;
@@ -33,7 +34,7 @@ namespace PAL
 		ComPtr<ID3D12DescriptorHeap>	rtvHeap;
 		ComPtr<ID3D12DescriptorHeap>	srvHeap;
 
-		bool createDevice(unsigned int framebufferWidth = 0, unsigned int framebufferHeight = 0);
+		bool createDevice(HWND hWnd, unsigned int framebufferWidth = 0, unsigned int framebufferHeight = 0);
 		void destroyDevice();
 
 		struct FrameContext

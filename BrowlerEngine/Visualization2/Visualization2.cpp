@@ -6,6 +6,7 @@
 #include "framework.h"
 #include "Visualization2.h"
 #include "Visualization2Dlg.h"
+#include "Visualization2Renderer.h"
 
 // engine headers
 #include "Common/PAL/WinGlobals.h"
@@ -13,7 +14,6 @@
 #include "Core/BrowlerEngine.h"
 #include "Core/ApplicationEndoints.h"
 #include "Renderer/Renderer.h"
-#include "Visualization2Renderer.h"
 
 namespace
 {

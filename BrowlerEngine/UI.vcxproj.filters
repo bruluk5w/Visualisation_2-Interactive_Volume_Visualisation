@@ -19,6 +19,9 @@
     <Filter Include="Source Files\ImGui">
       <UniqueIdentifier>{601ca5fb-d1b5-4bab-ad79-bd88a773c6b1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Fonts">
+      <UniqueIdentifier>{46b52850-4a5d-45c0-b4fa-e9732bbf57e1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\UI\UI_Precomp.h">
@@ -42,7 +45,7 @@
     <ClInclude Include="Include\UI\ImGui\imstb_truetype.h">
       <Filter>Header Files\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Include\UI\TestUi.h">
+    <ClInclude Include="Include\UI\AppUi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -62,8 +65,27 @@
     <ClCompile Include="Source\UI\ImGui\imgui_widgets.cpp">
       <Filter>Source Files\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Source\UI\TestUi.cpp">
+    <ClCompile Include="Source\UI\AppUi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="Assets\Fonts\OpenSans-Light.ttf">
+      <Filter>Fonts</Filter>
+    </Font>
+    <Font Include="Assets\Fonts\OpenSans-Regular.ttf">
+      <Filter>Fonts</Filter>
+    </Font>
+    <Font Include="Assets\Fonts\OpenSans-Semibold.ttf">
+      <Filter>Fonts</Filter>
+    </Font>
+    <Font Include="Assets\Fonts\OpenSans-Bold.ttf">
+      <Filter>Fonts</Filter>
+    </Font>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Assets\Fonts\LICENSE.txt">
+      <Filter>Fonts</Filter>
+    </Text>
   </ItemGroup>
 </Project>

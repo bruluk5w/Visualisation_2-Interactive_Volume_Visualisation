@@ -59,12 +59,32 @@ bool BaseRenderer::init(const RendererParameters params)
 	return initialized;
 }
 
-void BaseRenderer::render()
+void BaseRenderer::preRender()
 {
 	if (appRenderer)
 	{
 		appRenderer->rendererInit();
-		appRenderer->render(static_cast<Renderer*>(this));
+		appRenderer->preRender();
+	}
+
+}
+
+void BaseRenderer::render()
+{
+	if (appRenderer)
+	{
+		BRWL_EXCEPTION(appRenderer->isInitalized(), BRWL_CHAR_LITERAL("Invalid renderer state."));
+		appRenderer->render();
+		appRenderer->draw(static_cast<Renderer*>(this));
+	}
+}
+
+void BaseRenderer::draw()
+{
+	if (appRenderer)
+	{
+		BRWL_EXCEPTION(appRenderer->isInitalized(), BRWL_CHAR_LITERAL("Invalid renderer state."));
+		appRenderer->draw(static_cast<Renderer*>(this));
 	}
 }
 

@@ -42,7 +42,7 @@ bool Engine::init(const char* settingsFile)
 
 void Engine::threadInit()
 {
-	window->create(100, 100, 600, 1200);
+	window->create(100, 100, 1280, 720);
 	window->setRenderer(renderer.get());
 	isInitialized = true;
 }
@@ -59,16 +59,15 @@ void Engine::threadDestroy()
 
 void Engine::update()
 {
-	BRWL_CHAR msg[20];
-	BRWL_SNPRINTF(msg, countof(msg), BRWL_CHAR_LITERAL("%.f"), time->getTimeF());
-	Engine::LogInfo(msg);
 	if (window && runMode == MetaEngine::EngineRunMode::DETATCHED)
-	{	// only process messages if they are not received from the parent window
+	{	// only process messages if they are not receiving them from the parent window
 		window->processPlatformMessages();
 	}
 
 	if (renderer && renderer->isInitialized()) {
+		renderer->preRender();
 		renderer->render();
+		renderer->draw();
 	}
 }
 

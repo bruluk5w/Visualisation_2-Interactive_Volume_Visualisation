@@ -27,27 +27,21 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Include\UI\AppUi.h" />
     <ClInclude Include="Include\UI\ImGui\imconfig.h" />
     <ClInclude Include="Include\UI\ImGui\imgui.h" />
     <ClInclude Include="Include\UI\ImGui\imgui_internal.h" />
     <ClInclude Include="Include\UI\ImGui\imstb_rectpack.h" />
     <ClInclude Include="Include\UI\ImGui\imstb_textedit.h" />
     <ClInclude Include="Include\UI\ImGui\imstb_truetype.h" />
-    <ClInclude Include="Include\UI\TestUi.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
     <ClInclude Include="Include\UI\UI_Precomp.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\UI\AppUi.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_demo.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_draw.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_widgets.cpp" />
-    <ClCompile Include="Source\UI\TestUi.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
     <ClCompile Include="Source\UI\UI_Precomp.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Submission|Win32'">Create</PrecompiledHeader>
@@ -61,6 +55,44 @@
     <ProjectReference Include="Common.vcxproj">
       <Project>{abd45fc6-aed5-41f1-8895-8ba12b1367c4}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="Assets\Fonts\OpenSans-Bold.ttf">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Submission|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Font>
+    <Font Include="Assets\Fonts\OpenSans-Light.ttf">
+      <DeploymentContent>false</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Submission|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Font>
+    <Font Include="Assets\Fonts\OpenSans-Regular.ttf">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Submission|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Font>
+    <Font Include="Assets\Fonts\OpenSans-Semibold.ttf">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Submission|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Font>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Assets\Fonts\LICENSE.txt" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -177,6 +209,14 @@
       </SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>set target_folder="$(TargetDir)Assets"
+if not exist %target_folder% (
+    md %target_folder%
+)
+
+robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -201,6 +241,14 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>set target_folder="$(TargetDir)Assets"
+if not exist %target_folder% (
+    md %target_folder%
+)
+
+robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|Win32'">
     <ClCompile>
@@ -225,6 +273,14 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>set target_folder="$(TargetDir)Assets"
+if not exist %target_folder% (
+    md %target_folder%
+)
+
+robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -245,6 +301,14 @@
       </SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>set target_folder="$(TargetDir)Assets"
+if not exist %target_folder% (
+    md %target_folder%
+)
+
+robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -269,6 +333,14 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>set target_folder="$(TargetDir)Assets"
+if not exist %target_folder% (
+    md %target_folder%
+)
+
+robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">
     <ClCompile>
@@ -293,6 +365,14 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>set target_folder="$(TargetDir)Assets"
+if not exist %target_folder% (
+    md %target_folder%
+)
+
+robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

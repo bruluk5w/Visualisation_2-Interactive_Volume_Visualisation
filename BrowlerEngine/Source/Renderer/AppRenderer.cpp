@@ -2,6 +2,7 @@
 
 BRWL_RENDERER_NS
 
+
 AppRenderer::AppRenderer() :
 	initialized(false)
 { }
@@ -28,5 +29,6 @@ void AppRenderer::rendererDestroy()
 		destroy();
 	}
 }
+
 
 BRWL_RENDERER_NS_END

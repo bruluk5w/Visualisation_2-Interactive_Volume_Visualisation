@@ -14,7 +14,7 @@
 #include "UI/ImGui/imgui.h"
 #include "PAL/imgui_impl_dx12.h"
 #include "PAL/imgui_impl_win32.h"
-#include "UI/TestUi.h"
+#include "UI/AppUi.h"
 extern ImGuiContext* GImGui;
 #endif // BRWL_USE_DEAR_IM_GUI
 
@@ -95,13 +95,8 @@ namespace PAL
 
     bool WinRenderer::init(const WinRendererParameters rendererParameters)
     {
-        if (!BRWL_VERIFY(BaseRenderer::init(rendererParameters), BRWL_CHAR_LITERAL("Failed to init BaseRenderer")))
-        {
-            return false;
-        }
-
         // Initialize Direct3D
-        if (!createDevice(params->initialDimensions.width, params->initialDimensions.height))
+        if (!createDevice(rendererParameters.hWnd, rendererParameters.initialDimensions.width, rendererParameters.initialDimensions.height))
         {
             destroyDevice();
             return false;;
@@ -121,7 +116,7 @@ namespace PAL
         //ImGui::StyleColorsClassic();
 
         // Setup Platform/Renderer bindings
-        ImGui_ImplWin32_Init(params->hWnd);
+        ImGui_ImplWin32_Init(rendererParameters.hWnd);
         ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, srvHeap, srvHeap->GetCPUDescriptorHandleForHeapStart(), srvHeap->GetGPUDescriptorHandleForHeapStart());
 
         // Load Fonts
@@ -131,14 +126,19 @@ namespace PAL
         // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
         // - Read 'docs/FONTS.txt' for more instructions and details.
         // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-        //io.Fonts->AddFontDefault();
-        //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
+        io.Fonts->AddFontDefault();
+
         //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
         //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
         //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
         //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
         //IM_ASSERT(font != NULL);
 #endif // BRWL_USE_DEAR_IM_GUI
+
+        if (!BRWL_VERIFY(BaseRenderer::init(rendererParameters), BRWL_CHAR_LITERAL("Failed to init BaseRenderer")))
+        {
+            return false;
+        }
         return true;
     }
 
@@ -150,20 +150,31 @@ namespace PAL
             return;
         }
 
-        BaseRenderer::render();
-        // Create render data
-#ifdef BRWL_USE_DEAR_IM_GUI
 
-        // Render Gui last
-        // Start the Dear ImGui frame
+        // Start new frame
+#ifdef BRWL_USE_DEAR_IM_GUI
         ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
+#endif // BRWL_USE_DEAR_IM_GUI
 
-        MakeTestUI();
+        // Render
+        BaseRenderer::render();
+
+#ifdef BRWL_USE_DEAR_IM_GUI
         ImGui::Render();
 #endif
-        // Render
+    }
+
+    void WinRenderer::draw()
+    {
+        if (!currentFramebufferHeight || !currentFramebufferWidth)
+        {
+            logger->info(BRWL_CHAR_LITERAL("Nothing to draw, framebuffer too small."));
+            return;
+        }
+
+        // Draw
 
         FrameContext* frameCtxt = waitForNextFrameResources();
         UINT backBufferIdx = g_pSwapChain->GetCurrentBackBufferIndex();
@@ -186,7 +197,8 @@ namespace PAL
         // ========= START DRAW SCENE ========= //
 
 #ifdef BRWL_USE_DEAR_IM_GUI
-        BaseRenderer::render();
+        BaseRenderer::draw();
+        // Draw Gui last
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 #endif // BRWL_USE_DEAR_IM_GUI
 
@@ -199,8 +211,8 @@ namespace PAL
         ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
         commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-        const HRESULT result = g_pSwapChain->Present(1, 0); // Present with vsync
-        //g_pSwapChain->Present(0, 0); // Present without vsync
+        //const HRESULT result = g_pSwapChain->Present(1, 0); // Present with vsync
+        const HRESULT result = g_pSwapChain->Present(0, 0); // Present without vsync
 
         if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET)
         {
@@ -227,7 +239,7 @@ namespace PAL
             // TODO: FLUSH?
             logger->warning(BRWL_CHAR_LITERAL("Graphics adapters changed! Rescanning..."));
             destroyDevice();
-            createDevice(currentFramebufferWidth, currentFramebufferHeight);
+            createDevice(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
             // Output information is cached on the DXGI Factory. If it is stale we need to create a new factory.
         }
     }
@@ -236,6 +248,9 @@ namespace PAL
     {
 
         waitForLastSubmittedFrame();
+
+        BaseRenderer::destroy(force);
+
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         if (GImGui != NULL)
@@ -244,15 +259,13 @@ namespace PAL
         }
 
         destroyDevice();
-
-        BaseRenderer::destroy(force);
     }
 
 #pragma region IMGUI COPY
 
     // Helper functions
 
-    bool WinRenderer::createDevice(unsigned int framebufferWidth /*=0 */, unsigned int framebufferHeight /*=0 */)
+    bool WinRenderer::createDevice(HWND hWnd, unsigned int framebufferWidth /*=0 */, unsigned int framebufferHeight /*=0 */)
     {
 #ifndef __dxgi1_6_h__
 #error Dude please get a Windows 10 and update, this was like 2018
@@ -471,7 +484,7 @@ namespace PAL
         }
 
         ComPtr<IDXGISwapChain1> swapChain1;
-        if( dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), params->hWnd, &sd, NULL, NULL, &swapChain1) != S_OK ||
+        if( dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), hWnd, &sd, NULL, NULL, &swapChain1) != S_OK ||
             swapChain1->QueryInterface(IID_PPV_ARGS(&g_pSwapChain)) != S_OK)
             return false;
         g_pSwapChain->SetMaximumFrameLatency(numBackBuffers);
@@ -594,7 +607,7 @@ namespace PAL
             // TODO: FLUSH?
             logger->warning(BRWL_CHAR_LITERAL("Graphics adapters changed! Rescanning..."));
             destroyDevice();
-            createDevice(currentFramebufferWidth, currentFramebufferHeight);
+            createDevice(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
             // Output information is cached on the DXGI Factory. If it is stale we need to create a new factory.
             return;
         }

@@ -21,7 +21,9 @@ private:
 public:
 	bool isInitalized() { return initialized; }
 	virtual bool init() = 0;
-	virtual void render(Renderer* renderer) = 0;
+	virtual void preRender() = 0;
+	virtual void render() = 0;
+	virtual void draw(Renderer* renderer) = 0;
 	virtual void destroy() = 0;
 };
 

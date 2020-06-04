@@ -1,3 +1,6 @@
+#Data Sets Folder
+BrowlerEngine/Assets/DataSets/*
+
 *.tmp
 
 # Prerequisites

@@ -27,7 +27,9 @@ public:
 
 	void setLogger(std::shared_ptr<Logger> logger) { this->logger = logger; }
 	virtual bool init(const RendererParameters params);
+	virtual void preRender();
 	virtual void render();
+	virtual void draw();
 	// may be called multiple times
 	virtual void destroy(bool force = false);
 	bool isInitialized() const { return initialized; }
