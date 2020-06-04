@@ -21,7 +21,7 @@ def main():
             name, ext = os.path.splitext(file_name)
             handler = FILE_HANDLERS.get(ext, None)
             if handler is not None:
-                handler(os.path.join(dirpath, f))
+                handler(os.path.join(folder, file_name))
 
 if __name__ == '__main__':
     main()
