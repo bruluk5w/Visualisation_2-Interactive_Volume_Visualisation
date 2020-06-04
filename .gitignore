@@ -41,7 +41,7 @@ BrowlerEngine/Visualization2/build/**
 *.i
 
 #Files for incremental linking
-*.iob
+*.iobj
 *.ipdb
 
 #pdb files

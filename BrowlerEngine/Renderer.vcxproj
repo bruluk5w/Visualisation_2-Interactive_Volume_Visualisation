@@ -157,8 +157,8 @@
       <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <PreBuildEvent>
-      <Command>set compiled_folder = "$(SolutionDir)Shaders\Compiled"
-if not exist %compiled_folder (
+      <Command>set compiled_folder="$(SolutionDir)Shaders\Compiled"
+if not exist %compiled_folder% (
     md %compiled_folder%
 )</Command>
     </PreBuildEvent>
@@ -192,12 +192,10 @@ if not exist %compiled_folder (
       <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <PreBuildEvent>
-      <Command>
-		set compiled_folder = "$(SolutionDir)Shaders\Compiled"
-		if not exist %compiled_folder (
-			md %compiled_folder%
-		)
-	</Command>
+      <Command>set compiled_folder="$(SolutionDir)Shaders\Compiled"
+if not exist %compiled_folder% (
+    md %compiled_folder%
+)</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -234,8 +232,8 @@ if not exist %compiled_folder (
       <EnableDebuggingInformation>true</EnableDebuggingInformation>
     </FxCompile>
     <PreBuildEvent>
-      <Command>set compiled_folder = "$(SolutionDir)Shaders\Compiled"
-if not exist %compiled_folder (
+      <Command>set compiled_folder="$(SolutionDir)Shaders\Compiled"
+if not exist %compiled_folder% (
     md %compiled_folder%
 )</Command>
     </PreBuildEvent>
@@ -273,8 +271,8 @@ if not exist %compiled_folder (
       <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <PreBuildEvent>
-      <Command>set compiled_folder = "$(SolutionDir)Shaders\Compiled"
-if not exist %compiled_folder (
+      <Command>set compiled_folder="$(SolutionDir)Shaders\Compiled"
+if not exist %compiled_folder% (
     md %compiled_folder%
 )</Command>
     </PreBuildEvent>
@@ -313,8 +311,8 @@ if not exist %compiled_folder (
       <EnableDebuggingInformation>true</EnableDebuggingInformation>
     </FxCompile>
     <PreBuildEvent>
-      <Command>set compiled_folder = "$(SolutionDir)Shaders\Compiled"
-if not exist %compiled_folder (
+      <Command>set compiled_folder="$(SolutionDir)Shaders\Compiled"
+if not exist %compiled_folder% (
     md %compiled_folder%
 )</Command>
     </PreBuildEvent>
@@ -352,13 +350,17 @@ if not exist %compiled_folder (
       <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <PreBuildEvent>
-      <Command>set compiled_folder = "$(SolutionDir)Shaders\Compiled"
-if not exist %compiled_folder (
+      <Command>set compiled_folder="$(SolutionDir)Shaders\Compiled"
+if not exist %compiled_folder% (
     md %compiled_folder%
 )</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Include\Renderer\AppRenderer.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Include\Renderer\BaseRenderer.h" />
     <ClInclude Include="Include\Renderer\Events.h">
       <SubType>
@@ -386,6 +388,10 @@ if not exist %compiled_folder (
     <ClInclude Include="Include\Renderer\targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Renderer\AppRenderer.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="Source\Renderer\BaseRenderer.cpp">
       <SubType>
       </SubType>

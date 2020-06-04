@@ -1,7 +1,9 @@
 #include "BaseRenderer.h"
 #include "RendererParameters.h"
 #include "Common/Logger.h"
+#include "AppRenderer.h"
 
+#include "PAL/WinRenderer.h"
 
 BRWL_RENDERER_NS
 
@@ -12,7 +14,8 @@ BaseRenderer::BaseRenderer(EventBusSwitch<Event>* eventSystem, PlatformGlobals* 
 	windowResizeEventHandle(0),
 	logger(nullptr),
 	globals(globals),
-	params(nullptr)
+	params(nullptr),
+	appRenderer(nullptr)
 { }
 
 BaseRenderer::~BaseRenderer()
@@ -43,14 +46,27 @@ bool BaseRenderer::init(const RendererParameters params)
 				return false;
 			});
 
-		initialized = true;
+		if (appRenderer && !BRWL_VERIFY(appRenderer->rendererInit(), BRWL_CHAR_LITERAL("Failed to initialize the app renderer")))
+		{
+			destroy(true);
+		}
+		else
+		{
+			initialized = true;
+		}
 	}
 	
 	return initialized;
 }
 
 void BaseRenderer::render()
-{ }
+{
+	if (appRenderer)
+	{
+		appRenderer->rendererInit();
+		appRenderer->render(static_cast<Renderer*>(this));
+	}
+}
 
 void BaseRenderer::destroy(bool force /*= false*/)
 {
@@ -58,6 +74,10 @@ void BaseRenderer::destroy(bool force /*= false*/)
 	{
 		bool success = eventSystem->unregisterListener(Event::WINDOW_RESIZE, windowResizeEventHandle);
 		BRWL_CHECK(success, BRWL_CHAR_LITERAL("Failed to unregister a listener!"));
+		if (appRenderer)
+		{
+			appRenderer->rendererDestroy();
+		}
 		initialized = false;
 	}
 }

@@ -1,18 +1,20 @@
 #pragma once // (c) 2020 Lukas Brunner
 
 #ifdef BRWL_PLATFORM_WINDOWS
-#pragma once
 
 #include "BaseRenderer.h"
 #include "Common/BrwlMathFwd.h"
 
 BRWL_RENDERER_NS
 
+class Visualization2Renderer;
+
 namespace PAL
 {
 
 	class WinRenderer : public BaseRenderer
 	{
+		friend class Visualization2Renderer;
 	public:
 		static const D3D_FEATURE_LEVEL	featureLevel;
 		static const unsigned int numBackBuffers = 3;
