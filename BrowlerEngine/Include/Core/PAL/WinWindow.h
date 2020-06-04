@@ -1,4 +1,4 @@
-#pragma once
+#pragma once // (c) 2020 Lukas Brunner
 
 #ifdef BRWL_PLATFORM_WINDOWS
 #include "Common/GlobalsFwd.h"

@@ -1,4 +1,4 @@
-#pragma once
+#pragma once // (c) 2020 Lukas Brunner
 
 #define BRWL_NS namespace BRWL {
 	
