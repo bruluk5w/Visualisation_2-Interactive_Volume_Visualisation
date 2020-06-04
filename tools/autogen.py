@@ -3,7 +3,7 @@ import os
 def handle_h_file(path: str):
     with open(path, 'r+') as file:
         file.seek(0)
-        first_line = file.read().readline()
+        first_line = file.readline()
         if first_line.rstrip('\n').strip() == "#pragma once":
             rest_of_file = file.readlines()
             file.truncate(0)
