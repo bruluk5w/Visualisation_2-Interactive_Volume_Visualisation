@@ -6,14 +6,14 @@ def handle_h_file(path: str):
         first_line = '\n'
         while first_line == '\n':
             first_line = file.readline()
-            
+
         print(first_line)
         if first_line.rstrip('\n').strip() == "#pragma once":
             print('Valid match')
             rest_of_file = file.readlines()
             file.seek(0)
             file.truncate(0)
-            file.write("#pragma once // (c) 2020 Lukas Brunner")
+            file.write("#pragma once // (c) 2020 Lukas Brunner\n")
             print("Updated File header in {}".format(path))
             for line in rest_of_file:
                 file.write(line)
