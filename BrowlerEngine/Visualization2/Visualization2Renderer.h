@@ -20,11 +20,13 @@ class Visualization2Renderer : public AppRenderer
 {
 public:
 	Visualization2Renderer();
+
 protected:
-	virtual bool init() override;
-	virtual void preRender() override;
-	virtual void render() override;
+	virtual bool init(PAL::WinRenderer* renderer) override;
+	virtual void preRender(PAL::WinRenderer* renderer) override;
+	virtual void render(PAL::WinRenderer* renderer) override;
 	virtual void draw(PAL::WinRenderer* renderer) override;
+	// We expect that destroy is onyl called when no resources are in use
 	virtual void destroy() override;
 
 	void LoadFonts(float fontSize);
@@ -33,7 +35,18 @@ protected:
 	UIResult uiResults[2];
 	ImFont* fonts[ENUM_CLASS_TO_NUM(UIResult::Font::MAX)];
 
+	ComPtr<ID3D12CommandQueue> uploadCommandQueue;
+	ComPtr<ID3D12CommandAllocator> uploadCommandAllocator;
+	ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
+
 	DataSet dataSet;
+	ComPtr<ID3D12Resource> volumeTexture;
+	ComPtr<ID3D12Resource> volumeTextureUploadHeap;
+	ComPtr<ID3D12Fence> volumeTextureFence;
+	HANDLE volumeTextureFenceEvent;
+	uint64_t volumeTextureFenceLastValue;
+
+	bool initialized;
 };
 
 BRWL_RENDERER_NS_END

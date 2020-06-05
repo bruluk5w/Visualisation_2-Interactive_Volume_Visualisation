@@ -46,7 +46,7 @@ bool BaseRenderer::init(const RendererParameters params)
 				return false;
 			});
 
-		if (appRenderer && !BRWL_VERIFY(appRenderer->rendererInit(), BRWL_CHAR_LITERAL("Failed to initialize the app renderer")))
+		if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(appRenderer->rendererInit(static_cast<Renderer*>(this)), BRWL_CHAR_LITERAL("Failed to initialize the app renderer")))
 		{
 			destroy(true);
 		}
@@ -63,10 +63,9 @@ void BaseRenderer::preRender()
 {
 	if (appRenderer)
 	{
-		appRenderer->rendererInit();
-		appRenderer->preRender();
+		appRenderer->rendererInit(static_cast<Renderer*>(this));
+		appRenderer->preRender(static_cast<Renderer*>(this));
 	}
-
 }
 
 void BaseRenderer::render()
@@ -74,8 +73,7 @@ void BaseRenderer::render()
 	if (appRenderer)
 	{
 		BRWL_EXCEPTION(appRenderer->isInitalized(), BRWL_CHAR_LITERAL("Invalid renderer state."));
-		appRenderer->render();
-		appRenderer->draw(static_cast<Renderer*>(this));
+		appRenderer->render(static_cast<Renderer*>(this));
 	}
 }
 

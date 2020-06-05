@@ -54,7 +54,7 @@ void DataSet::loadFromFile(BRWL_STR relativePath)
 	file.read((char*)&sizeY, sizeof(sizeY));
 	file.read((char*)&sizeZ, sizeof(sizeZ));
 	strideX = sizeof(sampleT);
-	strideY = sizeX;
+	strideY = sizeX * strideX;
 	strideZ = strideY * sizeY;
 	bufferSize = strideZ * sizeZ;
 

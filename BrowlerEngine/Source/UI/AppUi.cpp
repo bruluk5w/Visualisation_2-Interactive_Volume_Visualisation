@@ -295,16 +295,15 @@ void renderAppUI(UIResult& result, const UIResult& values)
     
     if (showSettings) {
         Begin("Settings", &showSettings);
-            BeginGroup();
             int item_current = ENUM_CLASS_TO_NUM(values.font);
             Text("GUI Font:"); SameLine();
             Combo("", &item_current, UIResult::fontNames, IM_ARRAYSIZE(UIResult::fontNames));
             result.font = (UIResult::Font)Utils::clamp<uint8_t>(item_current, ENUM_CLASS_TO_NUM(UIResult::Font::MIN), ENUM_CLASS_TO_NUM(UIResult::Font::MAX));
-            EndGroup();
-            BeginGroup();
-            Text("Font Size:"); //SameLine();
-            SliderFloat("", &result.fontSize, 5, 40);
-            EndGroup();
+            // work around for slider bug where slider is activated when clicking on the combo box above
+            ImGui::BeginChild("dummy0", ImVec2(ImGui::GetWindowWidth(), ImGui::GetTextLineHeightWithSpacing()), false);
+                Text("Font Size:"); SameLine();
+                SliderFloat("", &result.fontSize, 5, 40);
+            EndChild();
         End();
     }
 

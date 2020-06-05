@@ -10,19 +10,20 @@ class BaseRenderer;
 class AppRenderer
 {
 	friend class BaseRenderer;
+	friend typedef Renderer;
 public:
 	AppRenderer();
 
 private:
-	bool rendererInit();
+	bool rendererInit(PAL::WinRenderer* renderer);
 	void rendererDestroy();
 
 	bool initialized;
 public:
 	bool isInitalized() { return initialized; }
-	virtual bool init() = 0;
-	virtual void preRender() = 0;
-	virtual void render() = 0;
+	virtual bool init(PAL::WinRenderer* renderer) = 0;
+	virtual void preRender(PAL::WinRenderer* renderer) = 0;
+	virtual void render(PAL::WinRenderer* renderer) = 0;
 	virtual void draw(Renderer* renderer) = 0;
 	virtual void destroy() = 0;
 };

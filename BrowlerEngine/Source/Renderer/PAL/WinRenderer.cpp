@@ -6,7 +6,7 @@
 
 // DX12 additional headers
 #include <DirectXMath.h>
-#include <PAL/d3dx12.h>
+#include "PAL/d3dx12.h"
 
 #include "PAL/WinRendererParameters.h"
 
@@ -19,6 +19,7 @@ extern ImGuiContext* GImGui;
 #endif // BRWL_USE_DEAR_IM_GUI
 
 #include "Common/BrwlMath.h"
+#include "AppRenderer.h"
 
 namespace
 {
@@ -95,6 +96,13 @@ namespace PAL
 
     bool WinRenderer::init(const WinRendererParameters rendererParameters)
     {
+#ifdef BRWL_USE_DEAR_IM_GUI
+        IMGUI_CHECKVERSION();
+        // Setup Dear ImGui context
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        io.Fonts->AddFontDefault();
+#endif
         // Initialize Direct3D
         if (!createDevice(rendererParameters.hWnd, rendererParameters.initialDimensions.width, rendererParameters.initialDimensions.height))
         {
@@ -103,36 +111,13 @@ namespace PAL
         }
 
 #ifdef BRWL_USE_DEAR_IM_GUI
-
-        // Setup Dear ImGui context
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO(); (void)io;
         //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
         //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
-        // Setup Dear ImGui style
         ImGui::StyleColorsDark();
         //ImGui::StyleColorsClassic();
 
-        // Setup Platform/Renderer bindings
         ImGui_ImplWin32_Init(rendererParameters.hWnd);
-        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, srvHeap, srvHeap->GetCPUDescriptorHandleForHeapStart(), srvHeap->GetGPUDescriptorHandleForHeapStart());
-
-        // Load Fonts
-        // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-        // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-        // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-        // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-        // - Read 'docs/FONTS.txt' for more instructions and details.
-        // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-        io.Fonts->AddFontDefault();
-
-        //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-        //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-        //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
-        //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-        //IM_ASSERT(font != NULL);
 #endif // BRWL_USE_DEAR_IM_GUI
 
         if (!BRWL_VERIFY(BaseRenderer::init(rendererParameters), BRWL_CHAR_LITERAL("Failed to init BaseRenderer")))
@@ -251,7 +236,6 @@ namespace PAL
 
         BaseRenderer::destroy(force);
 
-        ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         if (GImGui != NULL)
         {
@@ -418,7 +402,7 @@ namespace PAL
             D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 
             desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-            desc.NumDescriptors = 1;
+            desc.NumDescriptors = 1 continue here and add more descriptors and an an interface to the outside for that
             desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
             if (!BRWL_VERIFY(SUCCEEDED(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&srvHeap))), BRWL_CHAR_LITERAL("Failed to create srv descriptor heap.")))
             {
@@ -493,11 +477,26 @@ namespace PAL
         createRenderTargets();
         currentFramebufferWidth = framebufferWidth;
         currentFramebufferHeight = framebufferHeight;
+
+        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, srvHeap, srvHeap->GetCPUDescriptorHandleForHeapStart(), srvHeap->GetGPUDescriptorHandleForHeapStart());
+
+        if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(SUCCEEDED(appRenderer->rendererInit(this)), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))
+        {
+            return false;
+        }
+
         return true;
     }
 
     void WinRenderer::destroyDevice()
     {
+        ImGui_ImplDX12_Shutdown();
+
+        if (appRenderer)
+        {
+            appRenderer->rendererDestroy();
+        }
+
         destroyRenderTargets();
         for (UINT i = 0; i < numBackBuffers; i++)
         {
@@ -649,7 +648,9 @@ namespace PAL
         ImGui_ImplDX12_InvalidateDeviceObjects();
         resizeSwapChain(params->hWnd, width, height);
         ImGui_ImplDX12_CreateDeviceObjects();
+        preRender();
         render();
+        draw();
     }
 
 #pragma endregion //IMGUI COPY

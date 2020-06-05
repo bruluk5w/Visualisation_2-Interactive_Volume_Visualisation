@@ -7,8 +7,16 @@ public:
 	DataSet(BRWL_STR name);
 	void loadFromFile(BRWL_STR relativePath);
 	bool isValid() const { return valid; }
-	const uint8_t* getData() const { BRWL_EXCEPTION(isValid(), BRWL_CHAR_LITERAL("Accessing data of invalid asset.")); return data.get(); }
+	const uint8_t* getData() const { checkValid(); return data.get(); }
+	uint16_t getSizeX() const { checkValid(); return sizeX; }
+	uint16_t getSizeY() const { checkValid(); return sizeY; }
+	uint16_t getSizeZ() const { checkValid(); return sizeZ; }
+	uint64_t getStrideX() const { checkValid(); return strideX; }
+	uint64_t getStrideY() const { checkValid(); return strideY; }
+	uint64_t getStrideZ() const { checkValid(); return strideZ; }
+	size_t getBufferSize() const { checkValid(); return bufferSize; }
 private:
+	void checkValid() const { BRWL_EXCEPTION(valid, BRWL_CHAR_LITERAL("Accessing data of invalid asset.")); }
 	BRWL_STR name;
 	BRWL_STR sourcePath;
 
