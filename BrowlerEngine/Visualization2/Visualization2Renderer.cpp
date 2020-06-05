@@ -2,7 +2,6 @@
 
 #include "Core/BrowlerEngine.h"
 #include "Common/Logger.h"
-#include "Renderer/Renderer.h"
 #include "Renderer/PAL/imgui_impl_dx12.h"
 #include "Renderer/PAL/d3dx12.h"
 
@@ -27,8 +26,6 @@ Visualization2Renderer::Visualization2Renderer() :
     uiResults[0] = { UIResult::Font::OPEN_SANS_REGULAR, 30 };
     uiResults[1] = uiResults[0];
 }
-
-bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, ComPtr<ID3D12Resource>& texture, ComPtr<ID3D12Resource>& textureUploadHeap);
 
 bool Visualization2Renderer::init(Renderer* r)
 {
@@ -107,6 +104,9 @@ void Visualization2Renderer::render(Renderer* renderer)
     renderAppUI(r, v);
     ImGui::PopFont();
 }
+
+bool LoadVolumeTexture(ID3D12Device* device, PAL::DescriptorHeap::Handle& descriptorHandle, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, ComPtr<ID3D12Resource>& texture, ComPtr<ID3D12Resource>& textureUploadHeap);
+
 void Visualization2Renderer::draw(Renderer* r)
 {
     if (!initialized) return;
@@ -115,7 +115,12 @@ void Visualization2Renderer::draw(Renderer* r)
     if (dataSet.isValid() && volumeTextureFenceLastValue == 0)
     {
         uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr);
-        if (!BRWL_VERIFY(LoadVolumeTexture(r->device.Get(), uploadCommandList.Get(), &dataSet, volumeTexture, volumeTextureUploadHeap), BRWL_CHAR_LITERAL("Failed to load the volume texture to the GPU.")))
+        volumeTextureDescriptorHandle = r->srvHeap.allocateHandle();
+        if (!BRWL_VERIFY(r->srvHeap.isCreated() && r->srvHeap.isShaderVisible() && r->srvHeap.getType() == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, BRWL_CHAR_LITERAL("Invalid descriptor heap.")))
+        {
+            return;
+        }
+        if (!BRWL_VERIFY(LoadVolumeTexture(r->device.Get(), volumeTextureDescriptorHandle, uploadCommandList.Get(), &dataSet, volumeTexture, volumeTextureUploadHeap), BRWL_CHAR_LITERAL("Failed to load the volume texture to the GPU.")))
         {
             return;
         };
@@ -168,8 +173,13 @@ void Visualization2Renderer::LoadFonts(float fontSize)
     ImGui_ImplDX12_CreateFontsTexture();
 }
 
-bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, ComPtr<ID3D12Resource>& texture, ComPtr<ID3D12Resource>& textureUploadHeap) {
-    if (!dataSet->isValid()) return false;
+bool LoadVolumeTexture(ID3D12Device* device, PAL::DescriptorHeap::Handle& descriptorHandle, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, ComPtr<ID3D12Resource>& texture, ComPtr<ID3D12Resource>& textureUploadHeap)
+{
+    if (!dataSet->isValid())
+    {
+        return false;
+    }
+
     texture = nullptr;
     textureUploadHeap = nullptr;
     // =========================================
@@ -242,7 +252,7 @@ bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
     srvDesc.Format = texDesc.Format;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
     srvDesc.Texture3D.MipLevels = 1;
-    device->CreateShaderResourceView(texture.Get(), &srvDesc, srvHeap->GetCPUDescriptorHandleForHeapStart());
+    device->CreateShaderResourceView(texture.Get(), &srvDesc, descriptorHandle.cpu);
      //hr = device->CreateCommittedResource(
      //   &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
      //   D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES,  // set to none if this is a problem

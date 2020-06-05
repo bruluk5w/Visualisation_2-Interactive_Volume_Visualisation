@@ -302,7 +302,7 @@ void WinWindow::processPlatformMessages()
 void WinWindow::setRenderer(RENDERER::Renderer* renderer)
 {
     BRWL_EXCEPTION(impl || renderer == nullptr, BRWL_CHAR_LITERAL("\"create\" has to be called before setting a renderer."));
-    if (this->renderer)
+    if (this->renderer && this->renderer->isInitialized())
     {
         this->renderer->destroy();
     }

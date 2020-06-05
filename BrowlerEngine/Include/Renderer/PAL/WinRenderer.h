@@ -3,6 +3,7 @@
 #ifdef BRWL_PLATFORM_WINDOWS
 
 #include "BaseRenderer.h"
+#include "DescriptorHeap.h"
 #include "Common/BrwlMathFwd.h"
 
 BRWL_RENDERER_NS
@@ -31,8 +32,8 @@ namespace PAL
 		ComPtr<IDXGIFactory6>	dxgiFactory;
 		ComPtr<IDXGIAdapter4>	dxgiAdapter;
 		ComPtr<ID3D12Device>	device;
-		ComPtr<ID3D12DescriptorHeap>	rtvHeap;
-		ComPtr<ID3D12DescriptorHeap>	srvHeap;
+		DescriptorHeap	rtvHeap;
+		DescriptorHeap	srvHeap;
 
 		bool createDevice(HWND hWnd, unsigned int framebufferWidth = 0, unsigned int framebufferHeight = 0);
 		void destroyDevice();
@@ -62,10 +63,10 @@ namespace PAL
 		ComPtr<ID3D12Fence>					frameFence;
 		HANDLE								frameFenceEvent;
 		uint64_t							frameFenceLastValue;
-		ComPtr<IDXGISwapChain3>				g_pSwapChain = nullptr;
-		HANDLE								g_hSwapChainWaitableObject = NULL;
-		ComPtr<ID3D12Resource>				g_mainRenderTargetResource[numBackBuffers] = { nullptr };
-		D3D12_CPU_DESCRIPTOR_HANDLE			g_mainRenderTargetDescriptor[numBackBuffers] = { 0 };
+		ComPtr<IDXGISwapChain3>				swapChain = nullptr;
+		HANDLE								swapChainWaitableObject = NULL;
+		ComPtr<ID3D12Resource>				mainRenderTargetResource[numBackBuffers] = { nullptr };
+		D3D12_CPU_DESCRIPTOR_HANDLE			mainRenderTargetDescriptor[numBackBuffers] = { 0 };
 
 		// Inherited via BaseRenderer
 		virtual void OnFramebufferResize(int width, int height) override;

@@ -367,6 +367,7 @@ if not exist %compiled_folder% (
       </SubType>
     </ClInclude>
     <ClInclude Include="Include\Renderer\PAL\d3dx12.h" />
+    <ClInclude Include="Include\Renderer\PAL\DescriptorHeap.h" />
     <ClInclude Include="Include\Renderer\PAL\imgui_impl_dx12.h" />
     <ClInclude Include="Include\Renderer\PAL\imgui_impl_win32.h" />
     <ClInclude Include="Include\Renderer\PAL\WinRenderer.h" />
@@ -393,6 +394,10 @@ if not exist %compiled_folder% (
       </SubType>
     </ClCompile>
     <ClCompile Include="Source\Renderer\BaseRenderer.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="Source\Renderer\PAL\DescriptorHeap.cpp">
       <SubType>
       </SubType>
     </ClCompile>

@@ -52,11 +52,11 @@ namespace PAL
 
     WinRenderer::WinRenderer(EventBusSwitch<Event>* eventSystem, PlatformGlobals* globals) :
         BaseRenderer(eventSystem, globals),
-		dxgiFactory(nullptr),
-		dxgiAdapter(nullptr),
-		device(nullptr),
-		rtvHeap(nullptr),
-		srvHeap(nullptr),
+        dxgiFactory(nullptr),
+        dxgiAdapter(nullptr),
+        device(nullptr),
+        rtvHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
+        srvHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE),
         frameContext{},
         frameIndex(0),
         currentFramebufferWidth(0),
@@ -162,24 +162,38 @@ namespace PAL
         // Draw
 
         FrameContext* frameCtxt = waitForNextFrameResources();
-        UINT backBufferIdx = g_pSwapChain->GetCurrentBackBufferIndex();
+        UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();
         frameCtxt->CommandAllocator->Reset();
 
         D3D12_RESOURCE_BARRIER barrier = {};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition.pResource = g_mainRenderTargetResource[backBufferIdx].Get();
+        barrier.Transition.pResource = mainRenderTargetResource[backBufferIdx].Get();
         barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
         commandList->Reset(frameCtxt->CommandAllocator.Get(), nullptr);
         commandList->ResourceBarrier(1, &barrier);
-        commandList->ClearRenderTargetView(g_mainRenderTargetDescriptor[backBufferIdx], (float*)&clearColor, 0, nullptr);
-        commandList->OMSetRenderTargets(1, &g_mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
-        commandList->SetDescriptorHeaps(1, srvHeap.GetAddressOf());
+        commandList->ClearRenderTargetView(mainRenderTargetDescriptor[backBufferIdx], (float*)&clearColor, 0, nullptr);
+        commandList->OMSetRenderTargets(1, &mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
+        commandList->SetDescriptorHeaps(1, srvHeap.getPointerAddress());
 
         // ========= START DRAW SCENE ========= //
+
+        // TODO: add option to toggle shader optimization during application run
+        //SetBackgroundProcessingMode(
+        //    D3D12_BACKGROUND_PROCESSING_MODE_ALLOW_INTRUSIVE_MEASUREMENTS,
+        //    D3D_MEASUREMENTS_ACTION_KEEP_ALL,
+        //    nullptr, nullptr);
+
+        //// Here, prime the system by rendering some typical content.
+        //// For example, a level flythrough.
+
+        //SetBackgroundProcessingMode(
+        //    D3D12_BACKGROUND_PROCESSING_MODE_ALLOWED,
+        //    D3D12_MEASUREMENTS_ACTION_COMMIT_RESULTS,
+        //    nullptr, nullptr);
 
 #ifdef BRWL_USE_DEAR_IM_GUI
         BaseRenderer::draw();
@@ -196,8 +210,8 @@ namespace PAL
         ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
         commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-        //const HRESULT result = g_pSwapChain->Present(1, 0); // Present with vsync
-        const HRESULT result = g_pSwapChain->Present(0, 0); // Present without vsync
+        //const HRESULT result = swapChain->Present(1, 0); // Present with vsync
+        const HRESULT result = swapChain->Present(0, 0); // Present without vsync
 
         if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET)
         {
@@ -231,18 +245,18 @@ namespace PAL
 
     void WinRenderer::destroy(bool force /*= false*/)
     {
-
         waitForLastSubmittedFrame();
 
         BaseRenderer::destroy(force);
+        
+        destroyDevice();
 
-        ImGui_ImplWin32_Shutdown();
         if (GImGui != NULL)
         {
             ImGui::DestroyContext();
         }
 
-        destroyDevice();
+        ImGui_ImplWin32_Shutdown();
     }
 
 #pragma region IMGUI COPY
@@ -377,44 +391,27 @@ namespace PAL
         }
 #endif // defined(_DEBUG)
 
+        
+        if (!rtvHeap.create(device.Get(), numBackBuffers))
         {
-            D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-
-            desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-            desc.NumDescriptors = numBackBuffers;
-            desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-            desc.NodeMask = 1;
-            if (!BRWL_VERIFY(SUCCEEDED(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&rtvHeap))), BRWL_CHAR_LITERAL("Failed to create render target view descriptor heap.")))
-            {
-                return false;
-            }
-
-            SIZE_T rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
-            for (UINT i = 0; i < numBackBuffers; i++)
-            {
-                g_mainRenderTargetDescriptor[i] = rtvHandle;
-                rtvHandle.ptr += rtvDescriptorSize;
-            }
+            return false;
         }
 
+        for (UINT i = 0; i < numBackBuffers; i++)
         {
-            D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-
-            desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-            desc.NumDescriptors = 1 continue here and add more descriptors and an an interface to the outside for that
-            desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-            if (!BRWL_VERIFY(SUCCEEDED(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&srvHeap))), BRWL_CHAR_LITERAL("Failed to create srv descriptor heap.")))
-            {
-                return false;
-            }
+            mainRenderTargetDescriptor[i] = rtvHeap.allocateHandle().cpu;
+        }
+        
+        if (!srvHeap.create(device.Get(), 30))
+        {
+            return false;
         }
 
         {
             D3D12_COMMAND_QUEUE_DESC desc = {};
             desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
             desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-            desc.NodeMask = 1;
+            desc.NodeMask = 0;
             if (!BRWL_VERIFY(SUCCEEDED(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&commandQueue))), BRWL_CHAR_LITERAL("Failed to create direct command queue.")))
             {
                 return false;
@@ -469,16 +466,18 @@ namespace PAL
 
         ComPtr<IDXGISwapChain1> swapChain1;
         if( dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), hWnd, &sd, NULL, NULL, &swapChain1) != S_OK ||
-            swapChain1->QueryInterface(IID_PPV_ARGS(&g_pSwapChain)) != S_OK)
+            swapChain1->QueryInterface(IID_PPV_ARGS(&swapChain)) != S_OK)
             return false;
-        g_pSwapChain->SetMaximumFrameLatency(numBackBuffers);
-        g_hSwapChainWaitableObject = g_pSwapChain->GetFrameLatencyWaitableObject();
+        swapChain->SetMaximumFrameLatency(numBackBuffers);
+        swapChainWaitableObject = swapChain->GetFrameLatencyWaitableObject();
         
         createRenderTargets();
         currentFramebufferWidth = framebufferWidth;
         currentFramebufferHeight = framebufferHeight;
 
-        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, srvHeap, srvHeap->GetCPUDescriptorHandleForHeapStart(), srvHeap->GetGPUDescriptorHandleForHeapStart());
+        DescriptorHeap::Handle srvHandleForFontTexture = srvHeap.allocateHandle();
+        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, /*since this is unused, we currently also don't pass any resource*/{ },
+            srvHandleForFontTexture.cpu, srvHandleForFontTexture.gpu);
 
         if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(SUCCEEDED(appRenderer->rendererInit(this)), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))
         {
@@ -500,14 +499,14 @@ namespace PAL
         destroyRenderTargets();
         for (UINT i = 0; i < numBackBuffers; i++)
         {
-            g_mainRenderTargetDescriptor[i] = { 0 };
+            mainRenderTargetDescriptor[i] = { 0 };
         }
 
-        g_pSwapChain = nullptr;
-        if (g_hSwapChainWaitableObject != NULL)
+        swapChain = nullptr;
+        if (swapChainWaitableObject != NULL)
         {
-            CloseHandle(g_hSwapChainWaitableObject);
-            g_hSwapChainWaitableObject = NULL;
+            CloseHandle(swapChainWaitableObject);
+            swapChainWaitableObject = NULL;
         }
 
         for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
@@ -518,8 +517,8 @@ namespace PAL
 
         commandQueue = nullptr;
         commandList = nullptr;
-        rtvHeap = nullptr;
-        srvHeap = nullptr;
+        rtvHeap.destroy();
+        srvHeap.destroy();
         frameFence = nullptr;
         frameFenceLastValue = 0;
         if (frameFenceEvent)
@@ -538,10 +537,10 @@ namespace PAL
         for (UINT i = 0; i < numBackBuffers; i++)
         {
             ComPtr<ID3D12Resource> pBackBuffer = nullptr;
-            g_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
-            device->CreateRenderTargetView(pBackBuffer.Get(), NULL, g_mainRenderTargetDescriptor[i]);
-            g_mainRenderTargetResource[i] = pBackBuffer;
-            g_mainRenderTargetResource[i]->SetName(BRWL_CHAR_LITERAL("RenderTarget"));
+            swapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
+            device->CreateRenderTargetView(pBackBuffer.Get(), NULL, mainRenderTargetDescriptor[i]);
+            mainRenderTargetResource[i] = pBackBuffer;
+            mainRenderTargetResource[i]->SetName(BRWL_CHAR_LITERAL("RenderTarget"));
         }
     }
 
@@ -551,7 +550,7 @@ namespace PAL
 
         for (UINT i = 0; i < numBackBuffers; i++)
         {
-            g_mainRenderTargetResource[i] = nullptr;
+            mainRenderTargetResource[i] = nullptr;
         }
     }
 
@@ -576,7 +575,7 @@ namespace PAL
         UINT nextFrameIndex = frameIndex + 1;
         frameIndex = nextFrameIndex;
 
-        HANDLE waitableObjects[] = { g_hSwapChainWaitableObject, NULL };
+        HANDLE waitableObjects[] = { swapChainWaitableObject, NULL };
         DWORD numWaitableObjects = 1;
 
         FrameContext* frameCtxt = &frameContext[nextFrameIndex % NUM_FRAMES_IN_FLIGHT];
@@ -614,28 +613,28 @@ namespace PAL
         destroyRenderTargets();
 
         DXGI_SWAP_CHAIN_DESC1 sd;
-        HRESULT success = g_pSwapChain->GetDesc1(&sd);
+        HRESULT success = swapChain->GetDesc1(&sd);
         BRWL_EXCEPTION(SUCCEEDED(success), BRWL_CHAR_LITERAL("Failed to retrieve swap chain description."));
-        success = g_pSwapChain->ResizeBuffers(sd.BufferCount, width, height, sd.Format, sd.Flags);
+        success = swapChain->ResizeBuffers(sd.BufferCount, width, height, sd.Format, sd.Flags);
         BRWL_EXCEPTION(SUCCEEDED(success), BRWL_CHAR_LITERAL("Failed to resize swap chain."));
         createRenderTargets();
 
         //sd.Width = width;
         //sd.Height = height;
-        //g_pSwapChain->Release();
+        //swapChain->Release();
 
-        //CloseHandle(g_hSwapChainWaitableObject);
+        //CloseHandle(swapChainWaitableObject);
 
         //ComPtr<IDXGISwapChain1> swapChain1;
         //dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), hWnd, &sd, NULL, NULL, &swapChain1);
-        //swapChain1->QueryInterface(IID_PPV_ARGS(&g_pSwapChain));
+        //swapChain1->QueryInterface(IID_PPV_ARGS(&swapChain));
         //swapChain1->Release();
         //dxgiFactory->Release();
 
-        //g_pSwapChain->SetMaximumFrameLatency(numBackBuffers);
+        //swapChain->SetMaximumFrameLatency(numBackBuffers);
 
-        //g_hSwapChainWaitableObject = g_pSwapChain->GetFrameLatencyWaitableObject();
-        assert(g_hSwapChainWaitableObject != NULL);
+        //swapChainWaitableObject = swapChain->GetFrameLatencyWaitableObject();
+        assert(swapChainWaitableObject != NULL);
     }
 
     void WinRenderer::OnFramebufferResize(int width, int height)

@@ -3,6 +3,7 @@
 #include "Renderer/AppRenderer.h"
 #include "UI/AppUi.h"
 #include "DataSet.h"
+#include "Renderer/Renderer.h"
 
 #ifndef BRWL_USE_DEAR_IM_GUI
 #error The project requires Dear ImGui
@@ -40,6 +41,7 @@ protected:
 	ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
 
 	DataSet dataSet;
+	PAL::DescriptorHeap::Handle volumeTextureDescriptorHandle;
 	ComPtr<ID3D12Resource> volumeTexture;
 	ComPtr<ID3D12Resource> volumeTextureUploadHeap;
 	ComPtr<ID3D12Fence> volumeTextureFence;

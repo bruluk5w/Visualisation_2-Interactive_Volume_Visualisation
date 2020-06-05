@@ -13,10 +13,10 @@ void exception(const BRWL_CHAR* const test, const BRWL_CHAR* const msg, const bo
 
 BRWL_STR getExceptionString(const BRWL_CHAR* const test, const BRWL_CHAR* const  msg);
 
-#define BRWL_EXCEPTION(test, msg) do { if (!(test)) BRWL::exception(BRWL_CHAR_LITERAL(#test), (msg), false);} while(0)
+#define BRWL_EXCEPTION(test, msg) do { if (!(test)) ::BRWL::exception(BRWL_CHAR_LITERAL(#test), (msg), false);} while(0)
 #define BRWL_VERIFY(test, msg) ([&] () -> bool { \
 	if (!(test)) { \
-		BRWL::exception(BRWL_CHAR_LITERAL(#test), (msg), true); \
+		::BRWL::exception(BRWL_CHAR_LITERAL(#test), (msg), true); \
 		return false; \
 	} else { \
 		return true;\
@@ -28,7 +28,7 @@ BRWL_STR getExceptionString(const BRWL_CHAR* const test, const BRWL_CHAR* const 
 #define BRWL_CHECK(test, msg) do { \
 static bool thrown = false; \
 if (!thrown && !(test)) { \
-BRWL::exception(BRWL_CHAR_LITERAL(#test), (msg), true); \
+::BRWL::exception(BRWL_CHAR_LITERAL(#test), (msg), true); \
 thrown = true; \
 } \
 } while(0)

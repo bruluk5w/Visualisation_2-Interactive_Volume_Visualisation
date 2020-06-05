@@ -210,7 +210,7 @@ CODE
          // Render dear imgui into screen
          ImGui::Render();
          ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-         g_pSwapChain->Present(1, 0);
+         swapChain->Present(1, 0);
      }
 
      // Shutdown
