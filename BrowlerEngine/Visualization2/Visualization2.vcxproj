@@ -340,10 +340,22 @@
     <ClInclude Include="CLogEdit.h" />
     <ClInclude Include="DataSet.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="Image.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="LogHandler.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Preintegration.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="TextureResource.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Visualization2.h" />
     <ClInclude Include="Visualization2Dlg.h" />
     <ClInclude Include="Visualization2Renderer.h">
@@ -354,6 +366,7 @@
   <ItemGroup>
     <ClCompile Include="CLogEdit.cpp" />
     <ClCompile Include="DataSet.cpp" />
+    <ClCompile Include="Image.cpp" />
     <ClCompile Include="LogHandler.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

@@ -31,7 +31,7 @@ void CLogEdit::OnLogMessage(const BRWL_STR & msg)
 	int index = GetWindowTextLength();
 	if (index + msg.size() >= maxLogLimit)
 	{
-		SetSel(0, BRWL::Utils::max<int>(msg.size(), BRWL::Utils::min<size_t>(maxLogLimit / 10, msg.size() * 100)));
+		SetSel(0, BRWL::Utils::max<int>(msg.size(), BRWL::Utils::min<int>(maxLogLimit / 10, msg.size() * 100)));
 		ReplaceSel(oldLogDeletedHint);
 	}
 

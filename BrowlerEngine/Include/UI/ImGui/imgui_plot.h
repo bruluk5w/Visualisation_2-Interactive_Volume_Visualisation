@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <imgui.h>
+#include "ImGui/imgui.h"
 
 namespace ImGui {
 // Use this structure to pass the plot data and settings into the Plot function
@@ -64,6 +64,8 @@ struct PlotConfig {
     float line_thickness = 1.f;
     bool skip_small_lines = true;
     const char* overlay_text = nullptr;
+    bool useBackGroundTextrue = false;
+    ImTextureID texID = nullptr;
 };
 
 enum class PlotStatus {

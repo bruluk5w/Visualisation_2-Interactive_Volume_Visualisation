@@ -31,6 +31,7 @@
     <ClInclude Include="Include\UI\ImGui\imconfig.h" />
     <ClInclude Include="Include\UI\ImGui\imgui.h" />
     <ClInclude Include="Include\UI\ImGui\imgui_internal.h" />
+    <ClInclude Include="Include\UI\ImGui\imgui_plot.h" />
     <ClInclude Include="Include\UI\ImGui\imstb_rectpack.h" />
     <ClInclude Include="Include\UI\ImGui\imstb_textedit.h" />
     <ClInclude Include="Include\UI\ImGui\imstb_truetype.h" />
@@ -41,6 +42,7 @@
     <ClCompile Include="Source\UI\ImGui\imgui.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_demo.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_draw.cpp" />
+    <ClCompile Include="Source\UI\ImGui\imgui_plot.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="Source\UI\UI_Precomp.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

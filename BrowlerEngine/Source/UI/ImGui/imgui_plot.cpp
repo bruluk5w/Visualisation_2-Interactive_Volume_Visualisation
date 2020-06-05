@@ -1,9 +1,9 @@
-#include <imgui_plot.h>
-#include <imgui.h>
+#include "ImGui/imgui_plot.h"
+#include "ImGui/imgui.h"
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
-#include <imgui_internal.h>
+#include "ImGui/imgui_internal.h"
 
 namespace ImGui {
 // [0..1] -> [0..1]
@@ -74,6 +74,17 @@ PlotStatus Plot(const char* label, const PlotConfig& conf) {
         GetColorU32(ImGuiCol_FrameBg),
         true,
         style.FrameRounding);
+
+    if (conf.useBackGroundTextrue)
+    {
+        ImVec2 t0(0, 0);
+        ImVec2 t1(1, 1);
+        //const ImVec2 tp1 = ImVec2(rescale(t1, x_min, x_max, conf.scale.type),
+        //    1.0f - ImSaturate((v1 - conf.scale.min) * inv_scale));
+        //ImVec2 pos0 = ImLerp(inner_bb.Min, inner_bb.Max, tp0);
+        //ImVec2 pos1 = ImLerp(inner_bb.Min, inner_bb.Max, tp1);
+        window->DrawList->AddImage(conf.texID, inner_bb.Min, inner_bb.Max, t0, t1);
+    }
 
     if (conf.values.count > 0) {
         int res_w;

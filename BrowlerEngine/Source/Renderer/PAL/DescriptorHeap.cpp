@@ -100,7 +100,7 @@ namespace PAL
 		cpu.ptr += (nextOffset) * descriptorSize;
 		gpu.ptr += (nextOffset) * descriptorSize;
 
-		bool foundFree;
+		bool foundFree = false;
 		for (unsigned int i = 0; i < numDescriptors; ++i) {
 			nextOffset = (nextOffset + 1) % numDescriptors;
 

@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "DataSet.h"
 
 #include <fstream>
@@ -31,7 +30,7 @@ void DataSet::loadFromFile(BRWL_STR relativePath)
 	{
 		//BRWL_STR str(e.what(), e.what() + strlen(e.what()));
 		BRWL_CHAR buf[256];
-		BRWL_SNPRINTF(buf, BRWL::countof(buf), BRWL_CHAR_LITERAL("Failed to get file size of asset: %s\nError:\n%s"), name, e.what());
+		BRWL_SNPRINTF(buf, BRWL::countof(buf), BRWL_CHAR_LITERAL("Failed to get file size of asset: %s\nError:\n%s"), name.c_str(), e.what());
 		BRWL_EXCEPTION(false, buf);
 		return;
 	}

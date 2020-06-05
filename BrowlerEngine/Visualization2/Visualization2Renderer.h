@@ -2,8 +2,10 @@
 
 #include "Renderer/AppRenderer.h"
 #include "UI/AppUi.h"
-#include "DataSet.h"
 #include "Renderer/Renderer.h"
+#include "Image.h"
+#include "DataSet.h"
+#include "TextureResource.h"
 
 #ifndef BRWL_USE_DEAR_IM_GUI
 #error The project requires Dear ImGui
@@ -34,19 +36,25 @@ protected:
 
 	uint8_t uiResultIdx;
 	UIResult uiResults[2];
-	ImFont* fonts[ENUM_CLASS_TO_NUM(UIResult::Font::MAX)];
+	ImFont* fonts[ENUM_CLASS_TO_NUM(UIResult::Settings::Font::MAX)];
 
 	ComPtr<ID3D12CommandQueue> uploadCommandQueue;
 	ComPtr<ID3D12CommandAllocator> uploadCommandAllocator;
 	ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
 
+	// The main data set
 	DataSet dataSet;
-	PAL::DescriptorHeap::Handle volumeTextureDescriptorHandle;
-	ComPtr<ID3D12Resource> volumeTexture;
-	ComPtr<ID3D12Resource> volumeTextureUploadHeap;
-	ComPtr<ID3D12Fence> volumeTextureFence;
-	HANDLE volumeTextureFenceEvent;
-	uint64_t volumeTextureFenceLastValue;
+	TextureResource volumeTexture;
+	// Preintegration table
+	Image pitImage;
+	Image stagedPitImage;
+	TextureResource pitTexture;
+
+	ComPtr<ID3D12Resource> textureUploadHeap;
+	ComPtr<ID3D12Fence> textureFence;
+	HANDLE textureFenceEvent;
+	uint64_t textureFenceLastValue;
+
 
 	bool initialized;
 };

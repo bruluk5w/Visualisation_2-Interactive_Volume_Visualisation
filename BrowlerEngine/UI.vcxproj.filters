@@ -48,6 +48,9 @@
     <ClInclude Include="Include\UI\AppUi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Include\UI\ImGui\imgui_plot.h">
+      <Filter>Header Files\ImGui</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\UI\UI_Precomp.cpp">
@@ -67,6 +70,9 @@
     </ClCompile>
     <ClCompile Include="Source\UI\AppUi.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\UI\ImGui\imgui_plot.cpp">
+      <Filter>Source Files\ImGui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
