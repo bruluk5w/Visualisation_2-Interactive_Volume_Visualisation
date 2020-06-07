@@ -14,8 +14,8 @@ public:
 	uint8_t* getPtr() const { checkValid(); return data.get(); }
 	uint16_t getSizeX() const { checkValid(); return sizeX; }
 	uint16_t getSizeY() const { checkValid(); return sizeY; }
-	uint64_t getStrideX() const { checkValid(); return strideX; }
-	uint64_t getStrideY() const { checkValid(); return strideY; }
+	uint32_t getStrideX() const { checkValid(); return strideX; }
+	uint32_t getStrideY() const { checkValid(); return strideY; }
 	size_t getBufferSize() const { checkValid(); return bufferSize; }
 	const BRWL_CHAR* getName() const { return name.c_str(); }
 	void clear();
@@ -27,8 +27,8 @@ private:
 	bool valid;
 	uint16_t sizeX;
 	uint16_t sizeY;
-	uint64_t strideX;
-	uint64_t strideY;
+	uint32_t strideX;
+	uint32_t strideY;
 	size_t bufferSize;
 	std::unique_ptr<uint8_t[]> data;
 };

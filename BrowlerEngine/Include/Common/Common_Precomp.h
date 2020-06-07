@@ -43,7 +43,6 @@ namespace PAL {
 #include <dxgidebug.h>
 #endif
 
-
 // undefine annoying macros from windows headers
 #undef near
 #undef far
@@ -89,6 +88,8 @@ using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 #include "Utilities.h"
 #include "Exception.h"
+
+#include "BrwlMath.h"
 
 BRWL_NS
 

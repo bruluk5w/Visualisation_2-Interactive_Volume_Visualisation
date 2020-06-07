@@ -46,6 +46,10 @@
     <ClInclude Include="Include\Common\PAL\BrowlerWindowsInclude.h" />
     <ClInclude Include="Include\Common\PAL\WinGlobals.h" />
     <ClInclude Include="Include\Common\PAL\WinStackTrace.h" />
+    <ClInclude Include="Include\Common\Spline.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Include\Common\StackTrace.h" />
     <ClInclude Include="Include\Common\StackTraceFwd.h">
       <SubType>

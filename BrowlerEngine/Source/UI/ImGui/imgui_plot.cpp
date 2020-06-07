@@ -28,12 +28,11 @@ static float rescale_inv(float t, float min, float max, PlotConfig::Scale::Type 
     return 0;
 }
 
-static int cursor_to_idx(const ImVec2& pos, const ImRect& bb, const PlotConfig& conf, float x_min, float x_max) {
-    const float t = ImClamp((pos.x - bb.Min.x) / (bb.Max.x - bb.Min.x), 0.0f, 0.9999f);
-    const int v_idx = (int)(rescale_inv(t, x_min, x_max, conf.scale.type) * (conf.values.count - 1));
-    IM_ASSERT(v_idx >= 0 && v_idx < conf.values.count);
-
-    return v_idx;
+static void cursor_to_idx(const ImVec2& pos, int& idx, float& amplitude, const ImRect& bb, const PlotConfig& conf, float x_min, float x_max) {
+    const float tx = ImClamp((pos.x - bb.Min.x) / (bb.Max.x - bb.Min.x), 0.0f, 0.9999f);
+    amplitude = 1 - ImClamp((pos.y - bb.Min.y) / (bb.Max.y - bb.Min.y), 0.0f, 0.9999f);
+    idx = (int)(rescale_inv(tx, x_min, x_max, conf.scale.type) * (conf.values.count - 1));
+    IM_ASSERT(idx >= 0 && idx < conf.values.count);
 }
 
 PlotStatus Plot(const char* label, const PlotConfig& conf) {
@@ -56,12 +55,12 @@ PlotStatus Plot(const char* label, const PlotConfig& conf) {
     const ImGuiStyle& style = g.Style;
     const ImGuiID id = window->GetID(label);
 
-    const ImRect frame_bb(
-        window->DC.CursorPos,
-        window->DC.CursorPos + conf.frame_size);
     const ImRect inner_bb(
-        frame_bb.Min + style.FramePadding,
-        frame_bb.Max - style.FramePadding);
+        window->DC.CursorPos + style.FramePadding,
+        window->DC.CursorPos + style.FramePadding + conf.frame_size);
+    const ImRect frame_bb(
+        inner_bb.Min - style.FramePadding,
+        inner_bb.Max + style.FramePadding);
     const ImRect total_bb = frame_bb;
     ItemSize(total_bb, style.FramePadding.y);
     if (!ItemAdd(total_bb, 0, &frame_bb))
@@ -83,7 +82,8 @@ PlotStatus Plot(const char* label, const PlotConfig& conf) {
         //    1.0f - ImSaturate((v1 - conf.scale.min) * inv_scale));
         //ImVec2 pos0 = ImLerp(inner_bb.Min, inner_bb.Max, tp0);
         //ImVec2 pos1 = ImLerp(inner_bb.Min, inner_bb.Max, tp1);
-        window->DrawList->AddImage(conf.texID, inner_bb.Min, inner_bb.Max, t0, t1);
+        float maxTexVal = conf.maxTexVal ? conf.maxTexVal : 1;  // protect div by 0
+        window->DrawList->AddImage(conf.texID, inner_bb.Min, inner_bb.Max + ImVec2(1, 1), t0, t1, static_cast<ImU32>(ImColor(1.0f / maxTexVal, 1.0f / maxTexVal, 1.0f / maxTexVal)));
     }
 
     if (conf.values.count > 0) {
@@ -95,8 +95,8 @@ PlotStatus Plot(const char* label, const PlotConfig& conf) {
         res_w -= 1;
         int item_count = conf.values.count - 1;
 
-        float x_min = conf.values.offset;
-        float x_max = conf.values.offset + conf.values.count - 1;
+        float x_min = (float)conf.values.offset;
+        float x_max = (float)conf.values.offset + conf.values.count - 1;
         if (conf.values.xs) {
             x_min = conf.values.xs[size_t(x_min)];
             x_max = conf.values.xs[size_t(x_max)];
@@ -105,11 +105,13 @@ PlotStatus Plot(const char* label, const PlotConfig& conf) {
         // Tooltip on hover
         int v_hovered = -1;
         if (conf.tooltip.show && hovered && inner_bb.Contains(g.IO.MousePos)) {
-            const int v_idx = cursor_to_idx(g.IO.MousePos, inner_bb, conf, x_min, x_max);
+            int v_idx = 0;
+            float curorY;
+            cursor_to_idx(g.IO.MousePos, v_idx, curorY, inner_bb, conf, x_min, x_max);
             const size_t data_idx = conf.values.offset + (v_idx % conf.values.count);
             const float x0 = conf.values.xs ? conf.values.xs[data_idx] : v_idx;
-            const float y0 = ys_list[0][data_idx]; // TODO: tooltip is only shown for the first y-value!
-            SetTooltip(conf.tooltip.format, x0, y0);
+            const float graphValue = ys_list[0][data_idx];
+            SetTooltip(conf.tooltip.format, x0, curorY, graphValue);
             v_hovered = v_idx;
         }
 
@@ -118,14 +120,14 @@ PlotStatus Plot(const char* label, const PlotConfig& conf) {
                                     0.0f : (1.0f / (conf.scale.max - conf.scale.min));
 
         if (conf.grid_x.show) {
-            int y0 = inner_bb.Min.y;
-            int y1 = inner_bb.Max.y;
+            float y0 = inner_bb.Min.y;
+            float y1 = inner_bb.Max.y;
             switch (conf.scale.type) {
             case PlotConfig::Scale::Linear: {
                 float cnt = conf.values.count / (conf.grid_x.size / conf.grid_x.subticks);
                 float inc = 1.f / cnt;
                 for (int i = 0; i <= cnt; ++i) {
-                    int x0 = ImLerp(inner_bb.Min.x, inner_bb.Max.x, i * inc);
+                    float x0 = ImLerp(inner_bb.Min.x, inner_bb.Max.x, i * inc);
                     window->DrawList->AddLine(
                         ImVec2(x0, y0),
                         ImVec2(x0, y1),
@@ -141,7 +143,7 @@ PlotStatus Plot(const char* label, const PlotConfig& conf) {
                         if (x < x_min) continue;
                         if (x > x_max) break;
                         float t = log10(x / x_min) / log10(x_max / x_min);
-                        int x0 = ImLerp(inner_bb.Min.x, inner_bb.Max.x, t);
+                        float x0 = ImLerp(inner_bb.Min.x, inner_bb.Max.x, t);
                         window->DrawList->AddLine(
                             ImVec2(x0, y0),
                             ImVec2(x0, y1),
@@ -154,12 +156,12 @@ PlotStatus Plot(const char* label, const PlotConfig& conf) {
             }
         }
         if (conf.grid_y.show) {
-            int x0 = inner_bb.Min.x;
-            int x1 = inner_bb.Max.x;
+            float x0 = inner_bb.Min.x;
+            float x1 = inner_bb.Max.x;
             float cnt = (conf.scale.max - conf.scale.min) / (conf.grid_y.size / conf.grid_y.subticks);
             float inc = 1.f / cnt;
             for (int i = 0; i <= cnt; ++i) {
-                int y0 = ImLerp(inner_bb.Min.y, inner_bb.Max.y, i * inc);
+                float y0 = ImLerp(inner_bb.Min.y, inner_bb.Max.y, i * inc);
                 window->DrawList->AddLine(
                     ImVec2(x0, y0),
                     ImVec2(x1, y0),
@@ -219,13 +221,32 @@ PlotStatus Plot(const char* label, const PlotConfig& conf) {
             }
         }
 
+        if (conf.collectClick)
+        {
+            if (hovered) {
+                if (g.IO.MouseClicked[0]) {
+                    int v_idx = 0;
+                    float amplitude = 0;
+                    cursor_to_idx(g.IO.MousePos, v_idx, amplitude, inner_bb, conf, x_min, x_max);
+                    if (conf.collectClick)
+                    {
+                        *conf.values.hasClick = true;
+                        *conf.values.amplitude = amplitude;
+                        *conf.values.idx = v_idx;
+                    }
+                }
+            }
+        }
+
         if (conf.selection.show) {
             if (hovered) {
                 if (g.IO.MouseClicked[0]) {
                     SetActiveID(id, window);
                     FocusWindow(window);
 
-                    const int v_idx = cursor_to_idx(g.IO.MousePos, inner_bb, conf, x_min, x_max);
+                    int v_idx = 0;
+                    float amplitude = 0;
+                    cursor_to_idx(g.IO.MousePos, v_idx, amplitude, inner_bb, conf, x_min, x_max);
                     uint32_t start = conf.values.offset + (v_idx % conf.values.count);
                     uint32_t end = start;
                     if (conf.selection.sanitize_fn)
@@ -240,7 +261,9 @@ PlotStatus Plot(const char* label, const PlotConfig& conf) {
 
             if (g.ActiveId == id) {
                 if (g.IO.MouseDown[0]) {
-                    const int v_idx = cursor_to_idx(g.IO.MousePos, inner_bb, conf, x_min, x_max);
+                    int v_idx = 0;
+                    float a;
+                    cursor_to_idx(g.IO.MousePos, v_idx, a, inner_bb, conf, x_min, x_max);
                     const uint32_t start = *conf.selection.start;
                     uint32_t end = conf.values.offset + (v_idx % conf.values.count);
                     if (end > start) {

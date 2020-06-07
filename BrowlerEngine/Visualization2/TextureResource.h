@@ -9,6 +9,7 @@ struct TextureResource
 	enum class State : uint8_t
 	{
 		UNKNOWN = 0,
+		REQUESTING_UPLOAD,
 		LOADING,
 		RESIDENT,
 		FAILED,

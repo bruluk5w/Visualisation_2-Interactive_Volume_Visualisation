@@ -1,5 +1,4 @@
 #pragma once // (c) 2020 Lukas Brunner
-#include "pch.h"
 #include "Common/Logger.h"
 #include <vector>
 #include <algorithm>

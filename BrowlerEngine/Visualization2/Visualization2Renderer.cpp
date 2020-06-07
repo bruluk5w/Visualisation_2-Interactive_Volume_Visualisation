@@ -19,21 +19,22 @@ Visualization2Renderer::Visualization2Renderer() :
     dataSet(BRWL_CHAR_LITERAL("Default Data Sets (Beetle)")),
     pitImage(BRWL_CHAR_LITERAL("Preintegration Table")),
     volumeTexture(),
-    pitTexture(),
-    textureUploadHeap(nullptr),
-    textureFence(nullptr),
-    textureFenceEvent(NULL),
-    textureFenceLastValue(0),
+    uploadHeap(nullptr),
+    volumeTextureUploadFence(nullptr),
+    uploadFenceEvent(NULL),
+    volumeTextureFenceValue(0),
     initialized(false)
 {
     uiResults[0] = {
         {
-            UIResult::Settings::Font::OPEN_SANS_REGULAR,
-            30
-        }, {
-            UIResult::TransferFunction::BitDepth::BIT_DEPTH_10_BIT,
-            { 0 },
-            nullptr
+            UIResult::Settings::Font::OPEN_SANS_REGULAR, // font
+            30 // fontSize
+        },
+        {
+            UIResult::TransferFunction::BitDepth::BIT_DEPTH_10_BIT, // bitDepth
+            { }, // controlPoints
+            { 0 }, // transferFunction
+            nullptr // textureID
         }
     };
     uiResults[1] = uiResults[0];
@@ -50,16 +51,24 @@ bool Visualization2Renderer::init(Renderer* r)
     {
         engine->logger->info(BRWL_CHAR_LITERAL("Loading the beatle asset."));
         dataSet.loadFromFile(BRWL_CHAR_LITERAL("./Assets/DataSets/stagbeetle832x832x494.dat"));
-        BRWL_EXCEPTION(dataSet.isValid(), BRWL_CHAR_LITERAL("Failed to load default asset."));
+        if (BRWL_VERIFY(dataSet.isValid(), BRWL_CHAR_LITERAL("Failed to load default asset.")))
+        {
+            volumeTexture.state = TextureResource::State::REQUESTING_UPLOAD;
+        }
     }
 
-    if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&textureFence))), BRWL_CHAR_LITERAL("Failed to create volume texture fence.")))
+    if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&volumeTextureUploadFence))), BRWL_CHAR_LITERAL("Failed to create volume texture fence.")))
+    {
+        return false;
+    }
+    
+    if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&pitImage.fence))), BRWL_CHAR_LITERAL("Failed to create pitTexture fence.")))
     {
         return false;
     }
 
-    textureFenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-    if (!BRWL_VERIFY(textureFenceEvent != NULL, BRWL_CHAR_LITERAL("Failed to create frame fence event.")))
+    uploadFenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    if (!BRWL_VERIFY(uploadFenceEvent != NULL, BRWL_CHAR_LITERAL("Failed to create frame fence event.")))
     {
         return false;
     }
@@ -111,47 +120,79 @@ void Visualization2Renderer::render(Renderer* renderer)
 {
     if (!initialized) return;
 
+    uint64_t completed = pitImage.fence->GetCompletedValue();
+
+    // swap texture if ready
+    if (pitImage.stagedTexture->state == TextureResource::State::LOADING && completed >= pitImage.uploadFenceValue)
+    {
+        pitImage.stagedTexture->state = TextureResource::State::RESIDENT;
+        std::swap(pitImage.stagedTexture, pitImage.liveTexture);
+        // release texture
+        pitImage.stagedTexture->destroy();
+    }
+
+    // send texture to front-end, execute UI and retrieve results
     uiResultIdx = uiResultIdx ? 0 : 1;
     UIResult& r = uiResults[uiResultIdx]; // results
     UIResult& v = uiResults[uiResultIdx ? 0 : 1]; // values
-    
-    // setting data that is only sent one-way to the front end
-    if (pitTexture.state == TextureResource::State::RESIDENT)
+    if (pitImage.liveTexture->state == TextureResource::State::RESIDENT)
     {
-        v.transferFunction.textureID = (void*)&pitTexture.descriptorHandle.gpu;
+        v.transferFunction.textureID = (ImTextureID)pitImage.liveTexture->descriptorHandle.gpu.ptr;
+    }
+    else
+    {
+        v.transferFunction.textureID = nullptr;
     }
 
     ImGui::PushFont(fonts[ENUM_CLASS_TO_NUM(r.settings.font)]);
     renderAppUI(r, v);
+    ImGui::PopFont();
 
-    if (!pitImage.isValid() || v.transferFunction.bitDepth != r.transferFunction.bitDepth ||
-        memcmp(v.transferFunction.transferFunction, r.transferFunction.transferFunction, v.transferFunction.getArrayLenth() * sizeof(UIResult::TransferFunction::sampleT)) !=0)
+    // Check if texture should be recomputed
+    if (!pitImage.cpuImage.isValid() || v.transferFunction.bitDepth != r.transferFunction.bitDepth ||
+        memcmp(v.transferFunction.transferFunction, r.transferFunction.transferFunction, v.transferFunction.getArrayLength() * sizeof(UIResult::TransferFunction::sampleT)) !=0)
     {
-        //Image image(pitImage.getName());
-        const int tableSize = v.transferFunction.getArrayLenth();
-
-        if (!pitImage.isValid() || pitImage.getSizeX() != tableSize)
+        // If staged texture is not free, wait for upload to complete
+        if (pitImage.stagedTexture->state != TextureResource::State::UNKNOWN)
         {
-            pitImage.create(tableSize, tableSize);
+            // the staged resource is currently upoaded then the fence value has do be lower than the one which we remembered
+            BRWL_CHECK(pitImage.fence->GetCompletedValue() < pitImage.uploadFenceValue, BRWL_CHAR_LITERAL("Invalid fence/staged resource state."));
+            if (!BRWL_VERIFY(pitImage.stagedTexture->state != TextureResource::State::FAILED, BRWL_CHAR_LITERAL("Invalid state for staged pitTexture.")))
+            {
+                return;
+            }
+            
+            pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, uploadFenceEvent);
+            WaitForSingleObject(uploadFenceEvent, INFINITE);
+            // Since the live texture is currently in use in the front-end we immediately recycle the staged texture.
+            // This means that a texture change is only visible to the user if there is one frame without a changed that requires recomputation.
+            pitImage.stagedTexture->destroy();
         }
+
+        // Recompute texture
+        const int tableSize = r.transferFunction.getArrayLength();
+
+        if (!pitImage.cpuImage.isValid() || pitImage.cpuImage.getSizeX() != tableSize)
+            pitImage.cpuImage.create(tableSize, tableSize);
         else
-        {
-            pitImage.clear();
-        }
+            pitImage.cpuImage.clear();
 
-        makePreintegrationTable(pitImage, v.transferFunction.transferFunction, v.transferFunction.getArrayLenth());
+        makeDiagram(pitImage.cpuImage, r.transferFunction.transferFunction, r.transferFunction.getArrayLength());
 
-        pitTexture.destroy();
+        // upload in draw()
+        pitImage.stagedTexture->descriptorHandle = renderer->srvHeap.allocateHandle();
+        pitImage.stagedTexture->state = TextureResource::State::REQUESTING_UPLOAD;
 
+        // set front-end request satisfied
         memcpy(v.transferFunction.transferFunction, r.transferFunction.transferFunction, sizeof(v.transferFunction.transferFunction));
         v.transferFunction.bitDepth = r.transferFunction.bitDepth;
     }
 
-    ImGui::PopFont();
+    
 }
 
-bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, TextureResource& texture, ComPtr<ID3D12Resource>& textureUploadHeap);
-bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const Image* dataSet, TextureResource& texture, ComPtr<ID3D12Resource>& textureUploadHeap);
+bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, TextureResource& texture, ComPtr<ID3D12Resource>& uploadHeap);
+bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const Image* dataSet, TextureResource& texture, ComPtr<ID3D12Resource>& uploadHeap);
 
 void Visualization2Renderer::draw(Renderer* r)
 {
@@ -162,69 +203,68 @@ void Visualization2Renderer::draw(Renderer* r)
         return;
     }
 
-    if (dataSet.isValid() && volumeTexture.state == TextureResource::State::UNKNOWN)
+    if (volumeTexture.state == TextureResource::State::REQUESTING_UPLOAD)
     {
+        BRWL_EXCEPTION(dataSet.isValid(), BRWL_CHAR_LITERAL("Invalid state of data set."));
         uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr);
 
         volumeTexture.descriptorHandle = r->srvHeap.allocateHandle();
-        if (!BRWL_VERIFY(LoadVolumeTexture(r->device.Get(), uploadCommandList.Get(), &dataSet, volumeTexture, textureUploadHeap), BRWL_CHAR_LITERAL("Failed to load the volume texture to the GPU.")))
+        volumeTexture.state = TextureResource::State::REQUESTING_UPLOAD;
+        if (!BRWL_VERIFY(LoadVolumeTexture(r->device.Get(), uploadCommandList.Get(), &dataSet, volumeTexture, uploadHeap), BRWL_CHAR_LITERAL("Failed to load the volume texture to the GPU.")))
         {   // we expect the function to clean up everything necessary
             return;
         };
 
-        //r->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+        //uploadCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
         uploadCommandList->Close();
         ID3D12CommandList* const ppCommandLists[] = { uploadCommandList.Get() };
         uploadCommandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-
-        // todo: create multiple instances and check every frame for completion and swap
-        // todo: this is killing our usability
-        uint64_t fenceValue = textureFenceLastValue + 1;
-        uploadCommandQueue->Signal(textureFence.Get(), fenceValue);
-        textureFence->SetEventOnCompletion(fenceValue, textureFenceEvent);
-        WaitForSingleObject(textureFenceEvent, INFINITE);
-        textureFenceLastValue = fenceValue;
+        ++volumeTextureFenceValue;
+        uploadCommandQueue->Signal(volumeTextureUploadFence.Get(), volumeTextureFenceValue);
+        volumeTextureUploadFence->SetEventOnCompletion(volumeTextureFenceValue, uploadFenceEvent);
+        WaitForSingleObject(uploadFenceEvent, INFINITE);
         volumeTexture.state = TextureResource::State::RESIDENT;
     }
 
-    if (pitImage.isValid() && pitTexture.state == TextureResource::State::UNKNOWN)
+    if (pitImage.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD)
     {
         uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr);
 
-        pitTexture.descriptorHandle = r->srvHeap.allocateHandle();
-        if (!BRWL_VERIFY(LoadFloatTexture2D(r->device.Get(), uploadCommandList.Get(), &pitImage, pitTexture, textureUploadHeap), BRWL_CHAR_LITERAL("Failed to load the 2D texture to the GPU.")))
+        //pitImage.stagedTexture->descriptorHandle = r->srvHeap.allocateHandle();
+        if (!BRWL_VERIFY(LoadFloatTexture2D(r->device.Get(), uploadCommandList.Get(), &pitImage.cpuImage, *pitImage.stagedTexture, uploadHeap), BRWL_CHAR_LITERAL("Failed to load the pitImage texture to the GPU.")))
         {   // we expect the function to clean up everything necessary
             return;
         };
 
-        //r->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+        //uploadCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pitImage.stagedTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
         uploadCommandList->Close();
         ID3D12CommandList* const ppCommandLists[] = { uploadCommandList.Get() };
         uploadCommandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-        uint64_t fenceValue = textureFenceLastValue + 1;
-        uploadCommandQueue->Signal(textureFence.Get(), fenceValue);
-        textureFence->SetEventOnCompletion(fenceValue, textureFenceEvent);
-        WaitForSingleObject(textureFenceEvent, INFINITE);
-        textureFenceLastValue = fenceValue;
-        pitTexture.state = TextureResource::State::RESIDENT;
+        ++pitImage.uploadFenceValue;
+        uploadCommandQueue->Signal(pitImage.fence.Get(), pitImage.uploadFenceValue);
+        // instead of waiting here, we check the completion state in render()
     }
 }
 
 void Visualization2Renderer::destroy()
 {
-    initialized = false;
+    pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, uploadFenceEvent);
+    WaitForSingleObject(uploadFenceEvent, INFINITE);
 
+    initialized = false;
     volumeTexture.destroy();
-    pitTexture.destroy();
-    textureUploadHeap = nullptr;
-    textureFence = nullptr;
-    textureFenceLastValue = 0;
-    if (textureFenceEvent)
+    pitImage.liveTexture->destroy();
+    pitImage.stagedTexture->destroy();
+    pitImage.fence = nullptr;
+    uploadHeap = nullptr;
+    volumeTextureUploadFence = nullptr;
+    volumeTextureFenceValue = 0;
+    if (uploadFenceEvent)
     {
-        CloseHandle(textureFenceEvent);
-        textureFenceEvent = nullptr;
+        CloseHandle(uploadFenceEvent);
+        uploadFenceEvent = nullptr;
     }
     uploadCommandAllocator = nullptr;
     uploadCommandList = nullptr;
@@ -243,15 +283,15 @@ void Visualization2Renderer::LoadFonts(float fontSize)
     ImGui_ImplDX12_CreateFontsTexture();
 }
 
-bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, TextureResource& texture, ComPtr<ID3D12Resource>& textureUploadHeap)
+bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, TextureResource& texture, ComPtr<ID3D12Resource>& uploadHeap)
 {
-    if (!dataSet->isValid() || !BRWL_VERIFY(texture.state == TextureResource::State::UNKNOWN, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
+    if (!dataSet->isValid() || !BRWL_VERIFY(texture.state == TextureResource::State::REQUESTING_UPLOAD, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
     {
         return false;
     }
 
     texture.texture = nullptr;
-    textureUploadHeap = nullptr;
+    uploadHeap = nullptr;
     // =========================================
     // TODO: add a second path for 8bit textures
     // =========================================
@@ -293,13 +333,13 @@ bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
         &CD3DX12_RESOURCE_DESC::Buffer(requiredSize),
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
-        IID_PPV_ARGS(&textureUploadHeap));
+        IID_PPV_ARGS(&uploadHeap));
     
 
     if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture upload heap.")))
     {
         texture.texture = nullptr;
-        textureUploadHeap = nullptr;
+        uploadHeap = nullptr;
         texture.state = TextureResource::State::FAILED;
         return false;
     }
@@ -310,11 +350,11 @@ bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
         dataSet->getStrideZ()
     };
 
-    uint64_t result = UpdateSubresources(cmdList, texture.texture.Get(), textureUploadHeap.Get(), 0, 0, 1, &textureData);
+    uint64_t result = UpdateSubresources(cmdList, texture.texture.Get(), uploadHeap.Get(), 0, 0, 1, &textureData);
     if (!BRWL_VERIFY(result != 0, BRWL_CHAR_LITERAL("Failed to upload volume texture.")))
     {
         texture.texture = nullptr;
-        textureUploadHeap = nullptr;
+        uploadHeap = nullptr;
         texture.state = TextureResource::State::FAILED;
         return false;
     }
@@ -356,9 +396,9 @@ bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
     return true;
 }
 
-bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const Image* image, TextureResource& texture, ComPtr<ID3D12Resource>& textureUploadHeap)
+bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const Image* image, TextureResource& texture, ComPtr<ID3D12Resource>& uploadHeap)
 {
-    if (!image->isValid() || !BRWL_VERIFY(texture.state == TextureResource::State::UNKNOWN, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
+    if (!image->isValid() || !BRWL_VERIFY(texture.state == TextureResource::State::REQUESTING_UPLOAD, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
     {
         return false;
     }
@@ -366,8 +406,7 @@ bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList
     // TODO: reuse upload heaps for upload of preintegration tables
     // =========================================
     texture.texture = nullptr;
-    BRWL_EXCEPTION(texture.state == TextureResource::State::UNKNOWN, BRWL_CHAR_LITERAL("Invalid texture resouce state."));
-    textureUploadHeap = nullptr;
+    uploadHeap = nullptr;
     D3D12_RESOURCE_DESC texDesc;
     memset(&texDesc, 0, sizeof(texDesc));
     texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -406,13 +445,13 @@ bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList
         &CD3DX12_RESOURCE_DESC::Buffer(requiredSize),
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
-        IID_PPV_ARGS(&textureUploadHeap));
+        IID_PPV_ARGS(&uploadHeap));
 
 
     if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture upload heap.")))
     {
         texture.texture = nullptr;
-        textureUploadHeap = nullptr;
+        uploadHeap = nullptr;
         texture.state = TextureResource::State::FAILED;
         return false;
     }
@@ -423,11 +462,11 @@ bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList
         image->getBufferSize()
     };
 
-    uint64_t result = UpdateSubresources(cmdList, texture.texture.Get(), textureUploadHeap.Get(), 0, 0, 1, &textureData);
+    uint64_t result = UpdateSubresources(cmdList, texture.texture.Get(), uploadHeap.Get(), 0, 0, 1, &textureData);
     if (!BRWL_VERIFY(result != 0, BRWL_CHAR_LITERAL("Failed to upload volume texture.")))
     {
         texture.texture = nullptr;
-        textureUploadHeap = nullptr;
+        uploadHeap = nullptr;
         texture.state = TextureResource::State::FAILED;
         return false;
     }

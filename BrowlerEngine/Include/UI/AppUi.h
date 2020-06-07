@@ -1,5 +1,7 @@
 #pragma once // (c) 2020 Lukas Brunner
 
+#include <vector>
+
 BRWL_NS
 
 struct UIResult
@@ -32,9 +34,14 @@ struct UIResult
 		} bitDepth;
 
 		static const char* bitDepthNames[ENUM_CLASS_TO_NUM(BitDepth::MAX)];
-		int getArrayLenth();
+
+
+		std::vector<Vec2> controlPoints;
 		sampleT transferFunction[1<<10];
 		void* textureID;
+		
+		int getArrayLength() const;
+		void updateFunction();
 	} transferFunction;
 
 };

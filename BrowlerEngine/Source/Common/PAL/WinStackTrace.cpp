@@ -53,7 +53,7 @@ void WinStackTrace::recordStackTrace(WinStackTrace& stackTrace, unsigned int num
         char symbolBuffer[sizeof(IMAGEHLP_SYMBOL) + countof(dummy)];
         PIMAGEHLP_SYMBOL symbol = (PIMAGEHLP_SYMBOL)symbolBuffer;
         symbol->SizeOfStruct = sizeof(symbolBuffer);
-        symbol->MaxNameLength = countof(dummy);
+        symbol->MaxNameLength = (decltype(symbol->MaxNameLength))countof(dummy);
 
         if (SymGetSymFromAddr(process, addr, NULL, symbol))
         {

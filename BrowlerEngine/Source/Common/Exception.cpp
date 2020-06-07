@@ -34,10 +34,14 @@ void exception(const BRWL_CHAR* const test, const BRWL_CHAR* const msg, const bo
 {
 	if (ignoreAllExceptions)
 	{
-		std::cout << msg << std::endl;
+		if (msg != nullptr)
+		{
+			std::cout << msg << std::endl;
+		}
+
 		return;
 	}
-	if (!globalExceptionHandler || !globalExceptionHandler(test, msg, mayIgnore) || !mayIgnore)
+	if (!globalExceptionHandler || !globalExceptionHandler(test, msg ? msg : BRWL_CHAR_LITERAL(""), mayIgnore) || !mayIgnore)
 	{
 #ifdef _DEBUG
 		if (doDebugBreakOnException)

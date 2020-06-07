@@ -3,7 +3,7 @@
 #include "Renderer/AppRenderer.h"
 #include "UI/AppUi.h"
 #include "Renderer/Renderer.h"
-#include "Image.h"
+#include "PitImage.h"
 #include "DataSet.h"
 #include "TextureResource.h"
 
@@ -45,16 +45,13 @@ protected:
 	// The main data set
 	DataSet dataSet;
 	TextureResource volumeTexture;
+	uint64_t volumeTextureFenceValue;
 	// Preintegration table
-	Image pitImage;
-	Image stagedPitImage;
-	TextureResource pitTexture;
+	PitImage pitImage;
 
-	ComPtr<ID3D12Resource> textureUploadHeap;
-	ComPtr<ID3D12Fence> textureFence;
-	HANDLE textureFenceEvent;
-	uint64_t textureFenceLastValue;
-
+	ComPtr<ID3D12Resource> uploadHeap;
+	ComPtr<ID3D12Fence> volumeTextureUploadFence;
+	HANDLE uploadFenceEvent;
 
 	bool initialized;
 };

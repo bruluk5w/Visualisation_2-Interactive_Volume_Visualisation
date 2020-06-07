@@ -54,6 +54,9 @@
     <ClInclude Include="Preintegration.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PitImage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Visualization2.cpp">
@@ -78,6 +81,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Image.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PitImage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Preintegration.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -6,7 +6,6 @@
 #include "Common/Logger.h"
 #include "LogHandler.h"
 
-#include "pch.h"
 #include "framework.h"
 #include "Visualization2.h"
 #include "Visualization2Dlg.h"

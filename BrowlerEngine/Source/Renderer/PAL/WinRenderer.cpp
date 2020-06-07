@@ -18,7 +18,6 @@
 extern ImGuiContext* GImGui;
 #endif // BRWL_USE_DEAR_IM_GUI
 
-#include "Common/BrwlMath.h"
 #include "AppRenderer.h"
 
 namespace
@@ -402,7 +401,7 @@ namespace PAL
             mainRenderTargetDescriptor[i] = rtvHeap.allocateHandle().cpu;
         }
         
-        if (!srvHeap.create(device.Get(), 30))
+        if (!srvHeap.create(device.Get(), 300))
         {
             return false;
         }

@@ -1,10 +1,6 @@
-// CLogEdit.cpp : implementation file
-//
-
-#include "pch.h"
-#include "Visualization2.h"
 #include "CLogEdit.h"
 
+#include "Visualization2.h"
 
 namespace
 {
@@ -46,7 +42,6 @@ void CLogEdit::OnLogMessage(const BRWL_STR & msg)
 
 BEGIN_MESSAGE_MAP(CLogEdit, CEdit)
 END_MESSAGE_MAP()
-
 
 
 // CLogEdit message handlers

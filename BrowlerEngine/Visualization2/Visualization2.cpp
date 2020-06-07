@@ -2,7 +2,6 @@
 // Visualization2.cpp : Defines the class behaviors for the application.
 //
 
-#include "pch.h"
 #include "framework.h"
 #include "Visualization2.h"
 #include "Visualization2Dlg.h"

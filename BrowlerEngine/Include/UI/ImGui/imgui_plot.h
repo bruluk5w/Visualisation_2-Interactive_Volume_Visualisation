@@ -24,6 +24,10 @@ struct PlotConfig {
         int ys_count = 0;
         // colors for each plot
         const ImU32* colors = nullptr;
+
+        bool* hasClick = nullptr;
+        float* amplitude = nullptr;
+        int* idx = nullptr;
     } values;
     struct Scale {
         // Minimum plot value
@@ -39,7 +43,7 @@ struct PlotConfig {
     } scale;
     struct Tooltip {
         bool show = false;
-        const char* format = "%g: %8.4g";
+        const char* format = "%g / %g: %8.4g";
     } tooltip;
     struct Grid {
         bool show = false;
@@ -64,8 +68,12 @@ struct PlotConfig {
     float line_thickness = 1.f;
     bool skip_small_lines = true;
     const char* overlay_text = nullptr;
+
     bool useBackGroundTextrue = false;
     ImTextureID texID = nullptr;
+    float maxTexVal = 1;
+
+    bool collectClick = false;
 };
 
 enum class PlotStatus {
