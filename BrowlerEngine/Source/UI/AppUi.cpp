@@ -175,9 +175,10 @@ void UIResult::TransferFunction::updateFunction()
     Vec2 first(controlPoints[0] - (controlPoints[1] - controlPoints[0]));
     Vec2 last(controlPoints[numPoints - 1] + (controlPoints[numPoints - 1] - controlPoints[numPoints - 2]));
     const int numSamples = getArrayLength();
-    const int numTessellatedPoints = (int)(numSamples * 1.5f);
+    const int numSubdivisions = 30;
+    const int numTessellatedPoints = (numPoints - 1) * numSubdivisions + 1;
     std::unique_ptr<Vec2[]> tessellatedPoints = std::unique_ptr<Vec2[]>(new Vec2[numTessellatedPoints]);
-    Splines::CentripetalCatmullRom(first, controlPoints.data(), last, controlPoints.size(), tessellatedPoints.get(), numTessellatedPoints);
+    Splines::CentripetalCatmullRom(first, controlPoints.data(), last, controlPoints.size(), tessellatedPoints.get(), numSubdivisions, numTessellatedPoints);
 
     // Interpolate along segments for approximation of uniform intervals along the x axis
     int cursor = 1;
@@ -321,7 +322,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
             {
                 conf.useBackGroundTextrue = true;
                 conf.texID = values.transferFunction.textureID;
-                conf.maxTexVal = 1;//texSideLength;
+                conf.maxTexVal = texSideLength;
             }
 
             ImGui::Plot("plot1", conf);

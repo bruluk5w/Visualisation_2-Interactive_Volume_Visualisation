@@ -23,6 +23,7 @@ Visualization2Renderer::Visualization2Renderer() :
     volumeTextureUploadFence(nullptr),
     uploadFenceEvent(NULL),
     volumeTextureFenceValue(0),
+    mainShader(),
     initialized(false)
 {
     uiResults[0] = {
@@ -37,6 +38,7 @@ Visualization2Renderer::Visualization2Renderer() :
             nullptr // textureID
         }
     };
+    uiResults[0].transferFunction.updateFunction();
     uiResults[1] = uiResults[0];
     // trigger building the preintegration table
     uiResults[0].transferFunction.bitDepth = UIResult::TransferFunction::BitDepth::BIT_DEPTH_8_BIT;
@@ -95,6 +97,11 @@ bool Visualization2Renderer::init(Renderer* r)
     }
 
     if (!BRWL_VERIFY(SUCCEEDED(uploadCommandList->Close()), BRWL_CHAR_LITERAL("Failed to close upload command list.")))
+    {
+        return false;
+    }
+
+    if (!BRWL_VERIFY(mainShader.create(r->device.Get()), BRWL_CHAR_LITERAL("Failed to create main shader.")))
     {
         return false;
     }
@@ -177,8 +184,8 @@ void Visualization2Renderer::render(Renderer* renderer)
         else
             pitImage.cpuImage.clear();
 
-        makeDiagram(pitImage.cpuImage, r.transferFunction.transferFunction, r.transferFunction.getArrayLength());
-
+        float max = makePreintegrationTable(pitImage.cpuImage, r.transferFunction.transferFunction, r.transferFunction.getArrayLength());
+        
         // upload in draw()
         pitImage.stagedTexture->descriptorHandle = renderer->srvHeap.allocateHandle(
 #ifdef _DEBUG
@@ -191,6 +198,12 @@ void Visualization2Renderer::render(Renderer* renderer)
         memcpy(v.transferFunction.transferFunction, r.transferFunction.transferFunction, sizeof(v.transferFunction.transferFunction));
         v.transferFunction.bitDepth = r.transferFunction.bitDepth;
         v.transferFunction.controlPoints = r.transferFunction.controlPoints;
+    }
+    else {
+        // reset
+        memcpy(r.transferFunction.transferFunction, v.transferFunction.transferFunction, sizeof(r.transferFunction.transferFunction));
+        r.transferFunction.bitDepth = v.transferFunction.bitDepth;
+        r.transferFunction.controlPoints = v.transferFunction.controlPoints;
     }
 
     
@@ -259,6 +272,8 @@ void Visualization2Renderer::draw(Renderer* r)
 
 void Visualization2Renderer::destroy()
 {
+    mainShader.destroy();
+
     if (pitImage.fence)
     {
         pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, uploadFenceEvent);

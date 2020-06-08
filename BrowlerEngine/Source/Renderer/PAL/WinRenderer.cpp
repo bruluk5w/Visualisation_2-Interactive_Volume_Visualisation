@@ -61,8 +61,11 @@ namespace
 
 BRWL_RENDERER_NS
 
+
 namespace PAL
 {
+
+    DXGI_FORMAT g_RenderTargetFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 
     const D3D_FEATURE_LEVEL WinRenderer::featureLevel = D3D_FEATURE_LEVEL_11_0;
     const Vec4 WinRenderer::clearColor = Vec4(0.5, 0.5, 0.5, 1.0);
@@ -491,7 +494,7 @@ namespace PAL
             BRWL_CHAR_LITERAL("FontTextureDescriptor")
 #endif
         );
-        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, /*since this is unused, we currently also don't pass any resource*/{ },
+        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, g_RenderTargetFormat, /*since this is unused, we currently also don't pass any resource*/{ },
             fontTextureDescriptorHandle.cpu, fontTextureDescriptorHandle.gpu);
 
         if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(SUCCEEDED(appRenderer->rendererInit(this)), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))

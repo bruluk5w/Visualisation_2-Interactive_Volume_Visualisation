@@ -193,9 +193,9 @@ PlotStatus Plot(const char* label, const PlotConfig& conf)
             IM_ASSERT(conf.values.ctrlPoints != nullptr && conf.ctrlPoints != nullptr);
             IM_ASSERT(conf.values.ctrlPoints->size() == conf.ctrlPoints->size());
             ImVec2 mouse = GetIO().MousePos;
-            ImVec2 n;
-            cursor_to_normalized_coords(mouse, n, inner_bb);
-            n.y = 1 - n.y;
+            ImVec2 normalizedMous;
+            cursor_to_normalized_coords(mouse, normalizedMous, inner_bb);
+            normalizedMous.y = 1 - normalizedMous.y;
 
             static_assert(std::is_pointer_v<decltype(conf.values.ctrlPoints)>);
             decltype(conf.values.ctrlPoints) target = conf.values.ctrlPoints;
@@ -211,7 +211,7 @@ PlotStatus Plot(const char* label, const PlotConfig& conf)
             {
                 const ::BRWL::Vec2& brwlVec = (*src)[i];
                 v = { brwlVec.x, 1 - brwlVec.y };
-                float norm2 = (n.x - v.x) * (n.x - v.x) + (n.y - v.y) * (n.y - v.y);
+                float norm2 = (normalizedMous.x - v.x) * (normalizedMous.x - v.x) + (normalizedMous.y - v.y) * (normalizedMous.y - v.y);
 
                 float ctrlPointSize = 8 * conf.ctrlPointSize;
                 ImColor col = ImColor(1.f, 1.f, 1.f, 0.5f);
@@ -236,11 +236,12 @@ PlotStatus Plot(const char* label, const PlotConfig& conf)
                     if ((mouseLeftClicked || io.MouseDown[0]))
                     {   // move control point
                         ::BRWL::Vec2& s = (*target)[selected];
-                        s.x += io.MouseDelta.x / inner_bb.GetWidth();
-                        s.y -= io.MouseDelta.y / inner_bb.GetHeight();
+                        ::BRWL::Vec2 before = s;
+                        s.x = normalizedMous.x;//io.MouseDelta.x / inner_bb.GetWidth();
+                        s.y = 1.0f-normalizedMous.y;//io.MouseDelta.y / inner_bb.GetHeight();
                         s.x = (s.x < 0 ? 0 : (s.x > 1 ? 1 : s.x));
                         s.y = (s.y < 0 ? 0 : (s.y > 1 ? 1 : s.y));
-                        *conf.values.ctrlPointsChanged = true;
+                        *conf.values.ctrlPointsChanged = s.x != before.x || s.y != before.y;
                         if (selected == 0) s.x = 0;
                         if (selected == target->size() - 1) s.x = 1;
                     }

@@ -14,8 +14,9 @@ namespace
 	}
 }
 
-void makePreintegrationTable(Image& image, float* transferFunc, unsigned int lenFunc)
+float makePreintegrationTable(Image& image, float* transferFunc, unsigned int lenFunc)
 {
+	float max = 0;
 	checkSize(image, lenFunc);
 	const size_t yStep = image.getSizeX();
 	Image::sampleT* const  table = (Image::sampleT*)image.getPtr();
@@ -26,6 +27,7 @@ void makePreintegrationTable(Image& image, float* transferFunc, unsigned int len
 		for (size_t x = y + 1; x < lenFunc; ++x)
 		{
 			lineStart[x] = (float)(sum + ((double)transferFunc[x]) * 0.5 / (double)x);
+			if (lineStart[x] > max) max = lineStart[x];
 			sum += transferFunc[x];
 		}
 	}
@@ -38,6 +40,7 @@ void makePreintegrationTable(Image& image, float* transferFunc, unsigned int len
 			lineStart[x] = table[x * yStep + y];
 		}
 	}
+	return max;
 }
 
 void makeDiagram(Image& image, float* transferFunc, unsigned int lenFunc)

@@ -7,10 +7,13 @@
 
 BRWL_RENDERER_NS
 
+
 class Visualization2Renderer;
 
 namespace PAL
 {
+
+	extern  DXGI_FORMAT g_RenderTargetFormat;
 
 	class WinRenderer : public BaseRenderer
 	{

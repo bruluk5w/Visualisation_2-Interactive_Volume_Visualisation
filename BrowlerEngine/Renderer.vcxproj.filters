@@ -23,6 +23,9 @@
       <UniqueIdentifier>{3a6da605-4282-4bb1-9f06-b8dc9178a5dd}</UniqueIdentifier>
       <Extensions>hlsl</Extensions>
     </Filter>
+    <Filter Include="Shaders\Compiled">
+      <UniqueIdentifier>{b37bc236-391e-4ab3-8efb-5268b33b42cb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Renderer\Renderer_Precomp.h">
@@ -70,6 +73,21 @@
     <ClInclude Include="Include\Renderer\PAL\DescriptorHeap.h">
       <Filter>Header Files\PAL</Filter>
     </ClInclude>
+    <ClInclude Include="Shaders\Compiled\GUI_ps.h">
+      <Filter>Shaders\Compiled</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders\Compiled\GUI_vs.h">
+      <Filter>Shaders\Compiled</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders\Compiled\PixelShader_ps.h">
+      <Filter>Shaders\Compiled</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders\Compiled\VertexShader_vs.h">
+      <Filter>Shaders\Compiled</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Renderer\MainShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Renderer\Renderer_Precomp.cpp">
@@ -93,15 +111,24 @@
     <ClCompile Include="Source\Renderer\PAL\DescriptorHeap.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Renderer\MainShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <DXCShader Include="Shaders\PixelShader.ps.hlsl">
+    <DXCShader Include="Shaders\GUI_ps.hlsl">
       <Filter>Shaders</Filter>
     </DXCShader>
-    <DXCShader Include="Shaders\VertexShader.vs.hlsl">
+    <DXCShader Include="Shaders\GUI_vs.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
+    <DXCShader Include="Shaders\PixelShader_ps.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
+    <DXCShader Include="Shaders\VertexShader_vs.hlsl">
       <Filter>Shaders</Filter>
     </DXCShader>
   </ItemGroup>

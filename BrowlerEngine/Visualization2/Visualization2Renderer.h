@@ -13,6 +13,9 @@
 #include "UI/ImGui/imgui.h"
 #endif
 
+#include "Renderer/MainShader.h"
+
+
 
 BRWL_RENDERER_NS
 
@@ -52,6 +55,8 @@ protected:
 	ComPtr<ID3D12Resource> uploadHeap;
 	ComPtr<ID3D12Fence> volumeTextureUploadFence;
 	HANDLE uploadFenceEvent;
+
+	MainShader mainShader;
 
 	bool initialized;
 };
