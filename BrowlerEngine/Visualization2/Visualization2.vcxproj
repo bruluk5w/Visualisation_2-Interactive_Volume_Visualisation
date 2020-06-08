@@ -157,7 +157,7 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR</Command>
+      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR /np</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -189,7 +189,7 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR</Command>
+      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR /np</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -225,7 +225,7 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR</Command>
+      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR /np</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|Win32'">
@@ -261,7 +261,7 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR</Command>
+      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR /np</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -297,7 +297,7 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR</Command>
+      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR /np</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">
@@ -333,7 +333,7 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR</Command>
+      <Command>robocopy "$(SolutionDir)Assets\DataSets" "$(TargetDir)Assets/DataSets" /r:5 /w:5 /PURGE /MIR /np</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

@@ -24,6 +24,23 @@ namespace PAL
 				return BRWL_CHAR_LITERAL("Failed to create descriptor heap of unknown/invalid type.");
 			}
 		}
+
+		const BRWL_CHAR* getHeapName(D3D12_DESCRIPTOR_HEAP_TYPE type)
+		{
+			switch (type) {
+			case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
+				return BRWL_CHAR_LITERAL("SRV HEAP");
+			case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
+				return BRWL_CHAR_LITERAL("SAMPLER HEAP");
+			case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
+				return BRWL_CHAR_LITERAL("RTV HEAP");
+			case D3D12_DESCRIPTOR_HEAP_TYPE_DSV:
+				return BRWL_CHAR_LITERAL("DSV HEAP");
+			default:
+				BRWL_UNREACHABLE();
+				return BRWL_CHAR_LITERAL("Failed to create descriptor heap of unknown/invalid type.");
+			}
+		}
 	}
 
 	DescriptorHeap::DescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS shaderVisibleFlag) : 
@@ -37,7 +54,15 @@ namespace PAL
 		occupied(),
 		occupiedNumAllocatedBytes(0),
 		nextOffset(0)
+#ifdef _DEBUG
+		,trackingList()
+#endif
 	{ }
+
+	DescriptorHeap::~DescriptorHeap()
+	{
+		destroy();
+	}
 
 	bool DescriptorHeap::create(ID3D12Device* device, unsigned int minNumDescriptors)
 	{
@@ -61,6 +86,7 @@ namespace PAL
 				memset(occupied.get(), 0, numDescriptors / 8);
 			}
 
+			heap->SetName(getHeapName(heapType));
 			created = true;
 		}
 		else
@@ -73,6 +99,11 @@ namespace PAL
 
 	void DescriptorHeap::destroy()
 	{
+#ifndef SUBMISSION
+		for (unsigned int  i = 0; i < occupiedNumAllocatedBytes; ++i) {
+			BRWL_EXCEPTION(occupied[i] == 0, BRWL_CHAR_LITERAL("Descriptor heap destroyed while descriptors are still away on business."));
+		}
+#endif
 		created = false;
 		full = false;
 		heap = nullptr;
@@ -84,12 +115,17 @@ namespace PAL
 			memset(occupied.get(), 0, occupiedNumAllocatedBytes);
 	}
 
-	DescriptorHeap::Handle DescriptorHeap::allocateHandle()
+	DescriptorHeap::Handle DescriptorHeap::allocateHandle(
+#ifdef _DEBUG
+		BRWL_STR name
+#endif
+	)
 	{
 		BRWL_EXCEPTION(!full, BRWL_CHAR_LITERAL("Cannot allocate another descriptor handle. Heap full."));
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpu = heap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_GPU_DESCRIPTOR_HANDLE gpu = heap->GetGPUDescriptorHandleForHeapStart();
+		size_t handleOffset = nextOffset;
 
 		{
 			const size_t byteIdx = nextOffset / 8;
@@ -115,7 +151,32 @@ namespace PAL
 		
 		if (!foundFree) full = true;
 
-		return { cpu, gpu };
+#ifdef _DEBUG
+		trackingList.push_back({ name, handleOffset });
+#endif
+
+		return { cpu, gpu , this, handleOffset,
+#ifdef _DEBUG
+			std::move(name)
+#endif
+		};
+	}
+
+	void DescriptorHeap::returnHandle(Handle& handle)
+	{
+#ifdef _DEBUG
+		auto it = std::find_if(trackingList.begin(), trackingList.end(), [&handle](TrackingEntry& e) {return e.offset == handle.offset; });
+		if (it != trackingList.end()) {
+			trackingList.erase(it);
+		}
+#endif
+
+		const size_t byteIdx = handle.offset / 8;
+		const size_t bitIdx = handle.offset - 8 * byteIdx;
+		occupied[byteIdx] &= ~(1 << bitIdx);
+		handle.cpu.ptr = handle.gpu.ptr = 0;
+		handle.owningHeap = nullptr;
+		handle.offset = 0;
 	}
 
 	ID3D12DescriptorHeap* const* DescriptorHeap::getPointerAddress()

@@ -91,6 +91,9 @@
     <ClCompile Include="Source\Common\PAL\WinStackTrace.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Common\BrwlMath.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

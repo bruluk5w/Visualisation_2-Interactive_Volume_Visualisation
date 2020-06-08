@@ -32,7 +32,7 @@ Visualization2Renderer::Visualization2Renderer() :
         },
         {
             UIResult::TransferFunction::BitDepth::BIT_DEPTH_10_BIT, // bitDepth
-            { }, // controlPoints
+            { {0,0}, {1,1} }, // controlPoints
             { 0 }, // transferFunction
             nullptr // textureID
         }
@@ -180,12 +180,17 @@ void Visualization2Renderer::render(Renderer* renderer)
         makeDiagram(pitImage.cpuImage, r.transferFunction.transferFunction, r.transferFunction.getArrayLength());
 
         // upload in draw()
-        pitImage.stagedTexture->descriptorHandle = renderer->srvHeap.allocateHandle();
+        pitImage.stagedTexture->descriptorHandle = renderer->srvHeap.allocateHandle(
+#ifdef _DEBUG
+            BRWL_CHAR_LITERAL("StagedPitTexture")
+#endif
+        );
         pitImage.stagedTexture->state = TextureResource::State::REQUESTING_UPLOAD;
 
         // set front-end request satisfied
         memcpy(v.transferFunction.transferFunction, r.transferFunction.transferFunction, sizeof(v.transferFunction.transferFunction));
         v.transferFunction.bitDepth = r.transferFunction.bitDepth;
+        v.transferFunction.controlPoints = r.transferFunction.controlPoints;
     }
 
     
@@ -208,7 +213,11 @@ void Visualization2Renderer::draw(Renderer* r)
         BRWL_EXCEPTION(dataSet.isValid(), BRWL_CHAR_LITERAL("Invalid state of data set."));
         uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr);
 
-        volumeTexture.descriptorHandle = r->srvHeap.allocateHandle();
+        volumeTexture.descriptorHandle = r->srvHeap.allocateHandle(
+#ifdef _DEBUG
+            BRWL_CHAR_LITERAL("VolumeTexture")
+#endif
+        );
         volumeTexture.state = TextureResource::State::REQUESTING_UPLOAD;
         if (!BRWL_VERIFY(LoadVolumeTexture(r->device.Get(), uploadCommandList.Get(), &dataSet, volumeTexture, uploadHeap), BRWL_CHAR_LITERAL("Failed to load the volume texture to the GPU.")))
         {   // we expect the function to clean up everything necessary
@@ -250,8 +259,11 @@ void Visualization2Renderer::draw(Renderer* r)
 
 void Visualization2Renderer::destroy()
 {
-    pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, uploadFenceEvent);
-    WaitForSingleObject(uploadFenceEvent, INFINITE);
+    if (pitImage.fence)
+    {
+        pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, uploadFenceEvent);
+        WaitForSingleObject(uploadFenceEvent, INFINITE);
+    }
 
     initialized = false;
     volumeTexture.destroy();

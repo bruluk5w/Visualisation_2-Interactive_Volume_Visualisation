@@ -17,13 +17,14 @@ struct TextureResource
 		MIN = 0
 	};
 
-	PAL::DescriptorHeap::Handle descriptorHandle = { 0, 0 };
+	PAL::DescriptorHeap::Handle descriptorHandle = { };
 	ComPtr<ID3D12Resource> texture = nullptr;
 	State state = State::UNKNOWN;
 
 	void destroy()
 	{
-		descriptorHandle = { 0, 0 };
+		descriptorHandle.destroy();
+		descriptorHandle = { };
 		texture = nullptr;
 		state = State::UNKNOWN;
 	}

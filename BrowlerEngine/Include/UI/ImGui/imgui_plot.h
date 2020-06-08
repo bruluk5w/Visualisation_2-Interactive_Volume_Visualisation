@@ -1,6 +1,7 @@
 #pragma once // (c) 2020 Lukas Brunner
-#include <cstdint>
 #include "ImGui/imgui.h"
+#include <cstdint>
+#include <vector>
 
 namespace ImGui {
 // Use this structure to pass the plot data and settings into the Plot function
@@ -25,21 +26,14 @@ struct PlotConfig {
         // colors for each plot
         const ImU32* colors = nullptr;
 
-        bool* hasClick = nullptr;
-        float* amplitude = nullptr;
-        int* idx = nullptr;
+        std::vector<BRWL::Vec2>* ctrlPoints = nullptr;
+        bool* ctrlPointsChanged;
     } values;
     struct Scale {
         // Minimum plot value
         float min;
         // Maximum plot value
         float max;
-        enum Type {
-            Linear,
-            Log10,
-        };
-        // How to scale the x-axis
-        Type type = Linear;
     } scale;
     struct Tooltip {
         bool show = false;
@@ -73,7 +67,8 @@ struct PlotConfig {
     ImTextureID texID = nullptr;
     float maxTexVal = 1;
 
-    bool collectClick = false;
+    const std::vector<BRWL::Vec2>* ctrlPoints = nullptr;
+    float ctrlPointSize = 1;
 };
 
 enum class PlotStatus {

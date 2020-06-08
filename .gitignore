@@ -42,6 +42,7 @@ BrowlerEngine/Assets/DataSets/*
 BrowlerEngine/build/**
 BrowlerEngine/Visualization2/build/**
 *.i
+BrowlerEngine/x64/**
 
 #Files for incremental linking
 *.iobj

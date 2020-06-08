@@ -12,25 +12,28 @@ namespace Splines
 		const Vec2* a = &first;
 		const Vec2* b = samples;
 		const Vec2* c = numSamples == 1 ? samples : samples + 1;
-		const Vec2* d = samples + 1;
+		const Vec2* d = numSamples > 2 ? samples + 2 : &last;
 		Vec2 delta1 = *b - *a;
 		Vec2 delta2 = *c - *b;
 		Vec2 delta3 = *d - *c;
-		float t0 = 0;
-		float t1 = std::sqrtf(std::sqrtf(delta1.x * delta1.x + delta1.y * delta1.y));
-		float preT2 = std::sqrtf(std::sqrtf(delta2.x * delta1.x + delta2.y * delta2.y));
-		float preT3 = std::sqrtf(std::sqrtf(delta3.x * delta3.x + delta3.y * delta3.y));
-		double dt = ((double)numSamples - 1.0) / ((double)numOutput - 1.0);
-		
+		double t0 = 0;
+		double t1 = std::sqrt(std::sqrt(delta1.x * delta1.x + delta1.y * delta1.y));
+		double preT2 = std::sqrt(std::sqrt(delta2.x * delta2.x + delta2.y * delta2.y));
+		double preT3 = std::sqrt(std::sqrt(delta3.x * delta3.x + delta3.y * delta3.y));
+		double numSegments = (double)numOutput * (double)delta2.x;
+		double dt = preT2 / numSegments;
 
-		float t2 = preT2 + t1;
-		float t3 = preT3 + t2;
-		double t = 0;
-		for (unsigned int i = 0; i < numSamples - 1; ++i, t+=dt)
+		double t2 = preT2 + t1;
+		double t3 = preT3 + t2;
+		double t = t1;
+		for (unsigned int i = 0; i < numOutput; ++i, t+=dt)
 		{
-			if (dt >= 1)
+			if (t >= t2)
 			{
-				dt -= 1;
+				numSegments = (double)numOutput * (double)delta2.x / (numSamples - 1.0);
+
+				t -= delta2.x;
+				dt = preT2 / numSegments;
 				a = b;
 				b = c;
 				c = d;
@@ -44,9 +47,9 @@ namespace Splines
 
 				t1 = preT2;
 				preT2 = preT3;
-				preT3 = std::sqrtf(std::sqrtf(delta3.x * delta3.x + delta3.y * delta3.y));
-				float t2 = preT2 + t1;
-				float t3 = preT3 + t2;
+				preT3 = std::sqrt(std::sqrt(delta3.x * delta3.x + delta3.y * delta3.y));
+				t2 = preT2 + t1;
+				t3 = preT3 + t2;
 			}
 
 			const double t1MinusT0 = t1 - t0;
@@ -60,7 +63,7 @@ namespace Splines
 			const double tMinusT1 = t - t1;
 			const Vec2 A1 = (float)((t1 - t) / t1MinusT0) * *a + (float)(tMinusT0 / t1MinusT0) * *b;
 			const Vec2 A2 = (float)(t2MinusT / t2MinusT1) * *b + (float)(tMinusT1 / t2MinusT1) * *c;
-			const Vec2 A3 = (float)(t3MinusT / t3MinusT2) * *c + (float)((t - t2) / t3MinusT2) * *c;
+			const Vec2 A3 = (float)(t3MinusT / t3MinusT2) * *c + (float)((t - t2) / t3MinusT2) * *d;
 
 			Vec2 B1 = (float)(t2MinusT / t2MinusT0) * A1 + (float)(tMinusT0 / t2MinusT0) * A2;
 			Vec2 B2 = (float)(t3MinusT / t3MinusT1) * A2 + (float)(tMinusT1 / t3MinusT1) * A3;

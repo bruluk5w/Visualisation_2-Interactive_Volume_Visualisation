@@ -45,7 +45,7 @@ namespace PAL
 
 		static const int			NUM_FRAMES_IN_FLIGHT = 3;
 		FrameContext				frameContext[NUM_FRAMES_IN_FLIGHT];
-		unsigned int				frameIndex;
+		size_t						frameIndex;
 		unsigned int				currentFramebufferWidth;
 		unsigned int				currentFramebufferHeight;
 
@@ -65,10 +65,12 @@ namespace PAL
 		ComPtr<IDXGISwapChain3>				swapChain = nullptr;
 		HANDLE								swapChainWaitableObject = NULL;
 		ComPtr<ID3D12Resource>				mainRenderTargetResource[numBackBuffers] = { nullptr };
-		D3D12_CPU_DESCRIPTOR_HANDLE			mainRenderTargetDescriptor[numBackBuffers] = { 0 };
+		DescriptorHeap::Handle				mainRenderTargetDescriptor[numBackBuffers] = { };
 
 		// Inherited via BaseRenderer
 		virtual void OnFramebufferResize(int width, int height) override;
+
+		DescriptorHeap::Handle fontTextureDescriptorHandle;
 	};
 }
 

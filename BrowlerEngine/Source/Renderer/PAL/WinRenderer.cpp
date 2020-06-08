@@ -38,6 +38,25 @@ namespace
 
         BRWL_UNREACHABLE();
     }
+    void HandleDeviceRemoved(HRESULT result, ID3D12Device* device, ::BRWL::Logger& logger)
+    {
+        if (BRWL_VERIFY(SUCCEEDED(result), nullptr))
+            return;
+
+        if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET)
+        {
+            // TODO: test this https://docs.microsoft.com/en-us/windows/uwp/gaming/handling-device-lost-scenarios
+            const BRWL_CHAR* msg = nullptr;
+            if (result == DXGI_ERROR_DEVICE_REMOVED) msg = BRWL_CHAR_LITERAL("DEVICE REMOVED!");
+            if (result == DXGI_ERROR_DEVICE_RESET) msg = BRWL_CHAR_LITERAL("DEVICE RESET!");
+            {
+                ::BRWL::Logger::ScopedMultiLog m(&logger, ::BRWL::Logger::LogLevel::ERROR);
+                logger.error(msg, &m);
+                logger.error(GetDeviceRemovedReasonString(device->GetDeviceRemovedReason()), &m);
+            }
+
+        }
+    }
 }
 
 BRWL_RENDERER_NS
@@ -64,7 +83,8 @@ namespace PAL
         commandList(nullptr),
         frameFence(nullptr),
         frameFenceEvent(NULL),
-        frameFenceLastValue(0)
+        frameFenceLastValue(0),
+        fontTextureDescriptorHandle{}
     {
 #ifdef DX12_ENABLE_DEBUG_LAYER
         ComPtr<ID3D12Debug> debugController0;
@@ -152,6 +172,7 @@ namespace PAL
 
     void WinRenderer::draw()
     {
+#define DR(expression) HandleDeviceRemoved(expression, device.Get(), *logger)
         if (!currentFramebufferHeight || !currentFramebufferWidth)
         {
             logger->info(BRWL_CHAR_LITERAL("Nothing to draw, framebuffer too small."));
@@ -172,10 +193,10 @@ namespace PAL
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-        commandList->Reset(frameCtxt->CommandAllocator.Get(), nullptr);
+        DR(commandList->Reset(frameCtxt->CommandAllocator.Get(), nullptr));
         commandList->ResourceBarrier(1, &barrier);
-        commandList->ClearRenderTargetView(mainRenderTargetDescriptor[backBufferIdx], (float*)&clearColor, 0, nullptr);
-        commandList->OMSetRenderTargets(1, &mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
+        commandList->ClearRenderTargetView(mainRenderTargetDescriptor[backBufferIdx].cpu, (float*)&clearColor, 0, nullptr);
+        commandList->OMSetRenderTargets(1, &mainRenderTargetDescriptor[backBufferIdx].cpu, FALSE, nullptr);
         commandList->SetDescriptorHeaps(1, srvHeap.getPointerAddress());
 
         // ========= START DRAW SCENE ========= //
@@ -204,30 +225,16 @@ namespace PAL
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
         commandList->ResourceBarrier(1, &barrier);
-        commandList->Close();
+        DR(commandList->Close());
 
         ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
         commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
         //const HRESULT result = swapChain->Present(1, 0); // Present with vsync
-        const HRESULT result = swapChain->Present(0, 0); // Present without vsync
-
-        if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET)
-        {
-            // TODO: test this https://docs.microsoft.com/en-us/windows/uwp/gaming/handling-device-lost-scenarios
-            const BRWL_CHAR* msg = nullptr;
-            if (result == DXGI_ERROR_DEVICE_REMOVED) msg = BRWL_CHAR_LITERAL("DEVICE REMOVED!");
-            if (result == DXGI_ERROR_DEVICE_RESET) msg = BRWL_CHAR_LITERAL("DEVICE RESET!");
-            {
-                Logger::ScopedMultiLog m(logger.get(), Logger::LogLevel::ERROR);
-                logger->error(msg, &m);
-                logger->error(GetDeviceRemovedReasonString(device->GetDeviceRemovedReason()), &m);
-            }
-
-        }
+        DR(swapChain->Present(0, 0)); // Present without vsync
 
         UINT64 fenceValue = frameFenceLastValue + 1;
-        commandQueue->Signal(frameFence.Get(), fenceValue);
+        DR(commandQueue->Signal(frameFence.Get(), fenceValue));
         frameFenceLastValue = fenceValue;
         frameCtxt->FenceValue = fenceValue;
 
@@ -240,6 +247,7 @@ namespace PAL
             createDevice(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
             // Output information is cached on the DXGI Factory. If it is stale we need to create a new factory.
         }
+#undef DR
     }
 
     void WinRenderer::destroy(bool force /*= false*/)
@@ -398,7 +406,11 @@ namespace PAL
 
         for (UINT i = 0; i < numBackBuffers; i++)
         {
-            mainRenderTargetDescriptor[i] = rtvHeap.allocateHandle().cpu;
+            mainRenderTargetDescriptor[i] = rtvHeap.allocateHandle(
+#ifdef _DEBUG
+                BRWL_CHAR_LITERAL("MainRenderTarget")
+#endif
+            );
         }
         
         if (!srvHeap.create(device.Get(), 300))
@@ -474,9 +486,13 @@ namespace PAL
         currentFramebufferWidth = framebufferWidth;
         currentFramebufferHeight = framebufferHeight;
 
-        DescriptorHeap::Handle srvHandleForFontTexture = srvHeap.allocateHandle();
+        fontTextureDescriptorHandle = srvHeap.allocateHandle(
+#ifdef _DEBUG
+            BRWL_CHAR_LITERAL("FontTextureDescriptor")
+#endif
+        );
         ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, /*since this is unused, we currently also don't pass any resource*/{ },
-            srvHandleForFontTexture.cpu, srvHandleForFontTexture.gpu);
+            fontTextureDescriptorHandle.cpu, fontTextureDescriptorHandle.gpu);
 
         if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(SUCCEEDED(appRenderer->rendererInit(this)), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))
         {
@@ -489,6 +505,7 @@ namespace PAL
     void WinRenderer::destroyDevice()
     {
         ImGui_ImplDX12_Shutdown();
+        fontTextureDescriptorHandle.destroy();
 
         if (appRenderer)
         {
@@ -498,7 +515,7 @@ namespace PAL
         destroyRenderTargets();
         for (UINT i = 0; i < numBackBuffers; i++)
         {
-            mainRenderTargetDescriptor[i] = { 0 };
+            mainRenderTargetDescriptor[i].destroy();
         }
 
         swapChain = nullptr;
@@ -537,7 +554,7 @@ namespace PAL
         {
             ComPtr<ID3D12Resource> pBackBuffer = nullptr;
             swapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
-            device->CreateRenderTargetView(pBackBuffer.Get(), NULL, mainRenderTargetDescriptor[i]);
+            device->CreateRenderTargetView(pBackBuffer.Get(), NULL, mainRenderTargetDescriptor[i].cpu);
             mainRenderTargetResource[i] = pBackBuffer;
             mainRenderTargetResource[i]->SetName(BRWL_CHAR_LITERAL("RenderTarget"));
         }
@@ -571,13 +588,12 @@ namespace PAL
 
     WinRenderer::FrameContext* WinRenderer::waitForNextFrameResources()
     {
-        UINT nextFrameIndex = frameIndex + 1;
-        frameIndex = nextFrameIndex;
+        ++frameIndex;
 
         HANDLE waitableObjects[] = { swapChainWaitableObject, NULL };
         DWORD numWaitableObjects = 1;
 
-        FrameContext* frameCtxt = &frameContext[nextFrameIndex % NUM_FRAMES_IN_FLIGHT];
+        FrameContext* frameCtxt = &frameContext[frameIndex % NUM_FRAMES_IN_FLIGHT];
         UINT64 fenceValue = frameCtxt->FenceValue;
         if (fenceValue != 0) // means no fence was signaled
         {
