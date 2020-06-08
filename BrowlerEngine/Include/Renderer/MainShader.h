@@ -1,9 +1,5 @@
 #pragma once
 
-#include "VertexShader_vs.h"
-#include "PixelShader_ps.h"
-
-#include "Renderer/PAL/d3dx12.h"
 
 BRWL_RENDERER_NS
 
@@ -17,7 +13,6 @@ class MainShader final
 public:
     MainShader();
     bool create(ID3D12Device* device);
-	
 
     void render();
 
