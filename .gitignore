@@ -52,8 +52,7 @@ BrowlerEngine/x64/**
 *.pdb
 
 # Compiled Shaders
-*.vs.h
-*.ps.h
+BrowlerEngine/Shaders/Compiled/**
 
 #im gui ini file
 imgui.ini
