@@ -11,8 +11,10 @@
 #include "Common/PAL/WinGlobals.h"
 #include "Core/Timer.h"
 #include "Core/BrowlerEngine.h"
+#include "Core/Hierarchy.h"
 #include "Core/ApplicationEndoints.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/Camera.h"
 
 namespace
 {

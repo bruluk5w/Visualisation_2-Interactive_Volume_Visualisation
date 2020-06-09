@@ -15,8 +15,8 @@ public:
 	AppRenderer();
 
 private:
-	bool rendererInit(PAL::WinRenderer* renderer);
-	void rendererDestroy();
+	bool rendererInit(Renderer* renderer);
+	void rendererDestroy(Renderer*);
 
 	bool initialized;
 public:
@@ -25,7 +25,7 @@ public:
 	virtual void preRender(PAL::WinRenderer* renderer) = 0;
 	virtual void render(PAL::WinRenderer* renderer) = 0;
 	virtual void draw(Renderer* renderer) = 0;
-	virtual void destroy() = 0;
+	virtual void destroy(Renderer* renderer) = 0;
 };
 
 

@@ -345,6 +345,7 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="LogHandler.h" />
+    <ClInclude Include="MainShader.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="PitImage.h">
       <SubType>
@@ -372,6 +373,7 @@
     <ClCompile Include="DataSet.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="LogHandler.cpp" />
+    <ClCompile Include="MainShader.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

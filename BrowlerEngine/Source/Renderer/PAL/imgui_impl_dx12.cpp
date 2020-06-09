@@ -197,7 +197,9 @@ void ImGui_ImplDX12_RenderDrawData(ImDrawData* draw_data, ID3D12GraphicsCommandL
         vtx_dst += cmd_list->VtxBuffer.Size;
         idx_dst += cmd_list->IdxBuffer.Size;
     }
+    range.End = (size_t)vtx_dst - (size_t)vtx_resource;
     fr->VertexBuffer->Unmap(0, &range);
+    range.End = (size_t)idx_dst - (size_t)idx_resource;
     fr->IndexBuffer->Unmap(0, &range);
 
     // Setup desired DX state

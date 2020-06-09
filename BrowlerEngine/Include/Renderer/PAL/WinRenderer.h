@@ -12,6 +12,7 @@ class Visualization2Renderer;
 
 namespace PAL
 {
+	void HandleDeviceRemoved(HRESULT result, ID3D12Device* device, ::BRWL::Logger& logger);
 
 	extern  DXGI_FORMAT g_RenderTargetFormat;
 
@@ -29,6 +30,7 @@ namespace PAL
 		virtual void draw() override;
 		virtual void destroy(bool force = true) override;
 	protected:
+
 		static const Vec4 clearColor;
 
 		ComPtr<IDXGIFactory6>	dxgiFactory;
@@ -49,9 +51,7 @@ namespace PAL
 		static const int			NUM_FRAMES_IN_FLIGHT = 3;
 		FrameContext				frameContext[NUM_FRAMES_IN_FLIGHT];
 		size_t						frameIndex;
-		unsigned int				currentFramebufferWidth;
-		unsigned int				currentFramebufferHeight;
-
+		
 
 		void createRenderTargets();
 		void destroyRenderTargets();
@@ -71,9 +71,14 @@ namespace PAL
 		DescriptorHeap::Handle				mainRenderTargetDescriptor[numBackBuffers] = { };
 
 		// Inherited via BaseRenderer
-		virtual void OnFramebufferResize(int width, int height) override;
+		virtual void OnFramebufferResize() override;
 
 		DescriptorHeap::Handle fontTextureDescriptorHandle;
+
+#ifdef _DEBUG
+		size_t frameIdxChangeListenerHandle = 0;
+		bool OnFrameIdxChange(size_t newFrameIdx) { srvHeap.setFrameIdx(newFrameIdx); srvHeap.setFrameIdx(newFrameIdx); return false; }
+#endif
 	};
 }
 

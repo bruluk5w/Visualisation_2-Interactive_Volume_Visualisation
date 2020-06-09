@@ -13,14 +13,12 @@
 #include "UI/ImGui/imgui.h"
 #endif
 
-#include "Renderer/MainShader.h"
+#include "MainShader.h"
 
 
 
 BRWL_RENDERER_NS
 
-
-class BaseRenderer;
 
 class Visualization2Renderer : public AppRenderer
 {
@@ -28,12 +26,12 @@ public:
 	Visualization2Renderer();
 
 protected:
-	virtual bool init(PAL::WinRenderer* renderer) override;
-	virtual void preRender(PAL::WinRenderer* renderer) override;
-	virtual void render(PAL::WinRenderer* renderer) override;
-	virtual void draw(PAL::WinRenderer* renderer) override;
+	virtual bool init(Renderer* renderer) override;
+	virtual void preRender(Renderer* renderer) override;
+	virtual void render(Renderer* renderer) override;
+	virtual void draw(Renderer* renderer) override;
 	// We expect that destroy is onyl called when no resources are in use
-	virtual void destroy() override;
+	virtual void destroy(Renderer* renderer) override;
 
 	void LoadFonts(float fontSize);
 

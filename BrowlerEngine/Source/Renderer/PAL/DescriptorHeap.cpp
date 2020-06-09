@@ -55,7 +55,9 @@ namespace PAL
 		occupiedNumAllocatedBytes(0),
 		nextOffset(0)
 #ifdef _DEBUG
-		,trackingList()
+		,home()
+		,away()
+		,frameIdx(0)
 #endif
 	{ }
 
@@ -152,7 +154,11 @@ namespace PAL
 		if (!foundFree) full = true;
 
 #ifdef _DEBUG
-		trackingList.push_back({ name, handleOffset });
+		auto it = std::find_if(home.begin(), home.end(), [handleOffset](TrackingEntry& e) {return e.offset == handleOffset; });
+		if (it != home.end()) {
+			home.erase(it);
+		}
+		away.push_back({ name, handleOffset, frameIdx });
 #endif
 
 		return { cpu, gpu , this, handleOffset,
@@ -165,10 +171,11 @@ namespace PAL
 	void DescriptorHeap::returnHandle(Handle& handle)
 	{
 #ifdef _DEBUG
-		auto it = std::find_if(trackingList.begin(), trackingList.end(), [&handle](TrackingEntry& e) {return e.offset == handle.offset; });
-		if (it != trackingList.end()) {
-			trackingList.erase(it);
+		auto it = std::find_if(away.begin(), away.end(), [&handle](TrackingEntry& e) {return e.offset == handle.offset; });
+		if (it != away.end()) {
+			away.erase(it);
 		}
+		home.push_back({ handle.name, handle.offset, frameIdx });
 #endif
 
 		const size_t byteIdx = handle.offset / 8;

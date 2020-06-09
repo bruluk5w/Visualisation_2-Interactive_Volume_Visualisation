@@ -38,6 +38,14 @@ namespace
 
         BRWL_UNREACHABLE();
     }
+}
+
+BRWL_RENDERER_NS
+
+
+namespace PAL
+{
+
     void HandleDeviceRemoved(HRESULT result, ID3D12Device* device, ::BRWL::Logger& logger)
     {
         if (BRWL_VERIFY(SUCCEEDED(result), nullptr))
@@ -46,6 +54,15 @@ namespace
         if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET)
         {
             // TODO: test this https://docs.microsoft.com/en-us/windows/uwp/gaming/handling-device-lost-scenarios
+            ComPtr<ID3D12DeviceRemovedExtendedData> dred;
+            BRWL_EXCEPTION(SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&dred))), nullptr);
+
+            D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT dredAutoBreadcrumbsOutput;
+            D3D12_DRED_PAGE_FAULT_OUTPUT dredPageFaultOutput;
+            BRWL_VERIFY(SUCCEEDED(dred->GetAutoBreadcrumbsOutput(&dredAutoBreadcrumbsOutput)), nullptr);
+            BRWL_VERIFY(SUCCEEDED(dred->GetPageFaultAllocationOutput(&dredPageFaultOutput)), nullptr);
+
+
             const BRWL_CHAR* msg = nullptr;
             if (result == DXGI_ERROR_DEVICE_REMOVED) msg = BRWL_CHAR_LITERAL("DEVICE REMOVED!");
             if (result == DXGI_ERROR_DEVICE_RESET) msg = BRWL_CHAR_LITERAL("DEVICE RESET!");
@@ -54,16 +71,8 @@ namespace
                 logger.error(msg, &m);
                 logger.error(GetDeviceRemovedReasonString(device->GetDeviceRemovedReason()), &m);
             }
-
         }
     }
-}
-
-BRWL_RENDERER_NS
-
-
-namespace PAL
-{
 
     DXGI_FORMAT g_RenderTargetFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 
@@ -80,8 +89,6 @@ namespace PAL
         srvHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE),
         frameContext{},
         frameIndex(0),
-        currentFramebufferWidth(0),
-        currentFramebufferHeight(0),
         commandQueue(nullptr),
         commandList(nullptr),
         frameFence(nullptr),
@@ -89,7 +96,7 @@ namespace PAL
         frameFenceLastValue(0),
         fontTextureDescriptorHandle{}
     {
-#ifdef DX12_ENABLE_DEBUG_LAYER
+#ifdef ENABLE_GRAPHICS_DEBUG_FEATURES
         ComPtr<ID3D12Debug> debugController0;
         if (BRWL_VERIFY(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController0))), BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
         {
@@ -101,13 +108,21 @@ namespace PAL
                 debugController1->SetEnableGPUBasedValidation(true);
             }
 #endif
+            ComPtr<ID3D12DeviceRemovedExtendedDataSettings> dredSettings;
+            if (BRWL_VERIFY(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(dredSettings.GetAddressOf()))), BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
+            {
+                if (dredSettings != nullptr) {
+                    dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+                    dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+                }
+            }
         }
 #endif
     }
 
     WinRenderer::~WinRenderer()
     {
-#ifdef DX12_ENABLE_DEBUG_LAYER
+#ifdef ENABLE_GRAPHICS_DEBUG_FEATURES
         ComPtr<IDXGIDebug1> pDebug;
         if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pDebug))))
         {
@@ -146,6 +161,11 @@ namespace PAL
         {
             return false;
         }
+
+#ifdef _DEBUG
+        frameIdxChangeListenerHandle = eventSystem->registerListener(Event::FRAME_IDX_CHANGE, [this](Event, void* param) {return OnFrameIdxChange(castParam<Event::FRAME_IDX_CHANGE>(param)->newFrameIdx); });
+#endif
+
         return true;
     }
 
@@ -255,6 +275,9 @@ namespace PAL
 
     void WinRenderer::destroy(bool force /*= false*/)
     {
+#ifdef _DEBUG
+        eventSystem->unregisterListener(Event::FRAME_IDX_CHANGE, frameIdxChangeListenerHandle);
+#endif
         waitForLastSubmittedFrame();
 
         BaseRenderer::destroy(force);
@@ -329,7 +352,7 @@ namespace PAL
                     // check root signature version 1_1 support
                     D3D12_FEATURE_DATA_ROOT_SIGNATURE highestVersion = { D3D_ROOT_SIGNATURE_VERSION_1_1 };
                     const BRWL_CHAR* errorMsg = nullptr;
-                    if (!SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &highestVersion, sizeof(highestVersion))), errorMsg)
+                    if (!SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &highestVersion, sizeof(highestVersion))))
                     {
                         logLvl = Logger::LogLevel::WARNING;
                         errorMsg = BRWL_CHAR_LITERAL("Rejected: No support for DX12 root signature version 1_1. Please update driver.");
@@ -360,6 +383,13 @@ namespace PAL
                 logger->error(errorMsg);
                 return false;
             }
+
+            D3D12_FEATURE_DATA_EXISTING_HEAPS dredSupport;
+            if (!SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_EXISTING_HEAPS, &dredSupport, sizeof(dredSupport))) || !dredSupport.Supported)
+            {
+                logger->warning(BRWL_CHAR_LITERAL("Device Removed Extended Data not supported on this device. Good luck!"));
+            }
+
         }
 
 #if defined(_DEBUG)
@@ -512,7 +542,7 @@ namespace PAL
 
         if (appRenderer)
         {
-            appRenderer->rendererDestroy();
+            appRenderer->rendererDestroy(static_cast<Renderer*>(this));
         }
 
         destroyRenderTargets();
@@ -655,15 +685,14 @@ namespace PAL
         assert(swapChainWaitableObject != NULL);
     }
 
-    void WinRenderer::OnFramebufferResize(int width, int height)
+    void WinRenderer::OnFramebufferResize()
     {
-        width = Utils::max(width, 1);
-        height = Utils::max(height, 1);
-        currentFramebufferWidth = width;
-        currentFramebufferHeight = height;
+        currentFramebufferWidth = Utils::max<unsigned int>(currentFramebufferWidth, 1);
+        currentFramebufferHeight = Utils::max<unsigned int>(currentFramebufferHeight, 1);
+
         waitForLastSubmittedFrame();
         ImGui_ImplDX12_InvalidateDeviceObjects();
-        resizeSwapChain(params->hWnd, width, height);
+        resizeSwapChain(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
         ImGui_ImplDX12_CreateDeviceObjects();
         preRender();
         render();

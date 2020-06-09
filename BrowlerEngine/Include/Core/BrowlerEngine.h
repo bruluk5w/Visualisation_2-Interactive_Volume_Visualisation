@@ -15,6 +15,10 @@ class Engine;
 class Timer;
 class TickProvider;
 class Logger;
+class Hierarchy;
+namespace RENDERER{
+	class Camera;
+}
 
 class MetaEngine final
 {
@@ -104,8 +108,8 @@ public:
 	std::unique_ptr<CoreEventSystem> eventSystem;
 	std::unique_ptr<Window> window;
 	std::unique_ptr<RENDERER::Renderer> renderer;
+	std::unique_ptr<Hierarchy> hierarchy;
 	//std::unique_ptr<InputManager> input;
-	//std::unique_ptr<Hierarchy> hierarchy;
 	//std::unique_ptr<MeshRegistry> meshRegistry;
 	//std::unique_ptr<TextureRegistry> textureRegistry;
 
@@ -127,6 +131,7 @@ protected:
 	TickProvider* tickProvider;
 	PlatformGlobals* globals;
 	MetaEngine::EngineRunMode runMode;
+	std::unique_ptr<RENDERER::Camera> defaultCamera;
 };
 
 BRWL_NS_END

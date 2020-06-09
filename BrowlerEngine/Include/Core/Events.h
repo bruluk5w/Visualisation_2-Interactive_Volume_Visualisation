@@ -8,6 +8,7 @@ BRWL_NS
 enum class Event {
 	WINDOW_RESIZE,
 	WINDOW_MOVE,
+	FRAME_IDX_CHANGE,
 	//KEY_F1,
 	//KEY_F2,
 	//KEY_F3,
@@ -51,9 +52,15 @@ struct WindowMoveParam
 	int dy; // the change in the y coordinate
 };
 
+struct FrameIdxChange
+{
+	size_t newFrameIdx;
+};
+
 EVENT_PARAMETER_MAP_START
 	MAP_EVENT_PARAMETER(Event, WINDOW_MOVE, WindowMoveParam)
 	MAP_EVENT_PARAMETER(Event, WINDOW_RESIZE, WindowSizeParam)
+	MAP_EVENT_PARAMETER(Event, FRAME_IDX_CHANGE, FrameIdxChange)
 EVENT_PARAMETER_MAP_END
 
 

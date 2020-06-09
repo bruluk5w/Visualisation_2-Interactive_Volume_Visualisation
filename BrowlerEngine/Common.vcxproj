@@ -46,6 +46,14 @@
     <ClInclude Include="Include\Common\PAL\BrowlerWindowsInclude.h" />
     <ClInclude Include="Include\Common\PAL\WinGlobals.h" />
     <ClInclude Include="Include\Common\PAL\WinStackTrace.h" />
+    <ClInclude Include="Include\Common\ProceduralGeometry.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="Include\Common\Quaternion.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Include\Common\Spline.h">
       <SubType>
       </SubType>
@@ -56,6 +64,10 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="Include\Common\targetver.h" />
+    <ClInclude Include="Include\Common\Transform.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Include\Common\Utilities.h" />
   </ItemGroup>
   <ItemGroup>
@@ -76,6 +88,18 @@
     <ClCompile Include="Source\Common\Logger.cpp" />
     <ClCompile Include="Source\Common\PAL\WinGlobals.cpp" />
     <ClCompile Include="Source\Common\PAL\WinStackTrace.cpp" />
+    <ClCompile Include="Source\Common\proceduralGeometry.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="Source\Common\Quaternion.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="Source\Common\Transform.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

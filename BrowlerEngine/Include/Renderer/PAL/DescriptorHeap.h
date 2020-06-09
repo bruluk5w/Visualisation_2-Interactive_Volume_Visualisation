@@ -73,8 +73,14 @@ namespace PAL
         struct TrackingEntry {
             BRWL_STR name;
             size_t offset;
+            size_t frameIdx;
         };
-        std::vector<TrackingEntry> trackingList;
+    public:
+        void setFrameIdx(size_t idx) { frameIdx = idx; }
+    private:
+        size_t frameIdx;
+        std::vector<TrackingEntry> home;
+        std::vector<TrackingEntry> away;
 #endif
     };
 

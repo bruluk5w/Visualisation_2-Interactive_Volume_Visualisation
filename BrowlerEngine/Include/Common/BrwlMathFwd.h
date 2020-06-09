@@ -9,6 +9,7 @@ namespace DirectX
 	struct XMFLOAT3A;
 	struct XMFLOAT4;
 	struct XMFLOAT4A;
+	struct XMMATRIX;
 }
 #endif
 
@@ -23,6 +24,7 @@ typedef DirectX::XMFLOAT3  Vec3;
 typedef DirectX::XMFLOAT3A Vec3a;
 typedef DirectX::XMFLOAT4  Vec4;
 typedef DirectX::XMFLOAT4A Vec4a;
+typedef DirectX::XMMATRIX Mat4;
 
 #endif
 

@@ -36,6 +36,7 @@ public:
 		unmodifiedTime(0),
 		lastUnmodifiedTime(0),
 		deltaUnmodifiedTime(),
+		frameCounter(0),
 		tickProvider(tickProvider)
 	{
 		BRWL_EXCEPTION(tickProvider != nullptr, BRWL_CHAR_LITERAL("tickProvider may not be null"));
@@ -91,10 +92,13 @@ public:
 
 	bool isRunning() { return started; }
 
+	size_t getFrameCount() const { return frameCounter; }
+
 private:
 	void onTickUpdated()
 	{
 		BRWL_EXCEPTION(started, BRWL_CHAR_LITERAL("The timer has to be started in order to call update"));
+		++frameCounter;
 		lastTick = currentTick;
 		currentTick = tickProvider->tick;
 		deltaTicks = currentTick - lastTick;
@@ -127,6 +131,7 @@ private:
 	double lastUnmodifiedTime;
 	double unmodifiedTime;
 	double deltaUnmodifiedTime;
+	size_t frameCounter;
 	TickProvider* tickProvider;
 };
 

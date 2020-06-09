@@ -212,6 +212,8 @@ void Visualization2Renderer::render(Renderer* renderer)
 bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, TextureResource& texture, ComPtr<ID3D12Resource>& uploadHeap);
 bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const Image* dataSet, TextureResource& texture, ComPtr<ID3D12Resource>& uploadHeap);
 
+#define DR(expression) PAL::HandleDeviceRemoved(expression, r->device.Get(), *r->logger)
+
 void Visualization2Renderer::draw(Renderer* r)
 {
     if (!initialized) return;
@@ -238,20 +240,20 @@ void Visualization2Renderer::draw(Renderer* r)
         };
 
         //uploadCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-        uploadCommandList->Close();
+        DR(uploadCommandList->Close());
         ID3D12CommandList* const ppCommandLists[] = { uploadCommandList.Get() };
         uploadCommandQueue->ExecuteCommandLists(1, ppCommandLists);
 
         ++volumeTextureFenceValue;
-        uploadCommandQueue->Signal(volumeTextureUploadFence.Get(), volumeTextureFenceValue);
-        volumeTextureUploadFence->SetEventOnCompletion(volumeTextureFenceValue, uploadFenceEvent);
+        DR(uploadCommandQueue->Signal(volumeTextureUploadFence.Get(), volumeTextureFenceValue));
+        DR(volumeTextureUploadFence->SetEventOnCompletion(volumeTextureFenceValue, uploadFenceEvent));
         WaitForSingleObject(uploadFenceEvent, INFINITE);
         volumeTexture.state = TextureResource::State::RESIDENT;
     }
 
     if (pitImage.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD)
     {
-        uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr);
+        DR(uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr));
 
         //pitImage.stagedTexture->descriptorHandle = r->srvHeap.allocateHandle();
         if (!BRWL_VERIFY(LoadFloatTexture2D(r->device.Get(), uploadCommandList.Get(), &pitImage.cpuImage, *pitImage.stagedTexture, uploadHeap), BRWL_CHAR_LITERAL("Failed to load the pitImage texture to the GPU.")))
@@ -260,25 +262,24 @@ void Visualization2Renderer::draw(Renderer* r)
         };
 
         //uploadCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pitImage.stagedTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-        uploadCommandList->Close();
+        DR(uploadCommandList->Close());
         ID3D12CommandList* const ppCommandLists[] = { uploadCommandList.Get() };
         uploadCommandQueue->ExecuteCommandLists(1, ppCommandLists);
 
         ++pitImage.uploadFenceValue;
-        uploadCommandQueue->Signal(pitImage.fence.Get(), pitImage.uploadFenceValue);
+        DR(uploadCommandQueue->Signal(pitImage.fence.Get(), pitImage.uploadFenceValue));
         // instead of waiting here, we check the completion state in render()
     }
 }
 
-void Visualization2Renderer::destroy()
+void Visualization2Renderer::destroy(Renderer* r)
 {
-    mainShader.destroy();
-
     if (pitImage.fence)
     {
-        pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, uploadFenceEvent);
+        DR(pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, uploadFenceEvent));
         WaitForSingleObject(uploadFenceEvent, INFINITE);
     }
+    mainShader.destroy();
 
     initialized = false;
     volumeTexture.destroy();

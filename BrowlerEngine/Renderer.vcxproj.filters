@@ -85,7 +85,7 @@
     <ClInclude Include="Shaders\Compiled\VertexShader_vs.h">
       <Filter>Shaders\Compiled</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Renderer\MainShader.h">
+    <ClInclude Include="Include\Renderer\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -111,7 +111,7 @@
     <ClCompile Include="Source\Renderer\PAL\DescriptorHeap.cpp">
       <Filter>Source Files\PAL</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Renderer\MainShader.cpp">
+    <ClCompile Include="Source\Renderer\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

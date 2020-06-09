@@ -4,6 +4,7 @@
 #include "AppRenderer.h"
 
 #include "PAL/WinRenderer.h"
+#include "Camera.h"
 
 BRWL_RENDERER_NS
 
@@ -15,7 +16,9 @@ BaseRenderer::BaseRenderer(EventBusSwitch<Event>* eventSystem, PlatformGlobals* 
 	logger(nullptr),
 	globals(globals),
 	params(nullptr),
-	appRenderer(nullptr)
+	appRenderer(nullptr),
+	currentFramebufferWidth(0),
+	currentFramebufferHeight(0)
 { }
 
 BaseRenderer::~BaseRenderer()
@@ -42,7 +45,9 @@ bool BaseRenderer::init(const RendererParameters params)
 		windowResizeEventHandle = eventSystem->registerListener(Event::WINDOW_RESIZE, [this](Event, void* param) -> bool
 			{
 				logger->info(BRWL_CHAR_LITERAL("Resizing Framebuffer"));
-				OnFramebufferResize(castParam<Event::WINDOW_RESIZE>(param)->width, castParam<Event::WINDOW_RESIZE>(param)->height);
+				currentFramebufferWidth = castParam<Event::WINDOW_RESIZE>(param)->width;
+				currentFramebufferHeight = castParam<Event::WINDOW_RESIZE>(param)->height;
+				OnFramebufferResize();
 				return false;
 			});
 
@@ -94,9 +99,23 @@ void BaseRenderer::destroy(bool force /*= false*/)
 		BRWL_CHECK(success, BRWL_CHAR_LITERAL("Failed to unregister a listener!"));
 		if (appRenderer)
 		{
-			appRenderer->rendererDestroy();
+			appRenderer->rendererDestroy(static_cast<Renderer*>(this));
 		}
 		initialized = false;
+	}
+}
+
+void BaseRenderer::setCamera(Camera* newCamera)
+{
+	camera = newCamera;
+	if (camera != nullptr) {
+		Logger::ScopedMultiLog ml(logger.get(), Logger::LogLevel::INFO);
+		logger->info(BRWL_CHAR_LITERAL("Active camera changed to: "), &ml);
+		logger->info(camera->getName().c_str(), &ml);
+	}
+	else
+	{
+		logger->warning(BRWL_CHAR_LITERAL("Camera has been removed!"));
 	}
 }
 

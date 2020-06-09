@@ -11,13 +11,13 @@ BRWL_NS
 
 class Logger;
 
-
 BRWL_NS_END
 
 BRWL_RENDERER_NS
 
 
 class AppRenderer;
+class Camera;
 
 class BaseRenderer
 {
@@ -39,17 +39,24 @@ public:
 		if (appRenderer) appRenderer = nullptr;
 		appRenderer = std::make_shared<AppRendererT>(std::forward<Types>(args)...);
 	}
-
+	void setCamera(Camera* newCamera);
+	const Camera* getCamera() const { return camera; }
+	void getFrameBufferSize(unsigned int& width, unsigned int& height) { width = currentFramebufferWidth; height = currentFramebufferHeight; }
 protected:
-	virtual void OnFramebufferResize(int width, int height) = 0;
+	virtual void OnFramebufferResize() = 0;
 
-	bool initialized;
-	EventBusSwitch<Event>* eventSystem;
-	size_t windowResizeEventHandle;
-	std::shared_ptr<Logger> logger;
-	PlatformGlobals* globals;
+	bool							initialized;
+	EventBusSwitch<Event>*			eventSystem;
+	size_t							windowResizeEventHandle;
+	std::shared_ptr<Logger>			logger;
+	PlatformGlobals*				globals;
 	std::unique_ptr<RendererParameters> params;
-	std::shared_ptr<AppRenderer> appRenderer;
+	std::shared_ptr<AppRenderer>	appRenderer;
+	Camera*							camera;
+	unsigned int					currentFramebufferWidth;
+	unsigned int					currentFramebufferHeight;
+
+
 };
 
 

@@ -7,26 +7,26 @@ AppRenderer::AppRenderer() :
 	initialized(false)
 { }
 
-bool AppRenderer::rendererInit(PAL::WinRenderer* renderer)
+bool AppRenderer::rendererInit(Renderer* renderer)
 {
 	if (!initialized)
 	{
 		initialized = init(renderer);
 		if (!initialized)
 		{
-			destroy();
+			destroy(renderer);
 		}
 	}
 
 	return initialized;
 }
 
-void AppRenderer::rendererDestroy()
+void AppRenderer::rendererDestroy(Renderer* renderer)
 {
 	if (initialized)
 	{
 		initialized = false;
-		destroy();
+		destroy(renderer);
 	}
 }
 

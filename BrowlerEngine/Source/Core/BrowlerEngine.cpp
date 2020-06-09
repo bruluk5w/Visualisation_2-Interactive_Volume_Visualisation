@@ -4,6 +4,8 @@
 #include "Timer.h"
 #include "Window.h"
 #include "Renderer/Renderer.h"
+#include "Hierarchy.h"
+#include "Renderer/Camera.h"
 
 
 BRWL_NS
@@ -59,12 +61,23 @@ void Engine::threadDestroy()
 
 void Engine::update()
 {
+	FrameIdxChange param{ time->getFrameCount() };
+	eventSystem->postEvent<Event::FRAME_IDX_CHANGE>(&param);
 	if (window && runMode == MetaEngine::EngineRunMode::DETATCHED)
 	{	// only process messages if they are not receiving them from the parent window
 		window->processPlatformMessages();
 	}
 
 	if (renderer && renderer->isInitialized()) {
+		hierarchy->update();
+		if (renderer->getCamera() == nullptr)
+		{
+			unsigned int width, height;
+			renderer->getFrameBufferSize(width, height);
+			defaultCamera = std::make_unique<RENDERER::Camera>((int)width, (int)height, 75.0f, 0.1f, 500.0f, BRWL_CHAR_LITERAL("Default Camera"));
+			renderer->setCamera(defaultCamera.get());
+		}
+
 		renderer->preRender();
 		renderer->render();
 		renderer->draw();
@@ -85,6 +98,7 @@ bool Engine::shouldClose()
 void Engine::close()
 {	
 	isInitialized = false;
+
 	if (time) time->stop();
 
 	//// Input
@@ -94,8 +108,8 @@ void Engine::close()
 	//	input = nullptr;
 	//}
 
-	//// Hierarchy
-	//hierarchy = nullptr;
+	// Hierarchy
+	hierarchy = nullptr;
 
 	//// Mesh Registry
 	//if (meshRegistry) {
@@ -111,6 +125,8 @@ void Engine::close()
 
 	if (renderer)
 	{
+		if (renderer->getCamera() == defaultCamera.get())
+			renderer->setCamera(nullptr);
 		renderer = nullptr;
 	}
 
@@ -186,8 +202,8 @@ bool Engine::internalInit(const char* settingsFile)
 	//meshRegistry = std::make_unique<MeshRegistry>();
 	//meshRegistry->setLogger(logger);
 
-	//// Hierarchy
-	//hierarchy = std::make_unique<Hierarchy>();
+	// Hierarchy
+	hierarchy = std::make_unique<Hierarchy>();
 
 
 

@@ -16,4 +16,9 @@ template<> template<> bool Translator<Event>::translateMessage<Event::WINDOW_RES
 }
 
 
+template<> template<> bool Translator<Event>::translateMessage<Event::FRAME_IDX_CHANGE>(void* param)
+{
+	return static_cast<EventBusSwitch<RENDERER::Event>*>(engine->eventSystem.get())->postEventLocal<RENDERER::Event::FRAME_IDX_CHANGE>(param);
+}
+
 BRWL_NS_END
