@@ -129,7 +129,7 @@ namespace ProceduralGeometry
 		vertices[4 * (nSegments + 1)] = { { 0,  height, 0 }, {0.5f, 0.5f} };
 		vertices[4 * (nSegments + 1) + 1] = { { 0, -height, 0 },  {0.5f, 0.5f} };
 
-		for (int i = 0; i < nSegments; ++i)
+		for (unsigned int i = 0; i < nSegments; ++i)
 		{
 			const Vec3 normal(cos(i * angle), 0, sin(i * angle));
 			const float normalizedX = (float)i / (float)nSegments;

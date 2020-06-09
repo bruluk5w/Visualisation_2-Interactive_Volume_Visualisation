@@ -10,22 +10,6 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/Camera.h"
 
-namespace {
-    struct DrawData {
-        ::BRWL::Vec3 pos;
-        ::BRWL::Vec2 uv;
-        ::BRWL::Vec4 col;
-    };
-    const DrawData quad[] = {
-        { { 0, 0, 0},{0,0},{1.0f, 1.0f, 1.0f, 1.0f}},
-        { { 1, 0, 0},{0,0},{1.0f, 1.0f, 1.0f, 1.0f}},
-        { { 1, 1, 0},{0,0},{1.0f, 1.0f, 1.0f, 1.0f}},
-        { { 1, 0, 0},{0,0},{1.0f, 1.0f, 1.0f, 1.0f}},
-        { { 1, 1, 0},{0,0},{1.0f, 1.0f, 1.0f, 1.0f}},
-        { { 1, 0, 0},{0,0},{1.0f, 1.0f, 1.0f, 1.0f}}
-    };
-}
-
 BRWL_RENDERER_NS
 
 
@@ -101,7 +85,7 @@ bool MainShader::create(ID3D12Device* device)
             return false;
         }
 
-        if (!BRWL_VERIFY(SUCCEEDED(device->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(rootSignature.GetAddressOf()))), BRWL_CHAR_LITERAL("Failed to create root signature")))
+        if (!BRWL_VERIFY(SUCCEEDED(device->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&rootSignature))), BRWL_CHAR_LITERAL("Failed to create root signature")))
         {
             destroy();
             return false;
@@ -122,13 +106,13 @@ bool MainShader::create(ID3D12Device* device)
     psoDesc.PS = { PixelShader_ps_ps, sizeof(PixelShader_ps_ps) };
 
     // Create the input layout
-    static D3D12_INPUT_ELEMENT_DESC local_layout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,   0, (UINT)offsetof(DrawData, pos), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (UINT)offsetof(DrawData, uv),  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, (UINT)offsetof(DrawData, col), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+    static D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,   0, (UINT)offsetof(VertexData, position), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (UINT)offsetof(VertexData, uv),  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        //{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, (UINT)offsetof(VertexData, col), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     };
 
-    psoDesc.InputLayout = { local_layout, 3 };
+    psoDesc.InputLayout = { inputLayout, countof(inputLayout) };
 
 
     // Create the blending setup
@@ -174,7 +158,7 @@ bool MainShader::create(ID3D12Device* device)
         desc.BackFace = desc.FrontFace;
     }
 
-    if (!BRWL_VERIFY(SUCCEEDED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(pipelineState.GetAddressOf()))), BRWL_CHAR_LITERAL("Failed to create pipeline state.")))
+    if (!BRWL_VERIFY(SUCCEEDED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState))), BRWL_CHAR_LITERAL("Failed to create pipeline state.")))
     {
         destroy();
         return false;
@@ -183,7 +167,7 @@ bool MainShader::create(ID3D12Device* device)
     {
         std::vector<VertexData> tris;
         ProceduralGeometry::makeQuad(1, 1, tris);
-        viewingPlane.vertexBufferLength = tris.size();
+        viewingPlane.vertexBufferLength = (unsigned int)tris.size();
 
         BRWL_CHECK(viewingPlane.vertexBuffer == nullptr, nullptr);
         D3D12_HEAP_PROPERTIES heapProperties;
@@ -204,7 +188,7 @@ bool MainShader::create(ID3D12Device* device)
         desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
         desc.Flags = D3D12_RESOURCE_FLAG_NONE;
         if (!BRWL_VERIFY(SUCCEEDED(device->CreateCommittedResource(
-            &heapProperties, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, IID_PPV_ARGS(viewingPlane.vertexBuffer.GetAddressOf()))), nullptr))
+            &heapProperties, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, IID_PPV_ARGS(&viewingPlane.vertexBuffer))), nullptr))
         {
             destroy();
             return false;
@@ -239,45 +223,50 @@ void MainShader::render()
 
 void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd)
 {
-    setupRenderState(cmd)
-    //// Setup desired DX state
-    //ImGui_ImplDX12_SetupRenderState(draw_data, ctx, fr);
+    setupRenderState(cmd);
 
-    //// Render command lists
-    //// (Because we merged all buffers into a single one, we maintain our own offset into them)
+    // Render command lists
+    // (Because we merged all buffers into a single one, we maintain our own offset into them)
     //int global_vtx_offset = 0;
     //int global_idx_offset = 0;
     //ImVec2 clip_off = draw_data->DisplayPos;
     //for (int n = 0; n < draw_data->CmdListsCount; n++)
     //{
-    //    const ImDrawList* cmd_list = draw_data->CmdLists[n];
-    //    for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
-    //    {
-    //        const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-    //        if (pcmd->UserCallback != NULL)
-    //        {
-    //            // User callback, registered via ImDrawList::AddCallback()
-    //            // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
-    //            if (pcmd->UserCallback == ImDrawCallback_ResetRenderState)
-    //                ImGui_ImplDX12_SetupRenderState(draw_data, ctx, fr);
-    //            else
-    //                pcmd->UserCallback(cmd_list, pcmd);
-    //        }
-    //        else
-    //        {
-    //            if (pcmd->ClipRect.z <= 0 || pcmd->ClipRect.x >= draw_data->DisplaySize.x || pcmd->ClipRect.w <= 0 || pcmd->ClipRect.y >= draw_data->DisplaySize.y ||
-    //                pcmd->ClipRect.x == pcmd->ClipRect.z || pcmd->ClipRect.y == pcmd->ClipRect.w)
-    //                continue;
-    //            // Apply Scissor, Bind texture, Draw
-    //            const D3D12_RECT r = { (LONG)(pcmd->ClipRect.x - clip_off.x), (LONG)(pcmd->ClipRect.y - clip_off.y), (LONG)(pcmd->ClipRect.z - clip_off.x), (LONG)(pcmd->ClipRect.w - clip_off.y) };
-    //            ctx->SetGraphicsRootDescriptorTable(1, *(D3D12_GPU_DESCRIPTOR_HANDLE*)&pcmd->TextureId);
-    //            ctx->RSSetScissorRects(1, &r);
-    //            ctx->DrawIndexedInstanced(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);
-    //        }
-    //    }
-    //    global_idx_offset += cmd_list->IdxBuffer.Size;
-    //    global_vtx_offset += cmd_list->VtxBuffer.Size;
+        //const ImDrawList* cmd_list = draw_data->CmdLists[n];
+        //for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
+        //{
+        //    const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+        //    if (pcmd->UserCallback != NULL)
+        //    {
+        //        // User callback, registered via ImDrawList::AddCallback()
+        //        // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
+        //        if (pcmd->UserCallback == ImDrawCallback_ResetRenderState)
+        //            ImGui_ImplDX12_SetupRenderState(draw_data, ctx, fr);
+        //        else
+        //            pcmd->UserCallback(cmd_list, pcmd);
+        //    }
+        //    else
+        //    {
+        //        if (pcmd->ClipRect.z <= 0 || pcmd->ClipRect.x >= draw_data->DisplaySize.x || pcmd->ClipRect.w <= 0 || pcmd->ClipRect.y >= draw_data->DisplaySize.y ||
+        //            pcmd->ClipRect.x == pcmd->ClipRect.z || pcmd->ClipRect.y == pcmd->ClipRect.w)
+        //            continue;
+                // Apply Scissor, Bind texture, Draw
+                //const D3D12_RECT r = { (LONG)(pcmd->ClipRect.x - clip_off.x), (LONG)(pcmd->ClipRect.y - clip_off.y), (LONG)(pcmd->ClipRect.z - clip_off.x), (LONG)(pcmd->ClipRect.w - clip_off.y) };
+                //cmd->SetGraphicsRootDescriptorTable(1, *(D3D12_GPU_DESCRIPTOR_HANDLE*)&pcmd->TextureId);
+                //ctx->RSSetScissorRects(1, &r);
+                //cmd->DrawIndexedInstanced(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);
+        //    }
+        //}
+        //global_idx_offset += cmd_list->IdxBuffer.Size;
+        //global_vtx_offset += cmd_list->VtxBuffer.Size;  
     //}
+
+
+
+
+    // set a texture
+    //cmd->SetGraphicsRootDescriptorTable(1, *(D3D12_GPU_DESCRIPTOR_HANDLE*)&pcmd->TextureId);
+    cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
 }
 
 void MainShader::destroy()

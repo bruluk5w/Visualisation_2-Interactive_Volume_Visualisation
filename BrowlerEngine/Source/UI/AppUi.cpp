@@ -165,7 +165,7 @@ int UIResult::TransferFunction::getArrayLength() const
 
 void UIResult::TransferFunction::updateFunction()
 {
-    const size_t numPoints = controlPoints.size();
+    const int numPoints = (int)controlPoints.size();
     if (!BRWL_VERIFY(numPoints >= 2, nullptr)) return;
 
     // evaluate the spline at non-uniform locations
@@ -284,7 +284,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
             Checkbox(" Show Tooltip in Graph", &showCoordinatesTooltip); 
             thread_local float ctrlPtointScale = 1;
             SLIDER_FIX(3);
-            Text("Control Point Size: "), SameLine(); SliderFloat("", &ctrlPtointScale, 0.2, 3);
+            Text("Control Point Size: "), SameLine(); SliderFloat("", &ctrlPtointScale, 0.2f, 3.f);
             SLIDER_FIX_END();
            fitWindow = Button(" Fit Window");
 
@@ -322,7 +322,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
             {
                 conf.useBackGroundTextrue = true;
                 conf.texID = values.transferFunction.textureID;
-                conf.maxTexVal = texSideLength;
+                conf.maxTexVal = (float)texSideLength;
             }
 
             ImGui::Plot("plot1", conf);

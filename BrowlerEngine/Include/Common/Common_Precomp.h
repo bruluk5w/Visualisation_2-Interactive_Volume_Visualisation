@@ -37,7 +37,6 @@ namespace PAL {
 #include <wrl/client.h>
 #include <d3d12.h>
 #include <dxgi1_6.h>
-#include <d3dcompiler.h>
 #ifndef SUBMISSION
 #define ENABLE_GRAPHICS_DEBUG_FEATURES
 #include <dxgidebug.h>

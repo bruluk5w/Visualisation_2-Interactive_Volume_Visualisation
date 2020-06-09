@@ -86,7 +86,7 @@ bool Visualization2Renderer::init(Renderer* r)
         }
     }
 
-    if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(uploadCommandAllocator.ReleaseAndGetAddressOf()))), BRWL_CHAR_LITERAL("Failed to create direct command allocator.")))
+    if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&uploadCommandAllocator))), BRWL_CHAR_LITERAL("Failed to create direct command allocator.")))
     {
         return false;
     }
@@ -187,11 +187,11 @@ void Visualization2Renderer::render(Renderer* renderer)
         float max = makePreintegrationTable(pitImage.cpuImage, r.transferFunction.transferFunction, r.transferFunction.getArrayLength());
         
         // upload in draw()
-        pitImage.stagedTexture->descriptorHandle = renderer->srvHeap.allocateHandle(
-#ifdef _DEBUG
-            BRWL_CHAR_LITERAL("StagedPitTexture")
-#endif
-        );
+        //pitImage.stagedTexture->descriptorHandle = renderer->srvHeap.allocateHandle(
+//#ifdef _DEBUG
+//            BRWL_CHAR_LITERAL("StagedPitTexture")
+//#endif
+//        );
         pitImage.stagedTexture->state = TextureResource::State::REQUESTING_UPLOAD;
 
         // set front-end request satisfied
@@ -255,7 +255,11 @@ void Visualization2Renderer::draw(Renderer* r)
     {
         DR(uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr));
 
-        //pitImage.stagedTexture->descriptorHandle = r->srvHeap.allocateHandle();
+        pitImage.stagedTexture->descriptorHandle = r->srvHeap.allocateHandle(
+#ifdef _DEBUG
+                BRWL_CHAR_LITERAL("StagedPitTexture")
+#endif
+        );
         if (!BRWL_VERIFY(LoadFloatTexture2D(r->device.Get(), uploadCommandList.Get(), &pitImage.cpuImage, *pitImage.stagedTexture, uploadHeap), BRWL_CHAR_LITERAL("Failed to load the pitImage texture to the GPU.")))
         {   // we expect the function to clean up everything necessary
             return;
@@ -279,6 +283,7 @@ void Visualization2Renderer::destroy(Renderer* r)
         DR(pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, uploadFenceEvent));
         WaitForSingleObject(uploadFenceEvent, INFINITE);
     }
+
     mainShader.destroy();
 
     initialized = false;

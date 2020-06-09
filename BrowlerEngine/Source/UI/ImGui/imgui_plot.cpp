@@ -301,7 +301,7 @@ PlotStatus Plot(const char* label, const PlotConfig& conf)
                 }
             }
 
-            float fSelectionStep = 1.0 / item_count;
+            float fSelectionStep = 1.0f / item_count;
             ImVec2 pos0 = ImLerp(inner_bb.Min, inner_bb.Max,
                 ImVec2(fSelectionStep * *conf.selection.start, 0.f));
             ImVec2 pos1 = ImLerp(inner_bb.Min, inner_bb.Max,

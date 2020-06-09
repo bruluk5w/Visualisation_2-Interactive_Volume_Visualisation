@@ -109,7 +109,7 @@ namespace PAL
             }
 #endif
             ComPtr<ID3D12DeviceRemovedExtendedDataSettings> dredSettings;
-            if (BRWL_VERIFY(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(dredSettings.GetAddressOf()))), BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
+            if (BRWL_VERIFY(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings))), BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
             {
                 if (dredSettings != nullptr) {
                     dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
@@ -308,7 +308,7 @@ namespace PAL
 #endif
         ComPtr<IDXGIFactory2> dxgiFactory2;
 
-        if (!BRWL_VERIFY(CreateDXGIFactory2(flags, IID_PPV_ARGS(dxgiFactory2.ReleaseAndGetAddressOf())) == S_OK, BRWL_CHAR_LITERAL("Failed to create DXGIFactory2.")))
+        if (!BRWL_VERIFY(CreateDXGIFactory2(flags, IID_PPV_ARGS(&dxgiFactory2)) == S_OK, BRWL_CHAR_LITERAL("Failed to create DXGIFactory2.")))
         {
             return false;
         }
@@ -335,7 +335,7 @@ namespace PAL
         {
             ComPtr<IDXGIAdapter4> dxgiAdapter4;
             HRESULT enumerationResult;
-            for (unsigned int i = 0; (enumerationResult = dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(dxgiAdapter4.ReleaseAndGetAddressOf()))) == S_OK; ++i)
+            for (unsigned int i = 0; (enumerationResult = dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&dxgiAdapter4))) == S_OK; ++i)
             {
                 DXGI_ADAPTER_DESC1 desc;
                 if (!BRWL_VERIFY(SUCCEEDED(dxgiAdapter4->GetDesc1(&desc)), BRWL_CHAR_LITERAL("Failed to get adapter description.")))
@@ -346,7 +346,7 @@ namespace PAL
                 if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) continue;
 
                 // Create device and keep it if it supports the requested feature level
-                if (BRWL_VERIFY(SUCCEEDED(D3D12CreateDevice(dxgiAdapter.Get(), featureLevel, IID_PPV_ARGS(device.ReleaseAndGetAddressOf()))), BRWL_CHAR_LITERAL("Failed to create D3D12Device.")))
+                if (BRWL_VERIFY(SUCCEEDED(D3D12CreateDevice(dxgiAdapter.Get(), featureLevel, IID_PPV_ARGS(&device))), BRWL_CHAR_LITERAL("Failed to create D3D12Device.")))
                 {
                     Logger::LogLevel logLvl = Logger::LogLevel::INFO;
                     // check root signature version 1_1 support

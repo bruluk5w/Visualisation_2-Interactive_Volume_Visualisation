@@ -38,7 +38,7 @@ private:
 
         ComPtr<ID3D12Resource> vertexBuffer;
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
-        size_t vertexBufferLength;
+        unsigned int vertexBufferLength;
     };
 
     TriangleList viewingPlane;

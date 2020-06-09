@@ -14,10 +14,10 @@
 #pragma once
 
 //---- Define assertion handler. Defaults to calling assert().
-// If your macro uses multiple statements, make sure is enclosed in a 'do { .. } while (0)' block so it can be used as a single statement.
-#define IM_ASSERT(_EXPR)  BRWL_EXCEPTION(_EXPR, BRWL_CHAR_LITERAL("An assertion in Dear ImGui has been triggered."))
 #ifdef SUBMISSION
 #define IM_ASSERT(_EXPR)  ((void)(_EXPR))     // Disable asserts
+#else
+#define IM_ASSERT(_EXPR)  BRWL_EXCEPTION(_EXPR, BRWL_CHAR_LITERAL("An assertion in Dear ImGui has been triggered."))
 #endif
 
 //---- Define attributes of all API symbols declarations, e.g. for DLL under Windows
