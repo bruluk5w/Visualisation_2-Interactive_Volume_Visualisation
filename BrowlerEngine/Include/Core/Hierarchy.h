@@ -5,9 +5,6 @@
 BRWL_NS
 
 
-
-//#include "Quaternion.h"
-
 class Hierarchy
 {
 public:
@@ -20,7 +17,7 @@ public:
 	}
 
 private:
-	void update(Transform* parent, bool parentChanged);
+	void update(Transform* parent, bool parentChanged, uint64_t parentGlobalHash);
 	Transform root;
 };
 

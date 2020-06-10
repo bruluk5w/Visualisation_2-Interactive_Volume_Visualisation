@@ -6,7 +6,9 @@
 #include "Common/GlobalsFwd.h"
 #include "WindowFwd.h"
 #include "Renderer/RendererFwd.h"
+#include "IUpdatable.h"
 #include <mutex>
+#include <vector>
 
 BRWL_NS
 
@@ -16,6 +18,7 @@ class Timer;
 class TickProvider;
 class Logger;
 class Hierarchy;
+class InputManager;
 namespace RENDERER{
 	class Camera;
 }
@@ -36,15 +39,15 @@ public:
 	~MetaEngine();
 
 	void initialize();
-
 	// Run a single step of each engine in which is not in DETACHED mode
 	void update();
 private:
 	// Runs an independent loop for engines which are in DETACHED mode
 	struct EngineData;
 	void detachedRun(EngineData* engine);
-
 public:
+	void shutDown();
+
 	bool createEngine(EngineHandle& handle, const char* settingsFile = nullptr);
 	void setEngineRunMode(EngineHandle handle, EngineRunMode runMode);
 	EngineHandle getDefaultEngineHandle() { return defaultEngineHandle; }
@@ -52,7 +55,6 @@ public:
 	// Only use this 
 	Engine* getEngine(EngineHandle handle);
 
-	void shutDown();
 protected:
 	bool checkHandle(EngineHandle handle, const BRWL_CHAR*& errorMsg);
 
@@ -80,6 +82,7 @@ class Engine
 public:
 	Engine(TickProvider* tickProvider, PlatformGlobals* globals);
 	~Engine();
+
 	// Called from the thread which is initally creating the Engine
 	bool init(const char* settingsFile);
 	// Called from the thread which will also subsequently call the update method
@@ -87,14 +90,26 @@ public:
 	// Called from the thread which called threadInit
 	void threadDestroy();
 	// Returns true if "init" and "threadInit" succeeded and "close" has not yet been called
-	bool IsInitialized() const { return isInitialized; }
+	bool isInitialized() const { return initialized; }
 	void update();
 	void shutdown();
 	bool shouldClose();
 	// this one should acutally only be called by the main function
 	void close();
 
-
+	// TODO: return managed handles in order to be able to also remove them on demand
+	template<typename UpdatableT, class... Types>
+	void createUpdatable(Types&&... args)
+	{
+		static_assert(std::is_base_of_v<IUpdatable, UpdatableT>);
+		std::scoped_lock(updatablesMutex);
+		updatables.emplace_back(nullptr);
+		updatables.back() = std::make_unique<UpdatableT>(std::forward<Types>(args)...);
+		if (initialized)
+		{
+			updatables.back()->init();
+		}
+	}
 
 	// convenience functions for logging
 	void LogDebug(const BRWL_CHAR* msg);
@@ -109,9 +124,8 @@ public:
 	std::unique_ptr<Window> window;
 	std::unique_ptr<RENDERER::Renderer> renderer;
 	std::unique_ptr<Hierarchy> hierarchy;
-	//std::unique_ptr<InputManager> input;
-	//std::unique_ptr<MeshRegistry> meshRegistry;
-	//std::unique_ptr<TextureRegistry> textureRegistry;
+	std::unique_ptr<InputManager> input;
+	
 
 	MetaEngine::EngineRunMode getRunMode() const { return runMode; }
 
@@ -127,11 +141,13 @@ public:
 protected:
 	bool internalInit(const char* settingsFile);
 	
-	bool isInitialized;
+	bool initialized;
 	TickProvider* tickProvider;
 	PlatformGlobals* globals;
 	MetaEngine::EngineRunMode runMode;
 	std::unique_ptr<RENDERER::Camera> defaultCamera;
+	std::mutex updatablesMutex;
+	std::vector<std::unique_ptr<IUpdatable>> updatables;
 };
 
 BRWL_NS_END

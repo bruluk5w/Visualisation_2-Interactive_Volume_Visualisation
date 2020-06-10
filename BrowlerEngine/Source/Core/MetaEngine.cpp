@@ -115,7 +115,7 @@ void MetaEngine::update()
 			//{
 			//	thread = std::make_unique<Thread<void>>([this, &engineData] {
 			//		engine = engineData->engine.get();  // set (per thread) global pointer to currently running engine
-			//		if (!engine->IsInitialized())
+			//		if (!engine->isInitialized())
 			//		{
 			//			engine->threadInit();
 			//		}
@@ -175,7 +175,7 @@ void MetaEngine::detachedRun(EngineData* engineData)
 {
 	engine = engineData->engine.get();  // set (per thread) global pointer to currently running engine
 
-	if (!engine->IsInitialized())
+	if (!engine->isInitialized())
 	{
 		engine->threadInit();
 	}

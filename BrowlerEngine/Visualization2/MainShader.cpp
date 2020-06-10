@@ -112,7 +112,7 @@ bool MainShader::create(ID3D12Device* device)
         //{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, (UINT)offsetof(VertexData, col), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     };
 
-    psoDesc.InputLayout = { inputLayout, countof(inputLayout) };
+    psoDesc.InputLayout = { inputLayout, (unsigned int)countof(inputLayout) };
 
 
     // Create the blending setup
@@ -216,14 +216,17 @@ bool MainShader::create(ID3D12Device* device)
 
 void MainShader::render()
 {
-    //if (!initialized) return;
+    if (!initialized) return;
     //if (vertexBuffer == nullptr)
-
 }
 
 void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd)
 {
     setupRenderState(cmd);
+
+    cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
+    // set a texture
+    //cmd->SetGraphicsRootDescriptorTable(1, *(D3D12_GPU_DESCRIPTOR_HANDLE*)&pcmd->TextureId);
 
     // Render command lists
     // (Because we merged all buffers into a single one, we maintain our own offset into them)
@@ -264,9 +267,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd)
 
 
 
-    // set a texture
-    //cmd->SetGraphicsRootDescriptorTable(1, *(D3D12_GPU_DESCRIPTOR_HANDLE*)&pcmd->TextureId);
-    cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
+
 }
 
 void MainShader::destroy()
@@ -283,30 +284,12 @@ void MainShader::destroy()
 
 void MainShader::setupRenderState(ID3D12GraphicsCommandList* cmd)
 {
-    // Setup orthographic projection matrix into our constant buffer
-   // Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
-    //VERTEX_CONSTANT_BUFFER vertex_constant_buffer;
-    //{
-    //    float L = draw_data->DisplayPos.x;
-    //    float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-    //    float T = draw_data->DisplayPos.y;
-    //    float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-    //    float mvp[4][4] =
-    //    {
-    //        { 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
-    //        { 0.0f,         2.0f / (T - B),     0.0f,       0.0f },
-    //        { 0.0f,         0.0f,           0.5f,       0.0f },
-    //        { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
-    //    };
-    //    memcpy(&vertex_constant_buffer.mvp, mvp, sizeof(mvp));
-    //}
-
     // Setup viewport
     D3D12_VIEWPORT vp;
     memset(&vp, 0, sizeof(vp));
     unsigned int width, height;
     engine->renderer->getFrameBufferSize(width, height);
-    const BRWL::RENDERER::Camera* cam = engine->renderer->getCamera();
+    BRWL::RENDERER::Camera* cam = engine->renderer->getCamera();
     vp.Width = (float)width;
     vp.Height = (float)height;
     Mat4 viewProjection;
@@ -321,7 +304,11 @@ void MainShader::setupRenderState(ID3D12GraphicsCommandList* cmd)
         vp.MaxDepth = 10.f;
         viewProjection = identity();
     }
-
+    Mat4 mvp = viewProjection * makeAffineTransform({ 0, 0, 5 }, { 0.f , 0.f, 0.f }, { 1,1,1 });
+    //mvp *= makeOrthographic((float)width, (float)height, cam->getNearPlane(), cam->getFarPlane());
+    //viewProjection *= mvp;
+    /*Vec3 test { 0, 0, 1 };
+    test = test * mvp;*/
     vp.TopLeftX = vp.TopLeftY = 0.0f;
     cmd->RSSetViewports(1, &vp);
 
@@ -333,8 +320,8 @@ void MainShader::setupRenderState(ID3D12GraphicsCommandList* cmd)
     vbv.BufferLocation =  viewingPlane.vertexBuffer->GetGPUVirtualAddress() + offset;
     vbv.SizeInBytes = viewingPlane.vertexBufferLength * stride;
     vbv.StrideInBytes = stride;
-    /*ctx->IASetVertexBuffers(0, 1, &vbv);
-    D3D12_INDEX_BUFFER_VIEW ibv;
+    cmd->IASetVertexBuffers(0, 1, &vbv);
+    /*D3D12_INDEX_BUFFER_VIEW ibv;
     memset(&ibv, 0, sizeof(ibv));
     ibv.BufferLocation = fr->IndexBuffer->GetGPUVirtualAddress();
     ibv.SizeInBytes = fr->IndexBufferSize * sizeof(VertexData);
@@ -343,11 +330,14 @@ void MainShader::setupRenderState(ID3D12GraphicsCommandList* cmd)
     cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     cmd->SetPipelineState(pipelineState.Get());
     cmd->SetGraphicsRootSignature(rootSignature.Get());
-    cmd->SetGraphicsRoot32BitConstants(0, 16, &viewProjection, 0);
+    cmd->SetGraphicsRoot32BitConstants(0, 16, &mvp, 0);
 
     // Setup blend factor
    /* const float blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
     cmd->OMSetBlendFactor(blend_factor);*/
+
+    const D3D12_RECT r = { 0, 0, width, height };
+    cmd->RSSetScissorRects(1, &r);
 }
 
 BRWL_RENDERER_NS_END

@@ -36,11 +36,12 @@ public:
 	template<typename AppRendererT, class... Types>
 	void createAppRenderer(Types&&... args)
 	{
+		static_assert(std::is_base_of_v<AppRenderer, AppRendererT>);
 		if (appRenderer) appRenderer = nullptr;
 		appRenderer = std::make_shared<AppRendererT>(std::forward<Types>(args)...);
 	}
 	void setCamera(Camera* newCamera);
-	const Camera* getCamera() const { return camera; }
+	Camera* getCamera() const { return camera; }
 	void getFrameBufferSize(unsigned int& width, unsigned int& height) { width = currentFramebufferWidth; height = currentFramebufferHeight; }
 protected:
 	virtual void OnFramebufferResize() = 0;

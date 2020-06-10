@@ -5,6 +5,10 @@
 BRWL_NS
 
 
+const Vec3 forward = { 0.f, 0.f, 1.f };
+const Vec3 up = { 0.f, 1.f, 0.f };
+const Vec3 right = { 1.f, 0.f, 0.f };
+
 using namespace DirectX;
 Vec2 normalize(Vec2 x) { XMStoreFloat2(&x, XMVector2Normalize(XMVectorSet(x.x, x.y, 0.f, 0.f))); return x; }
 Vec3 normalize(Vec3 x) { XMStoreFloat3(&x, XMVector3Normalize(XMVectorSet(x.x, x.y, x.z, 0.f))); return x; }
@@ -12,7 +16,8 @@ Vec3 cross(Vec3 x, const Vec3& y) { XMStoreFloat3(&x, XMVector3Cross(XMVectorSet
 Vec4 extractColumn4(const Mat4& x, size_t idx) { idx &= 0x3;  Vec4 y; y.x = ((float*)&x.r[0])[idx]; y.y = ((float*)&x.r[1])[idx]; y.z = ((float*)&x.r[2])[idx]; y.w = ((float*)&x.r[3])[idx]; return y; }
 Vec3 extractColumn3(const Mat4& x, size_t idx) { idx &= 0x3;  Vec3 y; y.x = ((float*)&x.r[0])[idx]; y.y = ((float*)&x.r[1])[idx]; y.z = ((float*)&x.r[2])[idx]; return y; }
 Mat4 makePerspective(float fovY, float aspect, float near, float far) { return XMMatrixPerspectiveFovLH(fovY, aspect, near, far); }
-
+Mat4 makeOrthographic(float width, float height, float near, float far) { return XMMatrixOrthographicLH(width, height, near, far); }
+Mat4 makeAffineTransform(const Vec3& pos, const Vec3& rot, const Vec3& scale) { return XMMatrixAffineTransformation(XMVectorSet(scale.x, scale.y, scale.z, 0), XMVectorSet(0, 0, 0, 0), XMQuaternionRotationRollPitchYawFromVector(XMVectorSet(rot.x, rot.y, rot.z, 0)), XMVectorSet(pos.x, pos.y, pos.z, 0)); }
 Mat4 makeAffineTransform(const Vec3& pos, const Quaternion& rot, const Vec3& scale)
 {
 	const float xx = rot.x * rot.x;
@@ -146,6 +151,20 @@ namespace DirectX
 		return lhs;
 	}
 
+	::BRWL::Vec4 operator*(::BRWL::Vec4 lhs, ::BRWL::Mat4 rhs)
+	{
+		XMVECTOR v = XMVector4Transform(XMVectorDivide(XMVectorSet(lhs.x, lhs.y, lhs.z, lhs.w), XMVectorReplicate(lhs.w)), rhs);
+
+		XMStoreFloat4(&lhs, XMVectorDivide(v, XMVectorSplatW(v)));
+		return lhs;
+	}
+
+
+	::BRWL::Vec3 operator*(::BRWL::Vec3 lhs, ::BRWL::Mat4 rhs)
+	{
+		XMStoreFloat3(&lhs, XMVector3Transform(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), rhs));
+		return lhs;
+	}
 }
 
 #endif

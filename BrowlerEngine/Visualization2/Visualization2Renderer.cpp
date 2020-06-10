@@ -206,11 +206,11 @@ void Visualization2Renderer::render(Renderer* renderer)
         r.transferFunction.controlPoints = v.transferFunction.controlPoints;
     }
 
-    
+    mainShader.render();
 }
 
 bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, TextureResource& texture, ComPtr<ID3D12Resource>& uploadHeap);
-bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const Image* dataSet, TextureResource& texture, ComPtr<ID3D12Resource>& uploadHeap);
+bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const Image* image, TextureResource& texture, ComPtr<ID3D12Resource>& uploadHeap);
 
 #define DR(expression) PAL::HandleDeviceRemoved(expression, r->device.Get(), *r->logger)
 
@@ -223,6 +223,7 @@ void Visualization2Renderer::draw(Renderer* r)
         return;
     }
 
+    // we always need the volume texture so ensur it is there first
     if (volumeTexture.state == TextureResource::State::REQUESTING_UPLOAD)
     {
         BRWL_EXCEPTION(dataSet.isValid(), BRWL_CHAR_LITERAL("Invalid state of data set."));
@@ -250,6 +251,13 @@ void Visualization2Renderer::draw(Renderer* r)
         WaitForSingleObject(uploadFenceEvent, INFINITE);
         volumeTexture.state = TextureResource::State::RESIDENT;
     }
+
+    // If we have all resources then we draw else we wait anouther frame
+    if (pitImage.liveTexture->state == TextureResource::State::RESIDENT)
+    {
+        mainShader.draw(r->device.Get(), r->commandList.Get());
+    }
+
 
     if (pitImage.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD)
     {
@@ -299,6 +307,7 @@ void Visualization2Renderer::destroy(Renderer* r)
         CloseHandle(uploadFenceEvent);
         uploadFenceEvent = nullptr;
     }
+
     uploadCommandAllocator = nullptr;
     uploadCommandList = nullptr;
     uploadCommandQueue = nullptr;

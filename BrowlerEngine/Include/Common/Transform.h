@@ -6,10 +6,15 @@ BRWL_NS
 
 
 class Hierarchy;
+namespace RENDERER {
+	class Camera;
+}
+
 
 class Transform
 {
 	friend class Hierarchy;
+	friend class RENDERER::Camera;
 
 	static const int initialChildCapacity = 4;
 public:
@@ -50,8 +55,6 @@ public:
 	uint64_t globalTransformHash() const;
 
 protected:
-	virtual void activate() { };
-	virtual void deactivate() { };
 
 	BRWL_STR name;
 	Transform* parent;
@@ -60,11 +63,12 @@ protected:
 	Quaternion rot;
 	Vec3 scale;
 
-	mutable Mat4 modelMatrix;
+	Mat4 modelMatrix;
 	Mat4 localMatrix;
 
 	// this variable is set by Hierarchy and SceneObject (when initially loading) and used by Hierarchy to check if the transform has changed since the last frame
-	uint64_t localTransformHashLastFrame;
+	uint64_t lastLocalTransformHash;
+	uint64_t lastGlobalTransformHash;
 };
 
 BRWL_NS_END

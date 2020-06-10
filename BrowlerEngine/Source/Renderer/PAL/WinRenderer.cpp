@@ -335,7 +335,7 @@ namespace PAL
         {
             ComPtr<IDXGIAdapter4> dxgiAdapter4;
             HRESULT enumerationResult;
-            for (unsigned int i = 0; (enumerationResult = dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&dxgiAdapter4))) == S_OK; ++i)
+            for (unsigned int i = 0; (enumerationResult = dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_MINIMUM_POWER, IID_PPV_ARGS(&dxgiAdapter4))) == S_OK; ++i)
             {
                 DXGI_ADAPTER_DESC1 desc;
                 if (!BRWL_VERIFY(SUCCEEDED(dxgiAdapter4->GetDesc1(&desc)), BRWL_CHAR_LITERAL("Failed to get adapter description.")))
@@ -346,7 +346,7 @@ namespace PAL
                 if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) continue;
 
                 // Create device and keep it if it supports the requested feature level
-                if (BRWL_VERIFY(SUCCEEDED(D3D12CreateDevice(dxgiAdapter.Get(), featureLevel, IID_PPV_ARGS(&device))), BRWL_CHAR_LITERAL("Failed to create D3D12Device.")))
+                if (BRWL_VERIFY(SUCCEEDED(D3D12CreateDevice(dxgiAdapter4.Get(), featureLevel, IID_PPV_ARGS(&device))), BRWL_CHAR_LITERAL("Failed to create D3D12Device.")))
                 {
                     Logger::LogLevel logLvl = Logger::LogLevel::INFO;
                     // check root signature version 1_1 support

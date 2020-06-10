@@ -13,6 +13,7 @@
 #include "Core/BrowlerEngine.h"
 #include "Core/Hierarchy.h"
 #include "Core/ApplicationEndoints.h"
+#include "Visualization2Updatable.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/Camera.h"
 
@@ -82,6 +83,7 @@ CVisualization2App::CVisualization2App() :
 	BRWL::MetaEngine::EngineHandle handle = metaEngine->getDefaultEngineHandle();
 	metaEngine->setEngineRunMode(handle, BRWL::MetaEngine::EngineRunMode::DETATCHED);
 	BRWL::Engine* engine = metaEngine->getEngine(handle);
+	engine->createUpdatable<::BRWL::Visualization2Updatable>();
 	BRWL_EXCEPTION(engine->renderer != nullptr, BRWL_CHAR_LITERAL("Renderer not set up."));
 	engine->renderer->createAppRenderer<BRWL::RENDERER::Visualization2Renderer>();
 }

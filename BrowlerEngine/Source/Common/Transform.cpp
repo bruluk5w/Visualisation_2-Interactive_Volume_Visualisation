@@ -15,7 +15,7 @@ Transform::Transform(BRWL_STR name) :
 	scale(1, 1, 1),
 	modelMatrix(),
 	localMatrix(),
-	localTransformHashLastFrame(0)
+	lastLocalTransformHash(0)
 {
 	children.reserve(initialChildCapacity);
 }

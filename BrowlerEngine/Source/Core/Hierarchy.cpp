@@ -7,24 +7,26 @@ void Hierarchy::update()
 {
 	uint64_t localTransformHash = root.localTransformHash();
 	bool parentChanged = false;
-	if (localTransformHash != root.localTransformHashLastFrame)
+	if (localTransformHash != root.lastLocalTransformHash)
 	{
-		root.localTransformHashLastFrame = localTransformHash;
+		root.lastLocalTransformHash = localTransformHash;
+		root.lastGlobalTransformHash = localTransformHash;
 		parentChanged = true;
 		root.localMatrix = makeAffineTransform(root.pos, root.rot, root.scale);
 		root.modelMatrix = root.localMatrix;
 	}
 
-	update(&root, parentChanged);
+	update(&root, parentChanged, localTransformHash);
 }
 
-void Hierarchy::update(Transform* parent, bool parentChanged)
+void Hierarchy::update(Transform* parent, bool parentChanged, uint64_t parentGlobalHash)
 {
 	for (Transform* child : *parent) {
 		uint64_t localTransformHash = child->localTransformHash();
-		if (localTransformHash != child->localTransformHashLastFrame)
+		if (localTransformHash != child->lastLocalTransformHash)
 		{
-			child->localTransformHashLastFrame = localTransformHash;
+			child->lastLocalTransformHash = localTransformHash;
+			child->lastGlobalTransformHash = localTransformHash ^ parentGlobalHash;
 			parentChanged = true;
 			child->localMatrix = makeAffineTransform(child->pos, child->rot, child->scale);
 		}
@@ -34,7 +36,7 @@ void Hierarchy::update(Transform* parent, bool parentChanged)
 			child->modelMatrix = parent->modelMatrix * child->localMatrix;
 		}
 
-		update(child, parentChanged);
+		update(child, parentChanged, child->lastGlobalTransformHash);
 	}
 }
 

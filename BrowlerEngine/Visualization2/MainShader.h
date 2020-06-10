@@ -12,11 +12,10 @@ class MainShader final
 {
 public:
     MainShader();
-    bool create(ID3D12Device* device);
 
+    bool create(ID3D12Device* device);
     void render();
     void draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd);
-
     void destroy();
 
 private:

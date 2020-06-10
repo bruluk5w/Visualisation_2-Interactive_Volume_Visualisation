@@ -4,6 +4,7 @@
 #include "Timer.h"
 #include "Window.h"
 #include "Renderer/Renderer.h"
+#include "Input.h"
 #include "Hierarchy.h"
 #include "Renderer/Camera.h"
 
@@ -11,16 +12,17 @@
 BRWL_NS
 
 
-Engine::Engine( TickProvider* tickProvider, PlatformGlobals* globals) :
+Engine::Engine(TickProvider* tickProvider, PlatformGlobals* globals) :
 	logger(nullptr),
 	time(nullptr),
 	eventSystem(nullptr),
 	window(nullptr),
 	renderer(nullptr),
-	isInitialized(false),
+	initialized(false),
 	tickProvider(tickProvider),
 	globals(globals),
-	runMode(MetaEngine::EngineRunMode::DETATCHED)
+	runMode(MetaEngine::EngineRunMode::DETATCHED),
+	updatables()
 { }
 
 Engine::~Engine()
@@ -46,12 +48,12 @@ void Engine::threadInit()
 {
 	window->create(100, 100, 1280, 720);
 	window->setRenderer(renderer.get());
-	isInitialized = true;
+	initialized = true;
 }
 
 void Engine::threadDestroy()
 {
-	isInitialized = false;
+	initialized = false;
 	if (window)
 	{
 		window->setRenderer(nullptr);
@@ -68,15 +70,34 @@ void Engine::update()
 		window->processPlatformMessages();
 	}
 
+	input->update();
+
+	{
+		double dt = time->getDeltaTime();
+		std::scoped_lock(updatablesMutex);
+		std::for_each(updatables.begin(), updatables.end(), [dt](std::unique_ptr<IUpdatable>& updatable) {
+			if (updatable) {
+				if (!updatable->isInitialized()) {
+					updatable->internalInit();
+				}
+
+				updatable->update(dt);
+			}
+		});
+	}
+
 	if (renderer && renderer->isInitialized()) {
-		hierarchy->update();
 		if (renderer->getCamera() == nullptr)
 		{
 			unsigned int width, height;
 			renderer->getFrameBufferSize(width, height);
 			defaultCamera = std::make_unique<RENDERER::Camera>((int)width, (int)height, 75.0f, 0.1f, 500.0f, BRWL_CHAR_LITERAL("Default Camera"));
+			defaultCamera->position() = Vec3(0, 0, 0);
+			hierarchy->addToRoot(defaultCamera.get());
 			renderer->setCamera(defaultCamera.get());
 		}
+
+		hierarchy->update();
 
 		renderer->preRender();
 		renderer->render();
@@ -97,16 +118,27 @@ bool Engine::shouldClose()
 
 void Engine::close()
 {	
-	isInitialized = false;
+	initialized = false;
+	
+	{
+		std::scoped_lock(updatablesMutex);
+		std::for_each(updatables.begin(), updatables.end(), [](std::unique_ptr<IUpdatable>& updatable) {updatable->internalDestroy(); });
+		updatables.clear();
+	}
 
 	if (time) time->stop();
 
-	//// Input
-	//if (input)
-	//{
-	//	input->deactivate();
-	//	input = nullptr;
-	//}
+	// Input
+	if (input)
+	{
+		input = nullptr;
+	}
+
+	// Default Camera
+	if (defaultCamera)
+	{
+		defaultCamera = nullptr;
+	}
 
 	// Hierarchy
 	hierarchy = nullptr;
@@ -205,11 +237,15 @@ bool Engine::internalInit(const char* settingsFile)
 	// Hierarchy
 	hierarchy = std::make_unique<Hierarchy>();
 
+	// Input
+	input = std::make_unique<InputManager>();
 
-
-	//// Input
-	//input = std::make_unique<InputManager>(true);
-
+	// Updatables
+	{
+		std::scoped_lock(updatablesMutex);
+		updatables.clear();
+		updatables.reserve(10);
+	}
 	return true;
 }
 

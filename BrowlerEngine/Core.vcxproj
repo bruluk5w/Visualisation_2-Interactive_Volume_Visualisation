@@ -44,6 +44,7 @@
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="Source\Core\Input.cpp" />
     <ClCompile Include="Source\Core\MetaEngine.cpp" />
     <ClCompile Include="Source\Core\PAL\WinTickProvider.cpp" />
     <ClCompile Include="Source\Core\PAL\WinWindow.cpp" />
@@ -61,6 +62,11 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="Include\Core\Input.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="Include\Core\IUpdatable.h" />
     <ClInclude Include="Include\Core\PAL\WinThread.h" />
     <ClInclude Include="Include\Core\PAL\WinWindow.h" />
     <ClInclude Include="Include\Core\Thread.h" />

@@ -14,28 +14,43 @@ Camera::Camera(int viewportWidth, int viewportHeight, float fovY, float near, fl
 
 void Camera::resize(int viewportWidth, int viewportHeight)
 {
-	width = viewportWidth;
-	height = viewportHeight;
+	width = Utils::max(1, viewportWidth);
+	height = Utils::max(1, viewportHeight);
 	projectionDirty = true;
 }
 
-void Camera::updateMatrices() const
+bool Camera::updateMatrices(bool force)
 {
-	uint64_t hash = cameraHash();
-	if (lastCameraHash != hash)
+	if (force)
 	{
-		inverseDirty = projectionDirty = true;
-		modelMatrix = makeAffineTransform(pos, rot, scale);
-		const Transform* t = this;
-		while (t->getConstParent()) {
-			t = t->getConstParent();
-			modelMatrix = makeAffineTransform(t->cPosition(), t->cRotation(), t->cScaling()) * modelMatrix;
-		}
-
-		viewMatrix = inverse(modelMatrix);// glm::inverse(MatrixUtils::makeAffineTransform(pos, rot));
-		inverseViewMatrix = modelMatrix;
+		uint64_t hash = cameraHash();
+		if (lastCameraHash == hash) return false;
 		lastCameraHash = hash;
 	}
+	else
+	{
+		uint64_t hash = weakCameraHash();
+		if (lastCameraHash == hash) return false;
+	}
+
+	inverseProjectionDirty = projectionDirty = true;
+
+	localMatrix = makeAffineTransform(pos, rot, scale);
+	if (force)
+	{
+		modelMatrix = localMatrix;
+		Transform* t = this;
+		while (t->getParent()) {
+			t = t->getParent();
+			t->localMatrix = makeAffineTransform(t->cPosition(), t->cRotation(), t->cScaling());
+			modelMatrix = t->localMatrix * modelMatrix;
+		}
+
+		t->modelMatrix = t->localMatrix;
+	}
+
+	viewMatrix = inverse(modelMatrix);
+	inverseViewMatrix = modelMatrix;
 
 	if (projectionDirty)
 	{
@@ -44,13 +59,17 @@ void Camera::updateMatrices() const
 		viewProjectionMatrix = projectionMatrix * viewMatrix;
 		projectionDirty = false;
 	}
+
+	return true;
 }
 
-void Camera::updateInverseMatrix() const {
-	updateMatrices();
-	if (inverseDirty) {
+void Camera::updateInverseMatrix(bool force) {
+	updateMatrices(force);
+
+	if (inverseProjectionDirty)
+	{
 		inverseViewProjectionMatrix = inverse(viewProjectionMatrix);
-		inverseDirty = false;
+		inverseProjectionDirty = false;
 	}
 }
 

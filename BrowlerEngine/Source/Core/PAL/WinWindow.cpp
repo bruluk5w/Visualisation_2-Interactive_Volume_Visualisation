@@ -11,6 +11,7 @@
 #include "UI/ImGui/imgui.h"
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 #endif
+#include "Input.h"
 
 namespace
 {
@@ -89,21 +90,45 @@ struct WinWindowImpl
             //Render();
             break;
         case WM_SYSKEYDOWN:
+            break;
         case WM_KEYDOWN:
-        {
-
-            switch (wParam)
+            if (engine->input) engine->input->consumeKeyEvent(wParam, true);
+            return 0;
+        case WM_KEYUP:
+            if (engine->input) engine->input->consumeKeyEvent(wParam, false);
+            return 0;
+        case WM_LBUTTONDOWN:
+            if (engine->input) engine->input->consumeKeyEvent(VK_LBUTTON, true);
+            return 0;
+        case WM_LBUTTONUP:
+            if (engine->input) engine->input->consumeKeyEvent(VK_LBUTTON, false);
+            return 0;
+        case WM_RBUTTONDOWN:
+            if (engine->input) engine->input->consumeKeyEvent(VK_RBUTTON, true);
+            return 0;
+        case WM_RBUTTONUP:
+            if (engine->input) engine->input->consumeKeyEvent(VK_RBUTTON, false);
+            return 0;
+        case WM_MBUTTONDOWN:
+            if (engine->input) engine->input->consumeKeyEvent(VK_MBUTTON, true);
+            return 0;
+        case WM_MBUTTONUP:
+            if (engine->input) engine->input->consumeKeyEvent(VK_MBUTTON, false);
+            return 0;
+        case WM_XBUTTONDOWN:
+            if (engine->input) engine->input->consumeKeyEvent(VK_XBUTTON1, true);
+            return 0;
+        case WM_XBUTTONUP:
+            if (engine->input) engine->input->consumeKeyEvent(VK_XBUTTON1, false);
+            return 0;
+        case WM_MOUSEMOVE:
+            if (engine->input)
             {
-            case VK_ESCAPE:
-                ::PostQuitMessage(0);
-                break;
-            case VK_F11:
-                //SetFullscreen(!g_Fullscreen);
-                break;
+                double dx = ((int)(short)LOWORD(lParam));
+                double dy = ((int)(short)HIWORD(lParam));
+                engine->input->consumeMousePositionEvent(dx, dy);
             }
-        }
-        break;
-
+            return 0;
         case WM_SYSCHAR:
             // Handle this one cause else windows playes the annoying PLINNNG sound
             break;
