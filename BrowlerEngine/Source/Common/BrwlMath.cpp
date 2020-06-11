@@ -4,17 +4,19 @@
 
 BRWL_NS
 
-
+const Vec3 zero = { 0.f, 0.f, 0.f };
+const Vec3 one = { 1.f, 1.f, 1.f };
 const Vec3 forward = { 0.f, 0.f, 1.f };
 const Vec3 up = { 0.f, 1.f, 0.f };
 const Vec3 right = { 1.f, 0.f, 0.f };
 
-using namespace DirectX;
+using namespace ::DirectX;
 Vec2 normalize(Vec2 x) { XMStoreFloat2(&x, XMVector2Normalize(XMVectorSet(x.x, x.y, 0.f, 0.f))); return x; }
 Vec3 normalize(Vec3 x) { XMStoreFloat3(&x, XMVector3Normalize(XMVectorSet(x.x, x.y, x.z, 0.f))); return x; }
 Vec3 cross(Vec3 x, const Vec3& y) { XMStoreFloat3(&x, XMVector3Cross(XMVectorSet(x.x, x.y, x.z, 0.f), XMVectorSet(y.x, y.y, y.z, 0.f))); return x; }
 Vec4 extractColumn4(const Mat4& x, size_t idx) { idx &= 0x3;  Vec4 y; y.x = ((float*)&x.r[0])[idx]; y.y = ((float*)&x.r[1])[idx]; y.z = ((float*)&x.r[2])[idx]; y.w = ((float*)&x.r[3])[idx]; return y; }
 Vec3 extractColumn3(const Mat4& x, size_t idx) { idx &= 0x3;  Vec3 y; y.x = ((float*)&x.r[0])[idx]; y.y = ((float*)&x.r[1])[idx]; y.z = ((float*)&x.r[2])[idx]; return y; }
+Vec3 extractPosition(const Mat4& x) { return Vec3(((float*)&x.r)[12], ((float*)&x.r)[13], ((float*)&x.r)[14]); }
 Mat4 makePerspective(float fovY, float aspect, float near, float far) { return XMMatrixPerspectiveFovLH(fovY, aspect, near, far); }
 Mat4 makeOrthographic(float width, float height, float near, float far) { return XMMatrixOrthographicLH(width, height, near, far); }
 Mat4 makeAffineTransform(const Vec3& pos, const Vec3& rot, const Vec3& scale) { return XMMatrixAffineTransformation(XMVectorSet(scale.x, scale.y, scale.z, 0), XMVectorSet(0, 0, 0, 0), XMQuaternionRotationRollPitchYawFromVector(XMVectorSet(rot.x, rot.y, rot.z, 0)), XMVectorSet(pos.x, pos.y, pos.z, 0)); }
@@ -99,8 +101,6 @@ namespace DirectX
 		return lhs;
 	}
 
-
-
 	::BRWL::Vec3& operator-=(::BRWL::Vec3& lhs, const ::BRWL::Vec3& rhs) {
 		XMStoreFloat3(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorNegate(XMVectorSet(rhs.x, rhs.y, rhs.z, 0.f))));
 		return lhs;
@@ -131,9 +131,10 @@ namespace DirectX
 		return lhs;
 	}
 
-	::BRWL::Vec3 operator*(::BRWL::Vec3 lhs, const ::BRWL::Vec3& rhs) {
-		XMStoreFloat3(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorSet(rhs.x, rhs.y, rhs.z, 0.f)));
-		return lhs;
+	float operator*(const ::BRWL::Vec3& lhs, const ::BRWL::Vec3& rhs) {
+		float res;
+		XMStoreFloat(&res, XMVector3Dot(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorSet(rhs.x, rhs.y, rhs.z, 0.f)));
+		return res;
 	}
 
 	::BRWL::Vec3& operator*=(::BRWL::Vec3& lhs, const ::BRWL::Vec3& rhs) {
@@ -141,10 +142,22 @@ namespace DirectX
 		return lhs;
 	}
 
-	::BRWL::Vec3 operator*(::BRWL::Vec3 lhs, float rhs) {
-		XMStoreFloat3(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorSet(rhs, rhs, rhs, 0.f)));
+	::BRWL::Vec3& operator*=(::BRWL::Vec3& lhs, float rhs) {
+		XMStoreFloat3(&lhs, XMVectorMultiply(XMVectorSet((float)lhs.x, (float)lhs.y, (float)lhs.z, 0.f), XMVectorReplicate(rhs)));
 		return lhs;
 	}
+
+	::BRWL::Vec3 operator*(::BRWL::Vec3 lhs, float rhs) {
+		XMStoreFloat3(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorReplicate(rhs)));
+		return lhs;
+	}
+
+	::BRWL::Vec3 operator/(::BRWL::Vec3 lhs, float rhs) {
+		const float recip = 1.f / rhs;
+		XMStoreFloat3(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorReplicate(recip)));
+		return lhs;
+	}
+
 
 	::BRWL::Vec3 operator*(float rhs, ::BRWL::Vec3 lhs) {
 		XMStoreFloat3(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorSet(rhs, rhs, rhs, 0.f)));
@@ -159,10 +172,9 @@ namespace DirectX
 		return lhs;
 	}
 
-
 	::BRWL::Vec3 operator*(::BRWL::Vec3 lhs, ::BRWL::Mat4 rhs)
 	{
-		XMStoreFloat3(&lhs, XMVector3Transform(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), rhs));
+		XMStoreFloat3(&lhs, XMVector3TransformCoord(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), rhs));
 		return lhs;
 	}
 }

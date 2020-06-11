@@ -9,6 +9,7 @@
 #include "Core/BrowlerEngine.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/Camera.h"
+#include "Core/Input.h"
 
 BRWL_RENDERER_NS
 
@@ -304,7 +305,22 @@ void MainShader::setupRenderState(ID3D12GraphicsCommandList* cmd)
         vp.MaxDepth = 10.f;
         viewProjection = identity();
     }
-    Mat4 mvp = viewProjection * makeAffineTransform({ 0, 0, 5 }, { 0.f , 0.f, 0.f }, { 1,1,1 });
+    
+     Mat4 mvp = makeAffineTransform(Vec3(0.f, 0.f, 0.f), { 90.f * DEG_2_RAD_F , 0.f, 0.f }, { 1,1,1 }) * viewProjection;
+     //   // TODO: remove
+     //   
+     //   Vec3 worldRay = screenSpaceToWorldRay(engine->input->getMouseX(), engine->input->getMouseY(), *engine->renderer->getCamera());
+     //   Vec3 pos = engine->renderer->getCamera()->getGlobalPosition();
+     //   if (worldRay.y != 0 && std::abs(pos.y) - 0.02 > std::abs(worldRay.y + pos.y))
+     //   {
+     //       // intersect with plane y = 0;
+     //       worldRay *= pos.y / worldRay.y;
+     //       mvp = makeAffineTransform(Vec3(-worldRay.x, 0.5f, worldRay.z), { 90.f * DEG_2_RAD_F , 0.f, 0.f }, { 1,1,1 }) * viewProjection;
+
+     //   }
+    
+
+   
     //mvp *= makeOrthographic((float)width, (float)height, cam->getNearPlane(), cam->getFarPlane());
     //viewProjection *= mvp;
     /*Vec3 test { 0, 0, 1 };

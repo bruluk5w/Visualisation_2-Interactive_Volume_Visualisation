@@ -23,12 +23,38 @@ bool InputManager::isKeyPressed(Key k) const
 	return keyPressed[ENUM_CLASS_TO_NUM(k)];
 }
 
-bool InputManager::isMouseButtonPressed(Button btn) const
+bool InputManager::isKeyDown(Key btn) const
+{
+	return keyPressed[ENUM_CLASS_TO_NUM(btn)] && !wasKeyPressed[ENUM_CLASS_TO_NUM(btn)];
+}
+
+bool InputManager::isKeyUp(Key btn) const
+{
+	return !keyPressed[ENUM_CLASS_TO_NUM(btn)] && wasKeyPressed[ENUM_CLASS_TO_NUM(btn)];
+}
+
+bool InputManager::isButtonPressed(Button btn) const
 {
 	return buttonPressed[ENUM_CLASS_TO_NUM(btn)];
 }
 
-void InputManager::update()
+bool InputManager::isButtonDown(Button btn) const
+{
+	return buttonPressed[ENUM_CLASS_TO_NUM(btn)] && !wasButtonPressed[ENUM_CLASS_TO_NUM(btn)];
+}
+
+bool InputManager::isButtonUp(Button btn) const
+{
+	return !buttonPressed[ENUM_CLASS_TO_NUM(btn)] && wasButtonPressed[ENUM_CLASS_TO_NUM(btn)];
+}
+
+void InputManager::preMessageUpdate()
+{
+	wasKeyPressed = keyPressed;
+	wasButtonPressed = buttonPressed;
+}
+
+void InputManager::postMessageUpdate()
 {
 	mouseDeltaX = mouseX - lastMouseX;
 	mouseDeltaY = mouseY - lastMouseY;
@@ -38,7 +64,17 @@ void InputManager::update()
 	scrollX = nextScrollX;
 	scrollY = nextScrollY;
 	nextScrollX = nextScrollY = 0.0;
+
 }
+
+void InputManager::unfocus()
+{
+	buttonPressed.reset();
+	keyPressed.reset();
+}
+
+void InputManager::focus()
+{ }
 
 void InputManager::consumeKeyEvent(uint64_t key, bool isDown)
 {
@@ -88,6 +124,9 @@ void InputManager::consumeKeyEvent(uint64_t key, bool isDown)
 		break;
 	case(VK_CONTROL):
 		keyPressed[ENUM_CLASS_TO_NUM(Key::CTRL)] = isDown;
+		break;
+	case(VK_MENU):
+		keyPressed[ENUM_CLASS_TO_NUM(Key::ALT)] = isDown;
 		break;
 	case(VK_SPACE):
 		keyPressed[ENUM_CLASS_TO_NUM(Key::SPACE)] = isDown;

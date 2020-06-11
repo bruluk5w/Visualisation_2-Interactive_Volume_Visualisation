@@ -33,7 +33,7 @@ void Hierarchy::update(Transform* parent, bool parentChanged, uint64_t parentGlo
 
 		if (parentChanged)
 		{
-			child->modelMatrix = parent->modelMatrix * child->localMatrix;
+			child->modelMatrix = child->localMatrix * parent->modelMatrix;
 		}
 
 		update(child, parentChanged, child->lastGlobalTransformHash);

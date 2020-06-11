@@ -150,4 +150,9 @@ protected:
 	std::vector<std::unique_ptr<IUpdatable>> updatables;
 };
 
+
+// Helpers
+// TODO: move somewhere else
+Vec3 screenSpaceToWorldRay(float screenX, float screenY, RENDERER::Camera& camera);
+
 BRWL_NS_END

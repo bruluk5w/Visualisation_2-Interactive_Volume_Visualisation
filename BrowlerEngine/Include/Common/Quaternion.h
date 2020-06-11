@@ -32,11 +32,11 @@ struct Quaternion
 
 	Quaternion& fromEuler(float eulerX, float eulerY, float eulerZ);
 
-	static Quaternion fromAxisAngle(const Vec3& axis, float angle);
-
 	static void fromAxisAngle(const Vec3& axis, float angle, Quaternion& out);
 
 	static void fromAxisAngle(float axisX, float axisY, float axisZ, float angle, Quaternion& out);
+
+	static Quaternion lookAt(Vec3 from, Vec3 to);
 
 	float magnitude();
 

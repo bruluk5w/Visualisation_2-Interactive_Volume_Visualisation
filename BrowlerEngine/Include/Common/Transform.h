@@ -49,7 +49,7 @@ public:
 	// This matrix may only update with parent changes in the next frame
 	const Mat4& getGlobalMatrix() const { return modelMatrix; }
 	// This position may only update with parent changes in the next frame
-	const Vec3 getGlobalPosition() const { return extractColumn3(modelMatrix, 3); }
+	const Vec3 getGlobalPosition() const { return extractPosition(modelMatrix); }
 
 	uint64_t localTransformHash() const;
 	uint64_t globalTransformHash() const;

@@ -11,15 +11,9 @@ Quaternion::Quaternion() : x(0), y(0), z(0), w(1)
 Quaternion::Quaternion(float x, float y, float z, float w) : x(x), y(y), z(z), w(w)
 { }
 
-Quaternion::Quaternion(const Vec3& axis, float angle)
+Quaternion::Quaternion(const Vec3& axis, const float angle)
 {
-	float halfAngle = angle * 0.5f;
-	float sin_a = sin(halfAngle);
-	x = axis.x * sin_a;
-	y = axis.y * sin_a;
-	z = axis.z * sin_a;
-	w = cos(halfAngle);
-	normalize();
+	Quaternion::fromAxisAngle(axis, angle, *this);
 }
 
 Quaternion::Quaternion(const Quaternion& other)
@@ -31,6 +25,53 @@ Quaternion::Quaternion(const Quaternion& other)
 	w = other.w;
 }
 
+void Quaternion::fromAxisAngle(const Vec3& axis, const float angle, Quaternion& out)
+{
+	Quaternion::fromAxisAngle(axis.x, axis.y, axis.z, angle, out);
+}
+
+void Quaternion::fromAxisAngle(const float axisX, const float axisY, const float axisZ, const float angle, Quaternion& out)
+{
+	const float sin_a = sin(angle * 0.5f);
+	const float cos_a = cos(angle * 0.5f);
+	out.x = axisX * sin_a;
+	out.y = axisY * sin_a;
+	out.z = axisZ * sin_a;
+	out.w = cos_a;
+	out.normalize();
+}
+
+// see: http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+Quaternion Quaternion::lookAt(Vec3 from, Vec3 to)
+{
+	// Make an orthogonal basis
+	const Vec3 vecFwd = ::BRWL::normalize(to - from);
+	const Vec3 vecRight = ::BRWL::normalize(cross(::BRWL::forward, vecFwd));
+	const Vec3 vecUp = cross(vecRight, vecFwd);
+
+	// Take the trace of the matrix defined by the basis
+	float t = vecFwd.x + vecRight.y + vecUp.z;
+
+	if (t > 0.f)
+	{	
+		float s = 0.5f / std::sqrtf(t + 1.0f);
+		return Quaternion((vecUp.z - vecFwd.y) * s, (vecFwd.x - vecRight.z) * s, (vecRight.y - vecUp.x) * s, 0.25f / s);
+	}
+	else if (vecRight.x > vecUp.y && vecRight.x > vecFwd.z)
+	{	// right vector is the biggest
+		const float s = 0.5f / sqrt(1.f + vecRight.x - vecUp.y - vecFwd.z);
+		return Quaternion( 0.25f / s, (vecUp.x + vecRight.y) * s, (vecFwd.x + vecRight.z) * s, (vecUp.z - vecFwd.y) * s);
+	}
+	else if (vecUp.y > vecFwd.z)
+	{	// up vector is the biggest
+		const float s = 0.5f / std::sqrtf(1.0f + vecUp.y - vecRight.x - vecFwd.z);
+		return Quaternion((vecUp.x + vecRight.y) * s, 0.25f / s, (vecFwd.y + vecUp.z) * s, (vecFwd.x - vecRight.z) * s);
+	}
+
+	// forward vector is the biggest
+	const float s = 0.5f / sqrt(1.0 + vecFwd.z - vecRight.x - vecUp.y);
+	return Quaternion((vecFwd.x + vecRight.z) * s, (vecFwd.y + vecUp.z) * s, 0.25f / s, (vecRight.y - vecUp.x) * s);
+}
 
 void Quaternion::toAxisAngle(const Quaternion& q, Vec3& outAxis, float& outAngle) {
 	// from www.j3d.org/matrix_faq/matrfaq_latest.html
@@ -120,29 +161,6 @@ Quaternion& Quaternion::fromEuler(float eulerX, float eulerY, float eulerZ)
 
 	normalize();
 	return *this;
-}
-
-Quaternion Quaternion::fromAxisAngle(const Vec3& axis, float angle)
-{
-	Quaternion q;
-	Quaternion::fromAxisAngle(axis, angle, q);
-	return q;
-}
-
-void Quaternion::fromAxisAngle(const Vec3& axis, float angle, Quaternion& out)
-{
-	Quaternion::fromAxisAngle(axis.x, axis.y, axis.z, angle, out);
-}
-
-void Quaternion::fromAxisAngle(float axisX, float axisY, float axisZ, float angle, Quaternion& out)
-{
-	float sin_a = sin(angle * 0.5f);
-	float cos_a = cos(angle * 0.5f);
-	out.x = axisX * sin_a;
-	out.y = axisY * sin_a;
-	out.z = axisZ * sin_a;
-	out.w = cos_a;
-	out.normalize();
 }
 
 float Quaternion::magnitude()

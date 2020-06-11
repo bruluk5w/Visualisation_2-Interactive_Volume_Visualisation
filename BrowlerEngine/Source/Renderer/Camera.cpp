@@ -35,10 +35,9 @@ bool Camera::updateMatrices(bool force)
 
 	inverseProjectionDirty = projectionDirty = true;
 
-	localMatrix = makeAffineTransform(pos, rot, scale);
 	if (force)
-	{
-		modelMatrix = localMatrix;
+	{	// only update projection, not global position in case force == false
+		localMatrix = makeAffineTransform(pos, rot, scale);
 		Transform* t = this;
 		while (t->getParent()) {
 			t = t->getParent();
@@ -56,7 +55,7 @@ bool Camera::updateMatrices(bool force)
 	{
 		projectionMatrix = makePerspective(fovY, (float)width / (float)height, near, far);
 		inverseProjectionMatrix = inverse(projectionMatrix);
-		viewProjectionMatrix = projectionMatrix * viewMatrix;
+		viewProjectionMatrix = viewMatrix * projectionMatrix;
 		projectionDirty = false;
 	}
 

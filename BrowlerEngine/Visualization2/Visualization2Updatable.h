@@ -8,6 +8,7 @@ BRWL_RENDERER_NS_END
 
 BRWL_NS
 
+class Transform;
 
 class Visualization2Updatable : public IUpdatable
 {
@@ -23,6 +24,7 @@ public:
 	size_t windowResizeEvtHdl = 0;
 	float rotY;
 	float rotX;
+	std::unique_ptr<Transform> cameraPawn;
 };
 
 

@@ -253,8 +253,8 @@ namespace PAL
         ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
         commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-        //const HRESULT result = swapChain->Present(1, 0); // Present with vsync
-        DR(swapChain->Present(0, 0)); // Present without vsync
+        DR(swapChain->Present(1, 0)); // Present with vsync
+        //DR(swapChain->Present(0, 0)); // Present without vsync
 
         UINT64 fenceValue = frameFenceLastValue + 1;
         DR(commandQueue->Signal(frameFence.Get(), fenceValue));

@@ -23,6 +23,8 @@ public:
 	int y() const;
 	int width() const;
 	int height() const;
+	int safeWidth() const { int w = width(); return w > 0 ? w : 1; }
+	int safeHeight() const { int h = height(); return h > 0 ? h : 1; }
 	// only call this method if the window has been created in it's own thread and 
 	// does not receive message updates from the parent window
 	void processPlatformMessages();

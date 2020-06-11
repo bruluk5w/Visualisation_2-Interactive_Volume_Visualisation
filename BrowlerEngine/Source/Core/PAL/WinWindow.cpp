@@ -90,10 +90,10 @@ struct WinWindowImpl
             //Render();
             break;
         case WM_SYSKEYDOWN:
-            break;
         case WM_KEYDOWN:
             if (engine->input) engine->input->consumeKeyEvent(wParam, true);
             return 0;
+        case WM_SYSKEYUP:
         case WM_KEYUP:
             if (engine->input) engine->input->consumeKeyEvent(wParam, false);
             return 0;
@@ -129,6 +129,15 @@ struct WinWindowImpl
                 engine->input->consumeMousePositionEvent(dx, dy);
             }
             return 0;
+        case WM_KILLFOCUS:
+            if (engine->input) engine->input->unfocus();
+            return 0;
+        case WM_SETFOCUS:
+            if (engine->input) engine->input->focus();
+            return 0;
+        case WM_MOUSEACTIVATE:
+            if (engine->input) engine->input->focus();
+            return MA_ACTIVATE; // activate window and send button press
         case WM_SYSCHAR:
             // Handle this one cause else windows playes the annoying PLINNNG sound
             break;

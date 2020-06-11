@@ -12,6 +12,7 @@ enum class Key {
 	TAB,
 	SHIFT,
 	CTRL,
+	ALT,
 	SPACE,
 	UP,
 	DOWN,
@@ -53,7 +54,11 @@ public:
 	~InputManager();
 
 	bool isKeyPressed(Key k) const;
-	bool isMouseButtonPressed(Button btn) const;
+	bool isKeyDown(Key k) const;
+	bool isKeyUp(Key k) const;
+	bool isButtonPressed(Button btn) const;
+	bool isButtonDown(Button btn) const;
+	bool isButtonUp(Button btn) const;
 	double getMouseX() const { return mouseX; }
 	double getMouseY() const { return mouseY; }
 	double getMouseDeltaX() const { return mouseDeltaX; }
@@ -61,7 +66,10 @@ public:
 	double getScrollDeltaX() const { return scrollX; }
 	double getScrollDeltaY() const { return scrollY; }
 protected:
-	void update();
+	void preMessageUpdate();
+	void postMessageUpdate();
+	void unfocus();
+	void focus();
 	void consumeKeyEvent(uint64_t key, bool isDown);
 	void consumeMousePositionEvent(double x, double y);
 	void consumeScrollEvent(double dx, double dy);
@@ -69,7 +77,9 @@ protected:
 
 private:
 	std::bitset<ENUM_CLASS_TO_NUM(Key::MAX)> keyPressed;
+	std::bitset<ENUM_CLASS_TO_NUM(Key::MAX)> wasKeyPressed;
 	std::bitset<ENUM_CLASS_TO_NUM(Button::MAX)> buttonPressed;
+	std::bitset<ENUM_CLASS_TO_NUM(Button::MAX)> wasButtonPressed;
 	double mouseX;
 	double mouseY;
 	double mouseDeltaX;

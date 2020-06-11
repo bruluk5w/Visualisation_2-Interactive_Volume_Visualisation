@@ -65,12 +65,15 @@ void Engine::update()
 {
 	FrameIdxChange param{ time->getFrameCount() };
 	eventSystem->postEvent<Event::FRAME_IDX_CHANGE>(&param);
+
+	input->preMessageUpdate();
+
 	if (window && runMode == MetaEngine::EngineRunMode::DETATCHED)
 	{	// only process messages if they are not receiving them from the parent window
 		window->processPlatformMessages();
 	}
 
-	input->update();
+	input->postMessageUpdate();
 
 	{
 		double dt = time->getDeltaTime();
@@ -80,8 +83,11 @@ void Engine::update()
 				if (!updatable->isInitialized()) {
 					updatable->internalInit();
 				}
+				else
+				{	// wait one frame, then update
+					updatable->update(dt);
+				}
 
-				updatable->update(dt);
 			}
 		});
 	}
@@ -91,7 +97,7 @@ void Engine::update()
 		{
 			unsigned int width, height;
 			renderer->getFrameBufferSize(width, height);
-			defaultCamera = std::make_unique<RENDERER::Camera>((int)width, (int)height, 75.0f, 0.1f, 500.0f, BRWL_CHAR_LITERAL("Default Camera"));
+			defaultCamera = std::make_unique<RENDERER::Camera>((int)width, (int)height, 75.0f * DEG_2_RAD_F, 0.1f, 500.0f, BRWL_CHAR_LITERAL("Default Camera"));
 			defaultCamera->position() = Vec3(0, 0, 0);
 			hierarchy->addToRoot(defaultCamera.get());
 			renderer->setCamera(defaultCamera.get());
@@ -253,5 +259,15 @@ void Engine::LogDebug(const BRWL_CHAR* msg) { if (BRWL_VERIFY(logger, BRWL_CHAR_
 void Engine::LogInfo(const BRWL_CHAR* msg) { if (BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->info(msg); }
 void Engine::LogWarning(const BRWL_CHAR* msg) { if (BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->warning(msg); }
 void Engine::LogError(const BRWL_CHAR* msg) { if (BRWL_VERIFY(logger, BRWL_CHAR_LITERAL("Logger not created yet."))) logger->error(msg); }
+
+
+Vec3 screenSpaceToWorldRay(float screenX, float screenY, RENDERER::Camera& camera) {
+	Vec3 normalizedMouse = Vec3((screenX / engine->window->safeWidth() - 0.5f), (0.5f - screenY / engine->window->safeHeight()), 1.f);
+	const Mat4& inv = camera.getInverseViewProjectionMatrix();
+	Vec3 worldRay = normalizedMouse * inv;
+	worldRay = normalize(worldRay);
+	worldRay.z *= -0.5f;
+	return worldRay;
+}
 
 BRWL_NS_END
