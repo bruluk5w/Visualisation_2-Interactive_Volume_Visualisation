@@ -6,6 +6,8 @@ BRWL_NS
 
 struct UIResult
 {
+	UIResult();
+
 	struct Settings
 	{
 		enum class Font : uint8_t
@@ -25,6 +27,7 @@ struct UIResult
 
 	struct TransferFunction
 	{
+		TransferFunction();
 		using sampleT = float;
 		enum class BitDepth {
 			BIT_DEPTH_8_BIT = 0,
@@ -42,8 +45,39 @@ struct UIResult
 		
 		int getArrayLength() const;
 		void updateFunction();
-	} transferFunction;
+	};
 
+	enum class TransferFuncType : uint8_t
+	{
+		REFRACTION = 0,
+		PARTICLE_COLOR,
+		OPACITY,
+		MEDIUM_COLOR,
+		MAX,
+		MIN = 0
+	};
+
+	// A collection of transfer functions
+	union TransferFunctionCollection
+	{
+		TransferFunctionCollection();
+		~TransferFunctionCollection();
+		// All our transferfunctions
+		TransferFunction array[4];
+
+		// aliases
+		struct Aliases {
+			TransferFunction refractionTansFunc;
+			TransferFunction particleColorTransFunc;
+			TransferFunction opacityTransFunc;
+			TransferFunction mediumColorTransFunc;
+		} functions;
+
+		static_assert(sizeof(functions) == sizeof(array));
+
+		static const char* transferFuncNames[ENUM_CLASS_TO_NUM(TransferFuncType::MAX)];
+
+	} transferFunctions;
 };
 
 void renderAppUI(UIResult& result, const UIResult& values);

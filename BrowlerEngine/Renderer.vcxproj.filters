@@ -73,18 +73,6 @@
     <ClInclude Include="Include\Renderer\PAL\DescriptorHeap.h">
       <Filter>Header Files\PAL</Filter>
     </ClInclude>
-    <ClInclude Include="Shaders\Compiled\GUI_ps.h">
-      <Filter>Shaders\Compiled</Filter>
-    </ClInclude>
-    <ClInclude Include="Shaders\Compiled\GUI_vs.h">
-      <Filter>Shaders\Compiled</Filter>
-    </ClInclude>
-    <ClInclude Include="Shaders\Compiled\PixelShader_ps.h">
-      <Filter>Shaders\Compiled</Filter>
-    </ClInclude>
-    <ClInclude Include="Shaders\Compiled\VertexShader_vs.h">
-      <Filter>Shaders\Compiled</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Renderer\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>

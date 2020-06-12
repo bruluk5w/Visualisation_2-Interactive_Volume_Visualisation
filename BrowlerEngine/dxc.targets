@@ -25,14 +25,21 @@
     <ItemGroup>
       <DXCShader>
         <Message>%(Filename)%(Extension)</Message>
-        <Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`vs`))' == 'True'">
-          "$(WDKBinRoot)\x86\dxc.exe" -T vs_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename).h -Vn %(Filename)_vs 
+        <Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`vs`))' == 'True' And '$(Configuration)'=='Submission'">
+          "$(WDKBinRoot)\x86\dxc.exe" -T vs_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_vs.h -Vn %(Filename)_vs
         </Command>
-        <Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`ps`))' == 'True'">
-		  "$(WDKBinRoot)\x86\dxc.exe" -T ps_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename).h -Vn %(Filename)_ps
+		<Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`vs`))' == 'True'  And '$(Configuration)'!='Submission'">
+          "$(WDKBinRoot)\x86\dxc.exe" -T vs_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_vs.h -Vn %(Filename)_vs -Zi -Od -Fd Shaders/Compiled/%(Filename)_vs.pdb 
+        </Command>
+        <Outputs Condition="'$([System.String]::new(%(FileName)).EndsWith(`vs`))' == 'True'">Shaders/Compiled/%(Filename)_vs.h;</Outputs>
+        <Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`ps`))' == 'True' And '$(Configuration)'=='Submission'">
+		  "$(WDKBinRoot)\x86\dxc.exe" -T ps_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_ps.h -Vn %(Filename)_ps
 		</Command>
+		<Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`ps`))' == 'True' And '$(Configuration)'!='Submission'">
+		  "$(WDKBinRoot)\x86\dxc.exe" -T ps_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_ps.h -Vn %(Filename)_ps -Zi -Od -Fd Shaders/Compiled/%(Filename)_ps.pdb
+		</Command>
+        <Outputs Condition="'$([System.String]::new(%(FileName)).EndsWith(`ps`))' == 'True'">Shaders/Compiled/%(Filename)_ps.h;</Outputs>
         <AdditionalInputs>$(ShaderHeaders)</AdditionalInputs>
-        <Outputs>Shaders/Compiled/%(Filename).h;</Outputs>
       </DXCShader>
     </ItemGroup>
 

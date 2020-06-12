@@ -12,12 +12,13 @@ BRWL_RENDERER_NS
 Visualization2Renderer::Visualization2Renderer() :
     AppRenderer(),
     uiResultIdx(0),
+    uiResults{ {},{} },
     fonts{ 0 },
     uploadCommandQueue(nullptr),
     uploadCommandAllocator(nullptr),
     uploadCommandList(nullptr),
     dataSet(BRWL_CHAR_LITERAL("Default Data Sets (Beetle)")),
-    pitImage(BRWL_CHAR_LITERAL("Preintegration Table")),
+    pitCollection(),
     volumeTexture(),
     uploadHeap(nullptr),
     volumeTextureUploadFence(nullptr),
@@ -26,22 +27,13 @@ Visualization2Renderer::Visualization2Renderer() :
     mainShader(),
     initialized(false)
 {
-    uiResults[0] = {
-        {
-            UIResult::Settings::Font::OPEN_SANS_REGULAR, // font
-            30 // fontSize
-        },
-        {
-            UIResult::TransferFunction::BitDepth::BIT_DEPTH_10_BIT, // bitDepth
-            { {0,0}, {1,1} }, // controlPoints
-            { 0 }, // transferFunction
-            nullptr // textureID
-        }
-    };
-    uiResults[0].transferFunction.updateFunction();
-    uiResults[1] = uiResults[0];
-    // trigger building the preintegration table
-    uiResults[0].transferFunction.bitDepth = UIResult::TransferFunction::BitDepth::BIT_DEPTH_8_BIT;
+    // trigger building the preintegration tables
+    for (int i = 0; i < countof(((UIResult::TransferFunctionCollection*)0)->array); ++i)
+    {
+        UIResult::TransferFunction& tFunc = uiResults[0].transferFunctions.array[i];
+        const bool is8bit = tFunc.bitDepth == UIResult::TransferFunction::BitDepth::BIT_DEPTH_8_BIT;
+        tFunc.bitDepth = is8bit ? UIResult::TransferFunction::BitDepth::BIT_DEPTH_10_BIT : UIResult::TransferFunction::BitDepth::BIT_DEPTH_8_BIT;
+    }
 }
 
 bool Visualization2Renderer::init(Renderer* r)
@@ -64,10 +56,7 @@ bool Visualization2Renderer::init(Renderer* r)
         return false;
     }
     
-    if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&pitImage.fence))), BRWL_CHAR_LITERAL("Failed to create pitTexture fence.")))
-    {
-        return false;
-    }
+    pitCollection.init(r->device.Get());
 
     uploadFenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
     if (!BRWL_VERIFY(uploadFenceEvent != NULL, BRWL_CHAR_LITERAL("Failed to create frame fence event.")))
@@ -127,85 +116,141 @@ void Visualization2Renderer::render(Renderer* renderer)
 {
     if (!initialized) return;
 
-    uint64_t completed = pitImage.fence->GetCompletedValue();
-
-    // swap texture if ready
-    if (pitImage.stagedTexture->state == TextureResource::State::LOADING && completed >= pitImage.uploadFenceValue)
+    for (int i = 0; i < countof(pitCollection.array); ++i)
     {
-        pitImage.stagedTexture->state = TextureResource::State::RESIDENT;
-        std::swap(pitImage.stagedTexture, pitImage.liveTexture);
-        // release texture
-        pitImage.stagedTexture->destroy();
+        PitImage& pitImage = pitCollection.array[i];
+        const uint64_t completed = pitImage.fence->GetCompletedValue();
+
+        // swap texture if ready
+        if (pitImage.stagedTexture->state == TextureResource::State::LOADING && completed >= pitImage.uploadFenceValue)
+        {
+            pitImage.stagedTexture->state = TextureResource::State::RESIDENT;
+            std::swap(pitImage.stagedTexture, pitImage.liveTexture);
+            // release old texture
+            pitImage.stagedTexture->destroy();
+            // Indicate new resource to be used by the pixel shader on the main command queue.
+            // We only do this once after the upload. In the next frames the resource will use implicit state promotion between command and pixel shader resource.
+            renderer->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pitImage.liveTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+        }
     }
 
-    // send texture to front-end, execute UI and retrieve results
+    // Swap objects fro communication with front-end
     uiResultIdx = uiResultIdx ? 0 : 1;
     UIResult& r = uiResults[uiResultIdx]; // results
     UIResult& v = uiResults[uiResultIdx ? 0 : 1]; // values
-    if (pitImage.liveTexture->state == TextureResource::State::RESIDENT)
+
+    // set textures to the front-end
+    for (int i = 0; i < countof(pitCollection.array); ++i)
     {
-        v.transferFunction.textureID = (ImTextureID)pitImage.liveTexture->descriptorHandle.gpu.ptr;
-    }
-    else
-    {
-        v.transferFunction.textureID = nullptr;
+        const PitImage& pitImage = pitCollection.array[i];
+        v.transferFunctions.array[i].textureID = pitImage.liveTexture->state != TextureResource::State::RESIDENT ? nullptr : (ImTextureID)pitImage.liveTexture->descriptorHandle.gpu.ptr;
     }
 
+    // execute UI and retrieve results
     ImGui::PushFont(fonts[ENUM_CLASS_TO_NUM(r.settings.font)]);
     renderAppUI(r, v);
     ImGui::PopFont();
 
-    // Check if texture should be recomputed
-    if (!pitImage.cpuImage.isValid() || v.transferFunction.bitDepth != r.transferFunction.bitDepth ||
-        memcmp(v.transferFunction.transferFunction, r.transferFunction.transferFunction, v.transferFunction.getArrayLength() * sizeof(UIResult::TransferFunction::sampleT)) !=0)
+    // Check if textures should be recomputed
+    bool mustRecompute[countof(((UIResult::TransferFunctionCollection*)0)->array)] = { false };
+    bool blocked[countof(mustRecompute)] = { false };
+    for (int i = 0; i < countof(pitCollection.array); ++i)
     {
-        // If staged texture is not free, wait for upload to complete
-        if (pitImage.stagedTexture->state != TextureResource::State::UNKNOWN)
+        PitImage& pitImage = pitCollection.array[i];
+        UIResult::TransferFunction& tFuncValue = v.transferFunctions.array[i];
+        UIResult::TransferFunction& tFuncResult = r.transferFunctions.array[i];
+        // TODO: assert on dissimilar bitDepth!
+        if (!pitImage.cpuImage.isValid() || tFuncValue.bitDepth != tFuncResult.bitDepth ||
+            memcmp(tFuncValue.transferFunction, tFuncResult.transferFunction, tFuncValue.getArrayLength() * sizeof(UIResult::TransferFunction::sampleT)) != 0)
         {
-            // the staged resource is currently upoaded then the fence value has do be lower than the one which we remembered
-            BRWL_CHECK(pitImage.fence->GetCompletedValue() < pitImage.uploadFenceValue, BRWL_CHAR_LITERAL("Invalid fence/staged resource state."));
-            if (!BRWL_VERIFY(pitImage.stagedTexture->state != TextureResource::State::FAILED, BRWL_CHAR_LITERAL("Invalid state for staged pitTexture.")))
+            mustRecompute[i] = true;
+            // If staged texture is not free, wait for upload to complete
+            if (pitImage.stagedTexture->state != TextureResource::State::UNKNOWN)
             {
-                return;
+                blocked[i] = true;
+                // if the staged resource is currently upoading then the fence value has do be lower than the one which we remembered
+                // but only do a weak check since it could theoretically finish in this very moment
+                BRWL_CHECK(pitImage.fence->GetCompletedValue() < pitImage.uploadFenceValue, BRWL_CHAR_LITERAL("Invalid fence/staged resource state."));
+                if (!BRWL_VERIFY(pitImage.stagedTexture->state != TextureResource::State::FAILED, BRWL_CHAR_LITERAL("Invalid state for staged pitTexture.")))
+                {
+                    continue;
+                }
+
+                // prepare for waiting 
+                pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, pitImage.uploadEvent);
             }
-            
-            pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, uploadFenceEvent);
-            WaitForSingleObject(uploadFenceEvent, INFINITE);
-            // Since the live texture is currently in use in the front-end we immediately recycle the staged texture.
-            // This means that a texture change is only visible to the user if there is one frame without a changed that requires recomputation.
+        }
+    }
+
+    // gather all events we still have to wait for
+    HANDLE waitHandles[countof(blocked)] = { NULL };
+    unsigned int numWaithandles = 0;
+    for (int i = 0; i < countof(pitCollection.array); ++i)
+    {
+        if (blocked[i])
+        {
+            PitImage& pitImage = pitCollection.array[i];
+            waitHandles[numWaithandles] = pitImage.uploadEvent;
+            ++numWaithandles;
+        }
+    }
+
+    // TODO: meanwhile we could already recompute the non-blocked tables
+
+    // wait and clean up event state 
+    WaitForMultipleObjects(numWaithandles, waitHandles, true, INFINITE);
+
+    for (int i = 0; i < countof(pitCollection.array); ++i)
+    {
+        if (blocked[i])
+        {
+            PitImage& pitImage = pitCollection.array[i];
+            ResetEvent(pitImage.uploadEvent);
+            // Since the live texture is currently in use in the front-end we do not swap but immediately recycle the staged texture.
+            // This means that a texture change is only visible to the user if there is one frame without a change that requires recomputation.
             pitImage.stagedTexture->destroy();
         }
+    }
 
-        // Recompute texture
-        const int tableSize = r.transferFunction.getArrayLength();
 
-        if (!pitImage.cpuImage.isValid() || pitImage.cpuImage.getSizeX() != tableSize)
-            pitImage.cpuImage.create(tableSize, tableSize);
-        else
-            pitImage.cpuImage.clear();
+    // Recompute
+    for (int i = 0; i < countof(pitCollection.array); ++i)
+    {
+        if(mustRecompute[i])
+        {
+            PitImage& pitImage = pitCollection.array[i];
+            UIResult::TransferFunction& tFuncValue = v.transferFunctions.array[i];
+            UIResult::TransferFunction& tFuncResult = r.transferFunctions.array[i];
+            // Recompute texture
+            const int tableSize = tFuncResult.getArrayLength();
 
-        float max = makePreintegrationTable(pitImage.cpuImage, r.transferFunction.transferFunction, r.transferFunction.getArrayLength());
-        
-        // upload in draw()
-        //pitImage.stagedTexture->descriptorHandle = renderer->srvHeap.allocateHandle(
+            if (!pitImage.cpuImage.isValid() || pitImage.cpuImage.getSizeX() != tableSize)
+                pitImage.cpuImage.create(tableSize, tableSize);
+            else
+                pitImage.cpuImage.clear();
+
+            float max = makePreintegrationTable(pitImage.cpuImage, tFuncResult.transferFunction, tFuncResult.getArrayLength());
+
+            // upload in draw()
+            // pitImage.stagedTexture->descriptorHandle = renderer->srvHeap.allocateHandle(
 //#ifdef _DEBUG
 //            BRWL_CHAR_LITERAL("StagedPitTexture")
 //#endif
-//        );
-        pitImage.stagedTexture->state = TextureResource::State::REQUESTING_UPLOAD;
+//            );
+            pitImage.stagedTexture->state = TextureResource::State::REQUESTING_UPLOAD;
 
-        // set front-end request satisfied
-        memcpy(v.transferFunction.transferFunction, r.transferFunction.transferFunction, sizeof(v.transferFunction.transferFunction));
-        v.transferFunction.bitDepth = r.transferFunction.bitDepth;
-        v.transferFunction.controlPoints = r.transferFunction.controlPoints;
+            // set front-end request satisfied
+            memcpy(tFuncValue.transferFunction, tFuncResult.transferFunction, sizeof(tFuncValue.transferFunction));
+            tFuncValue.bitDepth = tFuncResult.bitDepth;
+            tFuncValue.controlPoints = tFuncResult.controlPoints;
+        }
+        else {
+            // reset
+            //memcpy(r.transferFunction.transferFunction, tFuncValue.transferFunction, sizeof(r.transferFunction.transferFunction));
+            //r.transferFunction.bitDepth = tFuncValue.bitDepth;
+            //r.transferFunction.controlPoints = tFuncValue.controlPoints;
+        }
     }
-    else {
-        // reset
-        memcpy(r.transferFunction.transferFunction, v.transferFunction.transferFunction, sizeof(r.transferFunction.transferFunction));
-        r.transferFunction.bitDepth = v.transferFunction.bitDepth;
-        r.transferFunction.controlPoints = v.transferFunction.controlPoints;
-    }
-
     mainShader.render();
 }
 
@@ -223,7 +268,9 @@ void Visualization2Renderer::draw(Renderer* r)
         return;
     }
 
-    // we always need the volume texture so ensur it is there first
+    // we always need the volume texture so ensure we have it first.
+    // this stalls the pipeline until the copy is complete but maybe we don't care 
+    // because this is the data we want to visualize and if we don't have it we see nothing anyways
     if (volumeTexture.state == TextureResource::State::REQUESTING_UPLOAD)
     {
         BRWL_EXCEPTION(dataSet.isValid(), BRWL_CHAR_LITERAL("Invalid state of data set."));
@@ -240,65 +287,91 @@ void Visualization2Renderer::draw(Renderer* r)
             return;
         };
 
-        //uploadCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
         DR(uploadCommandList->Close());
         ID3D12CommandList* const ppCommandLists[] = { uploadCommandList.Get() };
         uploadCommandQueue->ExecuteCommandLists(1, ppCommandLists);
 
+        // wait synchronously for the upload to complete
         ++volumeTextureFenceValue;
         DR(uploadCommandQueue->Signal(volumeTextureUploadFence.Get(), volumeTextureFenceValue));
         DR(volumeTextureUploadFence->SetEventOnCompletion(volumeTextureFenceValue, uploadFenceEvent));
         WaitForSingleObject(uploadFenceEvent, INFINITE);
         volumeTexture.state = TextureResource::State::RESIDENT;
+
+        // indicate new resource to be used by the pixel shader on the main command queue
+        r->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
     }
 
     // If we have all resources then we draw else we wait anouther frame
-    if (pitImage.liveTexture->state == TextureResource::State::RESIDENT)
+    if (pitCollection.isResident())
     {
-        mainShader.draw(r->device.Get(), r->commandList.Get());
+        mainShader.draw(r->device.Get(), r->commandList.Get(), &volumeTexture, pitCollection);
     }
 
-
-    if (pitImage.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD)
+    // check if we have to start uploading textures
+    bool uploading = false;
+    if(std::any_of(pitCollection.array, pitCollection.array + countof(pitCollection.array), [](const PitImage& p) {
+        return p.liveTexture->state == TextureResource::State::REQUESTING_UPLOAD;
+    }))
     {
         DR(uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr));
+        uploading = true;
+    }
 
-        pitImage.stagedTexture->descriptorHandle = r->srvHeap.allocateHandle(
+    for (int i = 0; i < countof(pitCollection.array); ++i)
+    {
+        PitImage& pitImage = pitCollection.array[i];
+        if (pitImage.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD)
+        {
+            pitImage.stagedTexture->descriptorHandle = r->srvHeap.allocateHandle(
 #ifdef _DEBUG
                 BRWL_CHAR_LITERAL("StagedPitTexture")
 #endif
-        );
-        if (!BRWL_VERIFY(LoadFloatTexture2D(r->device.Get(), uploadCommandList.Get(), &pitImage.cpuImage, *pitImage.stagedTexture, uploadHeap), BRWL_CHAR_LITERAL("Failed to load the pitImage texture to the GPU.")))
-        {   // we expect the function to clean up everything necessary
-            return;
-        };
+            );
+            if (!BRWL_VERIFY(LoadFloatTexture2D(r->device.Get(), uploadCommandList.Get(), &pitImage.cpuImage, *pitImage.stagedTexture, uploadHeap), BRWL_CHAR_LITERAL("Failed to load the pitImage texture to the GPU.")))
+            {   // we expect the function to clean up everything necessary
+                continue;
+            };
+        }
+    }
 
-        //uploadCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pitImage.stagedTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+    if (uploading)
+    {
         DR(uploadCommandList->Close());
         ID3D12CommandList* const ppCommandLists[] = { uploadCommandList.Get() };
         uploadCommandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-        ++pitImage.uploadFenceValue;
-        DR(uploadCommandQueue->Signal(pitImage.fence.Get(), pitImage.uploadFenceValue));
-        // instead of waiting here, we check the completion state in render()
+        for (int i = 0; i < countof(pitCollection.array); ++i)
+        {
+            PitImage& pitImage = pitCollection.array[i];
+            ++pitImage.uploadFenceValue;
+            DR(uploadCommandQueue->Signal(pitImage.fence.Get(), pitImage.uploadFenceValue));
+            // instead of waiting here, we check the completion state in render()
+        }
     }
+
+
 }
 
 void Visualization2Renderer::destroy(Renderer* r)
 {
-    if (pitImage.fence)
+
+    for (int i = 0; i < countof(pitCollection.array); ++i)
     {
-        DR(pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, uploadFenceEvent));
-        WaitForSingleObject(uploadFenceEvent, INFINITE);
+        PitImage& pitImage = pitCollection.array[i];
+
+        if (pitImage.fence && pitImage.uploadFenceValue < pitImage.fence->GetCompletedValue())
+        {
+            DR(pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, pitImage.uploadEvent));
+            WaitForSingleObject(uploadFenceEvent, INFINITE);
+        }
     }
 
     mainShader.destroy();
 
     initialized = false;
     volumeTexture.destroy();
-    pitImage.liveTexture->destroy();
-    pitImage.stagedTexture->destroy();
-    pitImage.fence = nullptr;
+    pitCollection.destroy();
     uploadHeap = nullptr;
     volumeTextureUploadFence = nullptr;
     volumeTextureFenceValue = 0;
@@ -345,7 +418,7 @@ bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
     texDesc.Height = dataSet->getSizeY();
     texDesc.DepthOrArraySize= dataSet->getSizeZ();
     texDesc.MipLevels = 1;
-    texDesc.Format = DXGI_FORMAT_R16_UNORM;
+    texDesc.Format = DXGI_FORMAT_R16_SNORM;
     texDesc.SampleDesc = { 1,0 };
     texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;

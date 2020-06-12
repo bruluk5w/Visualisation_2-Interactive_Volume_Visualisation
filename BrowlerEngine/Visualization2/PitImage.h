@@ -6,6 +6,7 @@ BRWL_RENDERER_NS
 
 struct TextureResource;
 
+// Intended to be managed by PitCollections
 class PitImage
 {
 public:
@@ -15,6 +16,7 @@ public:
 	Image cpuImage;
 	ComPtr<ID3D12Fence> fence;
 	uint64_t uploadFenceValue;
+	HANDLE uploadEvent;
 	std::unique_ptr<TextureResource> liveTexture;
 	std::unique_ptr<TextureResource> stagedTexture;
 };

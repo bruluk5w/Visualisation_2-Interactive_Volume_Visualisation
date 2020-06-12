@@ -57,6 +57,7 @@ namespace PAL
 		void destroyRenderTargets();
 		void waitForLastSubmittedFrame();
 		FrameContext* waitForNextFrameResources();
+		FrameContext* getCurrentFrameContext();
 		void resizeSwapChain(HWND hWnd, int width, int height);
 
 

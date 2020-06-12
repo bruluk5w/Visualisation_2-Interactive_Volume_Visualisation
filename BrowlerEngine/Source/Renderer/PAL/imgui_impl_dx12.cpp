@@ -30,8 +30,8 @@
 // DirectX
 #include <d3d12.h>
 #include <dxgi1_4.h>
-#include "GUI_vs.h"
-#include "GUI_ps.h"
+#include "GUI_vs_vs.h"
+#include "GUI_ps_ps.h"
 
 // DirectX data
 static ComPtr<ID3D12Device>         g_pd3dDevice = nullptr;

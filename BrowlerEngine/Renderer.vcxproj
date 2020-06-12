@@ -391,10 +391,6 @@ if not exist %compiled_folder% (
     </ClInclude>
     <ClInclude Include="Include\Renderer\Renderer_Precomp.h" />
     <ClInclude Include="Include\Renderer\targetver.h" />
-    <ClInclude Include="Shaders\Compiled\GUI_ps.h" />
-    <ClInclude Include="Shaders\Compiled\GUI_vs.h" />
-    <ClInclude Include="Shaders\Compiled\PixelShader_ps.h" />
-    <ClInclude Include="Shaders\Compiled\VertexShader_vs.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Renderer\AppRenderer.cpp">

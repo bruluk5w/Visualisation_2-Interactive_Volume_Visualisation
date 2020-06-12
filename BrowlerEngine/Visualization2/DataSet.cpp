@@ -65,16 +65,29 @@ void DataSet::loadFromFile(BRWL_STR relativePath)
 	}
 
 	data = std::unique_ptr<uint8_t[]>(new uint8_t[bufferSize]);
-	for (int z = 0; z < sizeZ; ++z) {
+	/*for (int z = 0; z < sizeZ; ++z) {
 		size_t offsetZ = z * strideZ;
-		/*for (int y = 0; y < sizeY; ++y) {
+		for (int y = 0; y < sizeY; ++y) {
 			size_t offsetY = offsetZ + y * strideY;
 			for (int x = 0; x < sizeX; ++x) {
 				file.read((char*)&data[offsetY + x * strideX], sizeof(sampleT));
 			}
-		}*/
+		}	
+	}*/
 
-		file.read((char*)&data[offsetZ], strideZ);
+	file.read((char*)data.get(), bufferSize);
+
+	if (false) {
+		for (int z = 0; z < sizeZ; ++z) {
+			size_t offsetZ = z * strideZ;
+			for (int y = 0; y < sizeY; ++y) {
+				const size_t offsetY = offsetZ + y * strideY;
+				for (int x = 0; x < sizeX; ++x) {
+					const size_t idx = offsetY + x * strideX;
+					data[idx] = SWAP_16(data[idx]);
+				}
+			}
+		}
 	}
 
 	valid = true;

@@ -144,10 +144,51 @@ const char* UIResult::Settings::fontNames[] = {
     "Open Sans Semibold",
     "Open Sans Bold"
 };
+
 const char* UIResult::TransferFunction::bitDepthNames[] = {
     "8 Bit",
     "10 Bit"
 };
+
+const char* UIResult::TransferFunctionCollection::transferFuncNames[] = {
+    "Refraction",
+    "Particle Color",
+    "Opacity",
+    "Medium Color"
+};
+
+UIResult::UIResult() :
+    settings {
+        UIResult::Settings::Font::OPEN_SANS_REGULAR, // font
+        30 // fontSize
+    },
+    transferFunctions{}
+{ }
+
+
+UIResult::TransferFunctionCollection::TransferFunctionCollection() :
+    functions {
+        {}, // refractionTansFunc
+        {}, // particleColorTransFunc
+        {}, // opacityTransFunc
+        {}  // mediumColorTransFunc
+    }
+{ }
+
+UIResult::TransferFunctionCollection::~TransferFunctionCollection()
+{
+    functions.~Aliases();
+}
+
+UIResult::TransferFunction::TransferFunction()  :
+    bitDepth(UIResult::TransferFunction::BitDepth::BIT_DEPTH_10_BIT),
+    controlPoints{ {0,0}, {1,1} },
+    transferFunction { 0 },
+    textureID(nullptr)
+{
+    updateFunction();
+}
+
 
 int UIResult::TransferFunction::getArrayLength() const
 {
@@ -222,7 +263,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
     Dummy(ImVec2(20, 0));
     thread_local bool showSettings = false;
     showSettings = showSettings || Button("Settings");
-    thread_local bool showTools = true;
+    thread_local bool showTools = false;
     showTools = showTools || Button("Tools");
     ImGui::EndMainMenuBar();
 
@@ -244,100 +285,138 @@ void renderAppUI(UIResult& result, const UIResult& values)
         thread_local float plotHeight = 1;
         thread_local float menuSpaceY = 0; // the height of all the stuff before the graph plot comes
         thread_local bool fitWindow = false;
-        {
-            const float minWindowSizeX = result.transferFunction.getArrayLength() * plotWidth + 25;
-            const float minWindowSizeY = Utils::min(GetIO().DisplaySize.y - 20, menuSpaceY + result.transferFunction.getArrayLength() * plotHeight + 20);
-            if (fitWindow) {
-                ImGui::SetNextWindowSize({ minWindowSizeX + 10, minWindowSizeY + 10 });
-                fitWindow = false;
-            }
+        //{
+        //    const float minWindowSizeX = result.transferFunction.getArrayLength() * plotWidth + 25;
+        //    const float minWindowSizeY = Utils::min(GetIO().DisplaySize.y - 20, menuSpaceY + result.transferFunction.getArrayLength() * plotHeight + 20);
+        //    if (fitWindow) {
+        //        ImGui::SetNextWindowSize({ minWindowSizeX + 10, minWindowSizeY + 10 });
+        //        fitWindow = false;
+        //    }
 
-            PushStyleVar(ImGuiStyleVar_WindowMinSize, { minWindowSizeX, minWindowSizeY });
-        }
+        //    PushStyleVar(ImGuiStyleVar_WindowMinSize, { minWindowSizeX, minWindowSizeY });
+        //}
 
         Begin("Tools", &showTools);
         {
-            ENUM_SELECT("Bit Depth", values.transferFunction.bitDepth, result.transferFunction.bitDepth, UIResult::TransferFunction, BitDepth, bitDepthNames);
 
-            thread_local bool lockAspect = false;
-            float plotWidthBefore = plotWidth;
-            float plotHeihgtBefore = plotHeight;
-            // Draw first plot with multiple sources
-            Text("Plot Size: ");
-            SLIDER_FIX(1);
-            Text("Width: "); SameLine(); SliderFloat("", &plotWidth, 1, 3, "");
-            if (!lockAspect) { SameLine(); if (Button("Reset")) plotWidth = 1; }
-            SLIDER_FIX_END();
-            SLIDER_FIX(2);
-            Text("Height: "); SameLine(); SliderFloat("", &plotHeight, 1, 3, "");
-            if (!lockAspect) { SameLine(); if (Button("Reset")) plotHeight = 1; }
-            SLIDER_FIX_END();
-            if (lockAspect) {
-                if (plotWidth != plotWidthBefore) plotHeight = plotWidth;
-                else if (plotHeight != plotHeihgtBefore) plotWidth = plotHeight;
-                else if (plotHeight != plotWidth) plotHeight = plotWidth = Utils::max(plotHeight, plotWidth);
-            }
+            // Expose a couple of the available flags. In most cases you may just call BeginTabBar() with no flags (0).
+            static ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_Reorderable;
+            ImGui::CheckboxFlags("ImGuiTabBarFlags_Reorderable", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_Reorderable);
+            ImGui::CheckboxFlags("ImGuiTabBarFlags_AutoSelectNewTabs", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_AutoSelectNewTabs);
+            ImGui::CheckboxFlags("ImGuiTabBarFlags_TabListPopupButton", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_TabListPopupButton);
+            ImGui::CheckboxFlags("ImGuiTabBarFlags_NoCloseWithMiddleMouseButton", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_NoCloseWithMiddleMouseButton);
+            if ((tab_bar_flags & ImGuiTabBarFlags_FittingPolicyMask_) == 0)
+                tab_bar_flags |= ImGuiTabBarFlags_FittingPolicyDefault_;
+            if (ImGui::CheckboxFlags("ImGuiTabBarFlags_FittingPolicyResizeDown", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_FittingPolicyResizeDown))
+                tab_bar_flags &= ~(ImGuiTabBarFlags_FittingPolicyMask_ ^ ImGuiTabBarFlags_FittingPolicyResizeDown);
+            if (ImGui::CheckboxFlags("ImGuiTabBarFlags_FittingPolicyScroll", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_FittingPolicyScroll))
+                tab_bar_flags &= ~(ImGuiTabBarFlags_FittingPolicyMask_ ^ ImGuiTabBarFlags_FittingPolicyScroll);
 
-            Checkbox(" Maintain Aspect Ratio", &lockAspect);
-            if (lockAspect) { SameLine(); if (Button("Reset")) plotWidth = plotHeight = 1; }
-            thread_local bool showCoordinatesTooltip = true;
-            Checkbox(" Show Tooltip in Graph", &showCoordinatesTooltip); 
-            thread_local float ctrlPtointScale = 1;
-            SLIDER_FIX(3);
-            Text("Control Point Size: "), SameLine(); SliderFloat("", &ctrlPtointScale, 0.2f, 3.f);
-            SLIDER_FIX_END();
-           fitWindow = Button(" Fit Window");
-
-            menuSpaceY = ImGui::GetCursorPosY();
-
-            bool ctrlPointsChanged = false;
-            ImGui::PlotConfig conf{ };
-            conf.values.count = result.transferFunction.getArrayLength();
-            conf.values.ys = result.transferFunction.transferFunction; // use ys_list to draw several lines simultaneously
-            conf.values.ys_count = 1;
-            const ImU32 graphColor(ImColor(0, 255, 0));
-            conf.values.colors = &graphColor;
-            conf.scale.min = 0;
-            conf.scale.max = 1;
-            conf.tooltip.show = showCoordinatesTooltip;
-            conf.tooltip.format = "Idx: %g, Cursor Value: %8.4g, Graph Value %8.4g";
-            conf.grid_x.show = true;
-            conf.grid_x.size = 128;
-            conf.grid_x.subticks = 4;
-            conf.grid_y.show = true;
-            conf.grid_y.size = 1.0f;
-            conf.grid_y.subticks = 5;
-            conf.selection.show = false;
-            conf.ctrlPoints = &values.transferFunction.controlPoints;
-            conf.ctrlPointSize = ctrlPtointScale;
-            conf.values.ctrlPoints = &result.transferFunction.controlPoints;
-            conf.values.ctrlPointsChanged = &ctrlPointsChanged;
-            //conf.selection.start = &selection_start;
-            //conf.selection.length = &selection_length;
-            int texSideLength = values.transferFunction.getArrayLength();
-            float width = texSideLength * plotWidth;
-            float height = texSideLength * plotHeight;
-            conf.frame_size = ImVec2(width, height);
-            if (values.transferFunction.textureID != nullptr)
+            // Tab Bar
+            const char* names[4] = { "Artichoke", "Beetroot", "Celery", "Daikon" };
+            static bool opened[4] = { true, true, true, true }; // Persistent user state
+            for (int n = 0; n < IM_ARRAYSIZE(opened); n++)
             {
-                conf.useBackGroundTextrue = true;
-                conf.texID = values.transferFunction.textureID;
-                conf.maxTexVal = (float)texSideLength;
+                if (n > 0) { ImGui::SameLine(); }
+                ImGui::Checkbox(names[n], &opened[n]);
             }
 
-            ImGui::Plot("plot1", conf);
-            ctrlPointsChanged |= values.transferFunction.bitDepth != result.transferFunction.bitDepth;
-            if (ctrlPointsChanged)
+            // Passing a bool* to BeginTabItem() is similar to passing one to Begin():
+            // the underlying bool will be set to false when the tab is closed.
+            if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
             {
-                decltype(result.transferFunction.controlPoints)& array = result.transferFunction.controlPoints;
-                std::sort(array.begin(), array.end(), [](const Vec2& a, const Vec2& b) {return a.x < b.x; });
-                if (array.size() >= 2)
-                {
-                    // remove duplicates
-                    array.erase(std::remove_if(array.begin() + 1, array.end(), [&array](::BRWL::Vec2& v){return v.x == array[&v - array.data() - 1].x; }), array.end());
-                }
-                result.transferFunction.updateFunction();
+                for (int n = 0; n < IM_ARRAYSIZE(opened); n++)
+                    if (opened[n] && ImGui::BeginTabItem(names[n], &opened[n], ImGuiTabItemFlags_None))
+                    {
+                        ImGui::Text("This is the %s tab!", names[n]);
+                        if (n & 1)
+                            ImGui::Text("I am an odd tab.");
+                        ImGui::EndTabItem();
+                    }
+                ImGui::EndTabBar();
             }
+
+           // ENUM_SELECT("Bit Depth", values.transferFunction.bitDepth, result.transferFunction.bitDepth, UIResult::TransferFunction, BitDepth, bitDepthNames);
+
+           // thread_local bool lockAspect = false;
+           // float plotWidthBefore = plotWidth;
+           // float plotHeihgtBefore = plotHeight;
+           // // Draw first plot with multiple sources
+           // Text("Plot Size: ");
+           // SLIDER_FIX(1);
+           // Text("Width: "); SameLine(); SliderFloat("", &plotWidth, 1, 3, "");
+           // if (!lockAspect) { SameLine(); if (Button("Reset")) plotWidth = 1; }
+           // SLIDER_FIX_END();
+           // SLIDER_FIX(2);
+           // Text("Height: "); SameLine(); SliderFloat("", &plotHeight, 1, 3, "");
+           // if (!lockAspect) { SameLine(); if (Button("Reset")) plotHeight = 1; }
+           // SLIDER_FIX_END();
+           // if (lockAspect) {
+           //     if (plotWidth != plotWidthBefore) plotHeight = plotWidth;
+           //     else if (plotHeight != plotHeihgtBefore) plotWidth = plotHeight;
+           //     else if (plotHeight != plotWidth) plotHeight = plotWidth = Utils::max(plotHeight, plotWidth);
+           // }
+
+           // Checkbox(" Maintain Aspect Ratio", &lockAspect);
+           // if (lockAspect) { SameLine(); if (Button("Reset")) plotWidth = plotHeight = 1; }
+           // thread_local bool showCoordinatesTooltip = true;
+           // Checkbox(" Show Tooltip in Graph", &showCoordinatesTooltip); 
+           // thread_local float ctrlPtointScale = 1;
+           // SLIDER_FIX(3);
+           // Text("Control Point Size: "), SameLine(); SliderFloat("", &ctrlPtointScale, 0.2f, 3.f);
+           // SLIDER_FIX_END();
+           //fitWindow = Button(" Fit Window");
+
+           // menuSpaceY = ImGui::GetCursorPosY();
+
+           // bool ctrlPointsChanged = false;
+           // ImGui::PlotConfig conf{ };
+           // conf.values.count = result.transferFunction.getArrayLength();
+           // conf.values.ys = result.transferFunction.transferFunction; // use ys_list to draw several lines simultaneously
+           // conf.values.ys_count = 1;
+           // const ImU32 graphColor(ImColor(0, 255, 0));
+           // conf.values.colors = &graphColor;
+           // conf.scale.min = 0;
+           // conf.scale.max = 1;
+           // conf.tooltip.show = showCoordinatesTooltip;
+           // conf.tooltip.format = "Idx: %g, Cursor Value: %8.4g, Graph Value %8.4g";
+           // conf.grid_x.show = true;
+           // conf.grid_x.size = 128;
+           // conf.grid_x.subticks = 4;
+           // conf.grid_y.show = true;
+           // conf.grid_y.size = 1.0f;
+           // conf.grid_y.subticks = 5;
+           // conf.selection.show = false;
+           // conf.ctrlPoints = &values.transferFunction.controlPoints;
+           // conf.ctrlPointSize = ctrlPtointScale;
+           // conf.values.ctrlPoints = &result.transferFunction.controlPoints;
+           // conf.values.ctrlPointsChanged = &ctrlPointsChanged;
+           // //conf.selection.start = &selection_start;
+           // //conf.selection.length = &selection_length;
+           // int texSideLength = values.transferFunction.getArrayLength();
+           // float width = texSideLength * plotWidth;
+           // float height = texSideLength * plotHeight;
+           // conf.frame_size = ImVec2(width, height);
+           // if (values.transferFunction.textureID != nullptr)
+           // {
+           //     conf.useBackGroundTextrue = true;
+           //     conf.texID = values.transferFunction.textureID;
+           //     conf.maxTexVal = (float)texSideLength;
+           // }
+
+           // ImGui::Plot("plot1", conf);
+           // ctrlPointsChanged |= values.transferFunction.bitDepth != result.transferFunction.bitDepth;
+           // if (ctrlPointsChanged)
+           // {
+           //     decltype(result.transferFunction.controlPoints)& array = result.transferFunction.controlPoints;
+           //     std::sort(array.begin(), array.end(), [](const Vec2& a, const Vec2& b) {return a.x < b.x; });
+           //     if (array.size() >= 2)
+           //     {
+           //         // remove duplicates
+           //         array.erase(std::remove_if(array.begin() + 1, array.end(), [&array](::BRWL::Vec2& v){return v.x == array[&v - array.data() - 1].x; }), array.end());
+           //     }
+           //     result.transferFunction.updateFunction();
+           // }
 
         }
         End();

@@ -1,7 +1,7 @@
 #include "MainShader.h"
 
-#include "VertexShader_vs.h"
-#include "PixelShader_ps.h"
+#include "VertexShader_vs_vs.h"
+#include "PixelShader_ps_ps.h"
 
 #include "Renderer/PAL/d3dx12.h"
 
@@ -10,6 +10,33 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/Camera.h"
 #include "Core/Input.h"
+
+#include "TextureResource.h"
+#include "PitCollection.h"
+
+
+namespace
+{
+    void makeStaticSamplerDescription(D3D12_STATIC_SAMPLER_DESC& staticSampler, unsigned int shaderRegister)
+    {
+        memset(&staticSampler, 0, sizeof(staticSampler));
+        staticSampler.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+        staticSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        staticSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        staticSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        staticSampler.MipLODBias = 0.f;
+        staticSampler.MaxAnisotropy = 0;
+        staticSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+        staticSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+        staticSampler.MinLOD = 0.f;
+        staticSampler.MaxLOD = 0.f;
+        staticSampler.ShaderRegister = shaderRegister;
+        staticSampler.RegisterSpace = 0;
+        staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    }
+}
+
+
 
 BRWL_RENDERER_NS
 
@@ -27,40 +54,33 @@ bool MainShader::create(ID3D12Device* device)
 
 #pragma region PSO
     {
-        D3D12_STATIC_SAMPLER_DESC staticSampler;
-        memset(&staticSampler, 0, sizeof(staticSampler));
-        staticSampler.Filter = D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
-        staticSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-        staticSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-        staticSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-        staticSampler.MipLODBias = 0.f;
-        staticSampler.MaxAnisotropy = 0;
-        staticSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-        staticSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-        staticSampler.MinLOD = 0.f;
-        staticSampler.MaxLOD = 0.f;
-        staticSampler.ShaderRegister = 0;
-        staticSampler.RegisterSpace = 0;
-        staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        // volume and preintergration sampler are static samplers since they never change
+        D3D12_STATIC_SAMPLER_DESC staticSamplers[2];
+        D3D12_STATIC_SAMPLER_DESC& preintegrationSampler = staticSamplers[0];
+        makeStaticSamplerDescription(preintegrationSampler, 0);
+        D3D12_STATIC_SAMPLER_DESC& volumeSampler = staticSamplers[0];
+        makeStaticSamplerDescription(volumeSampler, 1);
+
 
         // Mainly for the texture
+        const unsigned int numTextures = 5;
         D3D12_DESCRIPTOR_RANGE descRange;
         memset(&descRange, 0, sizeof(descRange));
         descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        descRange.NumDescriptors = 1;
+        descRange.NumDescriptors = numTextures;
         descRange.BaseShaderRegister = 0;
         descRange.RegisterSpace = 0;
         descRange.OffsetInDescriptorsFromTableStart = 0;
 
         D3D12_ROOT_PARAMETER param[2] = {};
         memset(&param, 0, sizeof(param));
-
+        // MVP matrix
         param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
         param[0].Constants.ShaderRegister = 0;
         param[0].Constants.RegisterSpace = 0;
         param[0].Constants.Num32BitValues = 16;
         param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
+        // Descriptor table with textures
         param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         param[1].DescriptorTable.NumDescriptorRanges = 1;
         param[1].DescriptorTable.pDescriptorRanges = &descRange;
@@ -70,8 +90,8 @@ bool MainShader::create(ID3D12Device* device)
         memset(&rootSignatureDesc, 0, sizeof(rootSignatureDesc));
         rootSignatureDesc.NumParameters = _countof(param);
         rootSignatureDesc.pParameters = param;
-        rootSignatureDesc.NumStaticSamplers = 1;
-        rootSignatureDesc.pStaticSamplers = &staticSampler;
+        rootSignatureDesc.NumStaticSamplers = 2;
+        rootSignatureDesc.pStaticSamplers = staticSamplers;
         rootSignatureDesc.Flags =
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
             D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
@@ -95,11 +115,11 @@ bool MainShader::create(ID3D12Device* device)
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
     memset(&psoDesc, 0, sizeof(psoDesc));
-    psoDesc.NodeMask = 1;
+    psoDesc.NodeMask = 0;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     psoDesc.pRootSignature = rootSignature.Get();
     psoDesc.SampleMask = UINT_MAX;
-    psoDesc.NumRenderTargets = 1;
+    psoDesc.NumRenderTargets = 3;
     psoDesc.RTVFormats[0] = PAL::g_RenderTargetFormat;
     psoDesc.SampleDesc.Count = 1;
     psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
@@ -221,13 +241,13 @@ void MainShader::render()
     //if (vertexBuffer == nullptr)
 }
 
-void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd)
+void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, TextureResource* volumeTexture, PitCollection& pitCollections)
 {
     setupRenderState(cmd);
+    // set a texture
+    cmd->SetGraphicsRootDescriptorTable(1, volumeTexture->descriptorHandle.gpu);
 
     cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
-    // set a texture
-    //cmd->SetGraphicsRootDescriptorTable(1, *(D3D12_GPU_DESCRIPTOR_HANDLE*)&pcmd->TextureId);
 
     // Render command lists
     // (Because we merged all buffers into a single one, we maintain our own offset into them)
@@ -320,11 +340,7 @@ void MainShader::setupRenderState(ID3D12GraphicsCommandList* cmd)
      //   }
     
 
-   
-    //mvp *= makeOrthographic((float)width, (float)height, cam->getNearPlane(), cam->getFarPlane());
-    //viewProjection *= mvp;
-    /*Vec3 test { 0, 0, 1 };
-    test = test * mvp;*/
+  
     vp.TopLeftX = vp.TopLeftY = 0.0f;
     cmd->RSSetViewports(1, &vp);
 

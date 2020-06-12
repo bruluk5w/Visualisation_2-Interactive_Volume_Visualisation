@@ -3,7 +3,7 @@
 class DataSet
 {
 public:
-	using sampleT = uint16_t;
+	using sampleT = int16_t;
 	DataSet(BRWL_STR name);
 	void loadFromFile(BRWL_STR relativePath);
 	bool isValid() const { return valid; }

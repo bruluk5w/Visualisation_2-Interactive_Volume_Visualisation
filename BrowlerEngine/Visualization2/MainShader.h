@@ -3,6 +3,9 @@
 
 BRWL_RENDERER_NS
 
+struct TextureResource;
+union PitCollection;
+
 namespace PAL
 {
     extern DXGI_FORMAT g_RenderTargetFormat;
@@ -15,7 +18,7 @@ public:
 
     bool create(ID3D12Device* device);
     void render();
-    void draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd);
+    void draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, TextureResource* volumeTexture, PitCollection& pitCollection);
     void destroy();
 
 private:

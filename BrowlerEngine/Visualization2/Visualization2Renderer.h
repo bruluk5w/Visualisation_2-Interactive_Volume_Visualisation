@@ -3,9 +3,9 @@
 #include "Renderer/AppRenderer.h"
 #include "UI/AppUi.h"
 #include "Renderer/Renderer.h"
-#include "PitImage.h"
-#include "DataSet.h"
 #include "TextureResource.h"
+#include "DataSet.h"
+#include "PitCollection.h"
 
 #ifndef BRWL_USE_DEAR_IM_GUI
 #error The project requires Dear ImGui
@@ -47,8 +47,8 @@ protected:
 	DataSet dataSet;
 	TextureResource volumeTexture;
 	uint64_t volumeTextureFenceValue;
-	// Preintegration table
-	PitImage pitImage;
+
+	PitCollection pitCollection;
 
 	ComPtr<ID3D12Resource> uploadHeap;
 	ComPtr<ID3D12Fence> volumeTextureUploadFence;

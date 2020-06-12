@@ -169,6 +169,8 @@ namespace PAL
         return true;
     }
 
+#define DR(expression) HandleDeviceRemoved(expression, device.Get(), *logger)
+
     void WinRenderer::render()
     {
         if (!currentFramebufferHeight || !currentFramebufferWidth)
@@ -185,6 +187,11 @@ namespace PAL
         ImGui::NewFrame();
 #endif // BRWL_USE_DEAR_IM_GUI
 
+        // NOTIC: We open the command list early for the renderer method below to schedule resource barriers after some uploads have finished
+        FrameContext* frameCtxt = waitForNextFrameResources();
+        frameCtxt->CommandAllocator->Reset();
+        DR(commandList->Reset(frameCtxt->CommandAllocator.Get(), nullptr));
+
         // Render
         BaseRenderer::render();
 
@@ -195,7 +202,6 @@ namespace PAL
 
     void WinRenderer::draw()
     {
-#define DR(expression) HandleDeviceRemoved(expression, device.Get(), *logger)
         if (!currentFramebufferHeight || !currentFramebufferWidth)
         {
             logger->info(BRWL_CHAR_LITERAL("Nothing to draw, framebuffer too small."));
@@ -204,9 +210,7 @@ namespace PAL
 
         // Draw
 
-        FrameContext* frameCtxt = waitForNextFrameResources();
         UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();
-        frameCtxt->CommandAllocator->Reset();
 
         D3D12_RESOURCE_BARRIER barrier = {};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -216,7 +220,6 @@ namespace PAL
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-        DR(commandList->Reset(frameCtxt->CommandAllocator.Get(), nullptr));
         commandList->ResourceBarrier(1, &barrier);
         commandList->ClearRenderTargetView(mainRenderTargetDescriptor[backBufferIdx].cpu, (float*)&clearColor, 0, nullptr);
         commandList->OMSetRenderTargets(1, &mainRenderTargetDescriptor[backBufferIdx].cpu, FALSE, nullptr);
@@ -259,7 +262,7 @@ namespace PAL
         UINT64 fenceValue = frameFenceLastValue + 1;
         DR(commandQueue->Signal(frameFence.Get(), fenceValue));
         frameFenceLastValue = fenceValue;
-        frameCtxt->FenceValue = fenceValue;
+        getCurrentFrameContext()->FenceValue = fenceValue;
 
 
         if (!dxgiFactory->IsCurrent())
@@ -626,7 +629,7 @@ namespace PAL
         HANDLE waitableObjects[] = { swapChainWaitableObject, NULL };
         DWORD numWaitableObjects = 1;
 
-        FrameContext* frameCtxt = &frameContext[frameIndex % NUM_FRAMES_IN_FLIGHT];
+        FrameContext* frameCtxt = getCurrentFrameContext();
         UINT64 fenceValue = frameCtxt->FenceValue;
         if (fenceValue != 0) // means no fence was signaled
         {
@@ -639,6 +642,11 @@ namespace PAL
         WaitForMultipleObjects(numWaitableObjects, waitableObjects, TRUE, INFINITE);
 
         return frameCtxt;
+    }
+
+    WinRenderer::FrameContext* WinRenderer::getCurrentFrameContext()
+    {
+        return &frameContext[frameIndex % NUM_FRAMES_IN_FLIGHT];
     }
 
     void WinRenderer::resizeSwapChain(HWND hWnd, int width, int height)
