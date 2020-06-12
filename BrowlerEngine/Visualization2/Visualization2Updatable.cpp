@@ -120,8 +120,8 @@ void Visualization2Updatable::update(double dt)
 	////	}
 	////}
 
-	float dx = engine->input->getMouseDeltaX();
-	float dy = engine->input->getMouseDeltaY();
+	float dx = (float)engine->input->getMouseDeltaX();
+	float dy = (float)engine->input->getMouseDeltaY();
 	if (engine->input->isButtonPressed(Button::MOUSE_1) && (dx != 0 || dy != 0))
 	{
 		//rotX = Utils::clamp(rotX + dy * DEG_2_RAD_F * 0.1f, -PI_F + 0.1f, PI_F - 0.1f);

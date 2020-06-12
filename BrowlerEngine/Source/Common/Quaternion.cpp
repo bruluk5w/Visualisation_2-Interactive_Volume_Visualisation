@@ -69,7 +69,7 @@ Quaternion Quaternion::lookAt(Vec3 from, Vec3 to)
 	}
 
 	// forward vector is the biggest
-	const float s = 0.5f / sqrt(1.0 + vecFwd.z - vecRight.x - vecUp.y);
+	const float s = 0.5f / std::sqrtf(1.0f + vecFwd.z - vecRight.x - vecUp.y);
 	return Quaternion((vecFwd.x + vecRight.z) * s, (vecFwd.y + vecUp.z) * s, 0.25f / s, (vecRight.y - vecUp.x) * s);
 }
 

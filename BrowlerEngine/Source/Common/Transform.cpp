@@ -6,8 +6,8 @@ BRWL_NS
 
 
 
-Transform::Transform(BRWL_STR name) :
-	name(std::move(name)),
+Transform::Transform(const BRWL_CHAR* name) :
+	name(name),
 	parent(nullptr),
 	children(),
 	pos(),

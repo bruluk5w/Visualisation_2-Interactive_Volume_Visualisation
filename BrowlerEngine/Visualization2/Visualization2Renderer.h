@@ -50,7 +50,6 @@ protected:
 
 	PitCollection pitCollection;
 
-	ComPtr<ID3D12Resource> uploadHeap;
 	ComPtr<ID3D12Fence> volumeTextureUploadFence;
 	HANDLE uploadFenceEvent;
 

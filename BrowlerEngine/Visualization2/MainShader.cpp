@@ -34,6 +34,17 @@ namespace
         staticSampler.RegisterSpace = 0;
         staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     }
+
+    const int mvpIdx = 0;
+
+    const int texturesMin = 1;
+    const int refractionIntegTexIdx = 1;
+    const int particleColIntegTexxIdx = 2;
+    const int opacityIntegTexIdx = 3;
+    const int mediumIntegTexIdx = 4;
+    const int volumeTextureIdx = 5;
+    const int numTextures = 5;
+    const int numRootParameters = 6;
 }
 
 
@@ -58,39 +69,46 @@ bool MainShader::create(ID3D12Device* device)
         D3D12_STATIC_SAMPLER_DESC staticSamplers[2];
         D3D12_STATIC_SAMPLER_DESC& preintegrationSampler = staticSamplers[0];
         makeStaticSamplerDescription(preintegrationSampler, 0);
-        D3D12_STATIC_SAMPLER_DESC& volumeSampler = staticSamplers[0];
+        D3D12_STATIC_SAMPLER_DESC& volumeSampler = staticSamplers[1];
         makeStaticSamplerDescription(volumeSampler, 1);
 
 
-        // Mainly for the texture
-        const unsigned int numTextures = 5;
-        D3D12_DESCRIPTOR_RANGE descRange;
-        memset(&descRange, 0, sizeof(descRange));
-        descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        descRange.NumDescriptors = numTextures;
-        descRange.BaseShaderRegister = 0;
-        descRange.RegisterSpace = 0;
-        descRange.OffsetInDescriptorsFromTableStart = 0;
+        // textures go each into a single table of srv descriptor ranges
+        // each table and each range are of size 1 because the handles are not located in a continuous range
+        D3D12_DESCRIPTOR_RANGE srvDescRanges[numTextures];
+        memset(&srvDescRanges, 0, sizeof(srvDescRanges));
+        for (int i = 0; i < numTextures; ++i)
+        {
+            D3D12_DESCRIPTOR_RANGE& srvRange = srvDescRanges[i];
+            srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+            srvRange.NumDescriptors = 1;
+            srvRange.BaseShaderRegister = i; // starting with register(t0), going up to register(t[numTextures])
+            srvRange.RegisterSpace = 0;
+            srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        }
 
-        D3D12_ROOT_PARAMETER param[2] = {};
+        D3D12_ROOT_PARAMETER param[numRootParameters];
         memset(&param, 0, sizeof(param));
         // MVP matrix
-        param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        param[0].Constants.ShaderRegister = 0;
-        param[0].Constants.RegisterSpace = 0;
-        param[0].Constants.Num32BitValues = 16;
-        param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-        // Descriptor table with textures
-        param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        param[1].DescriptorTable.NumDescriptorRanges = 1;
-        param[1].DescriptorTable.pDescriptorRanges = &descRange;
-        param[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        param[mvpIdx].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        param[mvpIdx].Constants.ShaderRegister = 0;
+        param[mvpIdx].Constants.RegisterSpace = 0;
+        param[mvpIdx].Constants.Num32BitValues = 16;
+        param[mvpIdx].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        // Root srv parameters for textures (because the descriptor handles are not located in a continuous range)
+        for (int i = texturesMin; i < texturesMin + numTextures; ++i)
+        {
+            param[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+            param[i].DescriptorTable.NumDescriptorRanges = 1;
+            param[i].DescriptorTable.pDescriptorRanges = &srvDescRanges[i - texturesMin]; 
+            param[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        }
 
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
         memset(&rootSignatureDesc, 0, sizeof(rootSignatureDesc));
-        rootSignatureDesc.NumParameters = _countof(param);
+        rootSignatureDesc.NumParameters = countof(param);
         rootSignatureDesc.pParameters = param;
-        rootSignatureDesc.NumStaticSamplers = 2;
+        rootSignatureDesc.NumStaticSamplers = countof(staticSamplers);
         rootSignatureDesc.pStaticSamplers = staticSamplers;
         rootSignatureDesc.Flags =
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -100,7 +118,7 @@ bool MainShader::create(ID3D12Device* device)
 
 
         ComPtr<ID3DBlob> blob = nullptr;
-        if (!BRWL_VERIFY(SUCCEEDED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, NULL)), BRWL_CHAR_LITERAL("Failed to serialize root signature.")))
+        if (!BRWL_VERIFY(SUCCEEDED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &blob, NULL)), BRWL_CHAR_LITERAL("Failed to serialize root signature.")))
         {
             destroy();
             return false;
@@ -231,6 +249,8 @@ bool MainShader::create(ID3D12Device* device)
 
     }
 
+    // TODO: do we need some synchonisation here?
+
     initialized = true;
     return initialized;
 }
@@ -241,11 +261,51 @@ void MainShader::render()
     //if (vertexBuffer == nullptr)
 }
 
-void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, TextureResource* volumeTexture, PitCollection& pitCollections)
+void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, TextureResource* volumeTexture, PitCollection& pitCollection)
 {
-    setupRenderState(cmd);
-    // set a texture
-    cmd->SetGraphicsRootDescriptorTable(1, volumeTexture->descriptorHandle.gpu);
+    setup(cmd);
+
+    BRWL::RENDERER::Camera* cam = engine->renderer->getCamera();
+
+    // Setup viewport
+    D3D12_VIEWPORT vp;
+    memset(&vp, 0, sizeof(vp));
+    unsigned int width, height;
+    engine->renderer->getFrameBufferSize(width, height);
+    vp.Width = (float)width;
+    vp.Height = (float)height;
+    vp.TopLeftX = vp.TopLeftY = 0.0f;
+    cmd->RSSetViewports(1, &vp);
+
+    // scissor
+    const D3D12_RECT r = { 0, 0, width, height };
+    cmd->RSSetScissorRects(1, &r);
+
+    // mvp matrix
+    Mat4 viewProjection;
+    if (cam != nullptr) {
+        vp.MinDepth = cam->getNearPlane();
+        vp.MaxDepth = cam->getFarPlane();
+        viewProjection = cam->getViewProjectionMatrix();
+    }
+    else
+    {
+        vp.MinDepth = 0.f;
+        vp.MaxDepth = 10.f;
+        viewProjection = identity();
+    }
+
+    Mat4 mvp = makeAffineTransform(Vec3(0.f, 0.f, 0.f), { 90.f * DEG_2_RAD_F , 0.f, 0.f }, { 1,1,1 }) * viewProjection;
+
+    cmd->SetGraphicsRoot32BitConstants(0, 16, &mvp, 0);
+    // Set all textures
+    // the volume texture is the one with the hightest register index by convention, so we leave it out in the loop
+    for (int i = texturesMin; i < texturesMin + numTextures - 1; ++i)
+    {
+        cmd->SetGraphicsRootDescriptorTable(i, pitCollection.array[i - texturesMin].liveTexture->descriptorHandle.gpu);
+    }
+
+    cmd->SetGraphicsRootDescriptorTable(volumeTextureIdx, volumeTexture->descriptorHandle.gpu);
 
     cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
 
@@ -303,46 +363,8 @@ void MainShader::destroy()
     initialized = false;
 }
 
-void MainShader::setupRenderState(ID3D12GraphicsCommandList* cmd)
+void MainShader::setup(ID3D12GraphicsCommandList* cmd)
 {
-    // Setup viewport
-    D3D12_VIEWPORT vp;
-    memset(&vp, 0, sizeof(vp));
-    unsigned int width, height;
-    engine->renderer->getFrameBufferSize(width, height);
-    BRWL::RENDERER::Camera* cam = engine->renderer->getCamera();
-    vp.Width = (float)width;
-    vp.Height = (float)height;
-    Mat4 viewProjection;
-    if (cam != nullptr) {
-        vp.MinDepth = cam->getNearPlane();
-        vp.MaxDepth = cam->getFarPlane();
-        viewProjection = cam->getViewProjectionMatrix();
-    }
-    else
-    {
-        vp.MinDepth = 0.f;
-        vp.MaxDepth = 10.f;
-        viewProjection = identity();
-    }
-    
-     Mat4 mvp = makeAffineTransform(Vec3(0.f, 0.f, 0.f), { 90.f * DEG_2_RAD_F , 0.f, 0.f }, { 1,1,1 }) * viewProjection;
-     //   // TODO: remove
-     //   
-     //   Vec3 worldRay = screenSpaceToWorldRay(engine->input->getMouseX(), engine->input->getMouseY(), *engine->renderer->getCamera());
-     //   Vec3 pos = engine->renderer->getCamera()->getGlobalPosition();
-     //   if (worldRay.y != 0 && std::abs(pos.y) - 0.02 > std::abs(worldRay.y + pos.y))
-     //   {
-     //       // intersect with plane y = 0;
-     //       worldRay *= pos.y / worldRay.y;
-     //       mvp = makeAffineTransform(Vec3(-worldRay.x, 0.5f, worldRay.z), { 90.f * DEG_2_RAD_F , 0.f, 0.f }, { 1,1,1 }) * viewProjection;
-
-     //   }
-    
-
-  
-    vp.TopLeftX = vp.TopLeftY = 0.0f;
-    cmd->RSSetViewports(1, &vp);
 
     // Bind shader and vertex buffers
     unsigned int stride = sizeof(VertexData);
@@ -362,14 +384,22 @@ void MainShader::setupRenderState(ID3D12GraphicsCommandList* cmd)
     cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     cmd->SetPipelineState(pipelineState.Get());
     cmd->SetGraphicsRootSignature(rootSignature.Get());
-    cmd->SetGraphicsRoot32BitConstants(0, 16, &mvp, 0);
 
     // Setup blend factor
    /* const float blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
     cmd->OMSetBlendFactor(blend_factor);*/
 
-    const D3D12_RECT r = { 0, 0, width, height };
-    cmd->RSSetScissorRects(1, &r);
+    //   // TODO: remove
+//   
+//   Vec3 worldRay = screenSpaceToWorldRay(engine->input->getMouseX(), engine->input->getMouseY(), *engine->renderer->getCamera());
+//   Vec3 pos = engine->renderer->getCamera()->getGlobalPosition();
+//   if (worldRay.y != 0 && std::abs(pos.y) - 0.02 > std::abs(worldRay.y + pos.y))
+//   {
+//       // intersect with plane y = 0;
+//       worldRay *= pos.y / worldRay.y;
+//       mvp = makeAffineTransform(Vec3(-worldRay.x, 0.5f, worldRay.z), { 90.f * DEG_2_RAD_F , 0.f, 0.f }, { 1,1,1 }) * viewProjection;
+
+//   }
 }
 
 BRWL_RENDERER_NS_END

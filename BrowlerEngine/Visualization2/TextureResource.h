@@ -19,6 +19,7 @@ struct TextureResource
 
 	PAL::DescriptorHeap::Handle descriptorHandle = { };
 	ComPtr<ID3D12Resource> texture = nullptr;
+	ComPtr<ID3D12Resource> uploadHeap = nullptr;
 	State state = State::UNKNOWN;
 
 	void destroy()
@@ -26,6 +27,7 @@ struct TextureResource
 		descriptorHandle.destroy();
 		descriptorHandle = { };
 		texture = nullptr;
+		uploadHeap = nullptr;
 		state = State::UNKNOWN;
 	}
 };

@@ -19,7 +19,7 @@ PitCollection::PitCollection() :
 PitCollection::~PitCollection()
 {
 	BRWL_EXCEPTION(
-		std::any_of(array, array + countof(array), [](const PitImage& p) { 
+		!std::any_of(array, array + countof(array), [](const PitImage& p) { 
 			return p.liveTexture->texture || p.stagedTexture->texture || p.fence || p.uploadEvent;
 		}),
 		BRWL_CHAR_LITERAL("Resources not properly destroyed")

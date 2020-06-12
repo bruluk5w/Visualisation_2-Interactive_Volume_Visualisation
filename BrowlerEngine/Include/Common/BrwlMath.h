@@ -23,6 +23,10 @@ Vec3 cross(Vec3 x, const Vec3& y);
 Vec4 extractColumn4(const Mat4& x, size_t idx);
 Vec3 extractColumn3(const Mat4& x, size_t idx);
 Vec3 extractPosition(const Mat4& x);
+Vec3 min(const Vec3& a, const Vec3& b);
+Vec3& storeMin(Vec3& a, const Vec3& b);
+Vec3 max(const Vec3& a, const Vec3& b);
+Vec3& storeMax(Vec3& a, const Vec3& b);
 Mat4 makePerspective(float fovY, float aspect, float near, float far);
 Mat4 makeOrthographic(float width, float height, float near, float far);
 Mat4 makeAffineTransform(const Vec3& pos, const Quaternion& rot, const Vec3& scale);
@@ -61,6 +65,8 @@ namespace DirectX
 	::BRWL::Vec3 operator-(::BRWL::Vec3 lhs, const ::BRWL::Vec3& rhs);
 
 	::BRWL::Vec3 operator-(::BRWL::Vec3 lhs, float rhs);
+
+	::BRWL::Vec3 operator-(::BRWL::Vec3 lhs);
 
 	::BRWL::Vec3 operator+(::BRWL::Vec3 lhs, const ::BRWL::Vec3& rhs);
 

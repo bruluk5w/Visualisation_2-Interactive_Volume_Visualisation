@@ -8,7 +8,7 @@ BRWL_RENDERER_NS
 class Camera : public Transform 
 {
 public:
-	Camera(int viewportWidth, int viewportHeight, float fovY, float near, float far, BRWL_STR name = BRWL_CHAR_LITERAL("Camera"));
+	Camera(int viewportWidth, int viewportHeight, float fovY, float near, float far, const BRWL_CHAR* name = BRWL_CHAR_LITERAL("Camera"));
 
 	void resize(int viewportWidth, int viewportHeight);
 

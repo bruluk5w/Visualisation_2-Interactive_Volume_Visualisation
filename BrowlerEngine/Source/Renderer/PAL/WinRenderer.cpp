@@ -530,7 +530,7 @@ namespace PAL
         ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, g_RenderTargetFormat, /*since this is unused, we currently also don't pass any resource*/{ },
             fontTextureDescriptorHandle.cpu, fontTextureDescriptorHandle.gpu);
 
-        if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(SUCCEEDED(appRenderer->rendererInit(this)), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))
+        if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(appRenderer->rendererInit(this), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))
         {
             return false;
         }

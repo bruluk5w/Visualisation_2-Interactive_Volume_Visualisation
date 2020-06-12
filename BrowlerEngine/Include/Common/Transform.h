@@ -18,7 +18,7 @@ class Transform
 
 	static const int initialChildCapacity = 4;
 public:
-	Transform(BRWL_STR name = BRWL_CHAR_LITERAL(""));
+	Transform(const BRWL_CHAR* name = BRWL_CHAR_LITERAL(""));
 	// can't copy transforms since this could create invalid graphs that are not a tree anymore
 	Transform(const Transform&) = delete;
 	Transform& operator =(Transform const&) = delete;

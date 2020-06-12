@@ -22,7 +22,7 @@ public:
     void destroy();
 
 private:
-    void setupRenderState(ID3D12GraphicsCommandList* cmd);
+    void setup(ID3D12GraphicsCommandList* cmd);
 
     ComPtr<ID3D12RootSignature>  rootSignature;
     ComPtr<ID3D12PipelineState>  pipelineState;

@@ -3,8 +3,8 @@
 BRWL_RENDERER_NS
 
 
-Camera::Camera(int viewportWidth, int viewportHeight, float fovY, float near, float far, const BRWL_STR name) :
-	Transform(std::move(name)),
+Camera::Camera(int viewportWidth, int viewportHeight, float fovY, float near, float far, const BRWL_CHAR* name) :
+	Transform(name),
 	fovY(fovY),
 	near(near),
 	far(far)

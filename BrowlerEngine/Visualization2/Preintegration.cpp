@@ -53,26 +53,10 @@ void makeDiagram(Image& image, float* transferFunc, unsigned int lenFunc)
 		Image::sampleT* lineStart = table + y * yStep;
 		for (size_t x = 0; x < lenFunc; ++x)
 		{
-			lineStart[x] = transferFunc[x] * lenFunc < lenFunc - y ? 0 : 1;
+			lineStart[x] = transferFunc[x] * (float)lenFunc < lenFunc - y ? 0.f : 1.f;
 		}
 	}
 }
-
-void makeTestImage(Image& image, float* transferFunc, unsigned int lenFunc)
-{
-	checkSize(image, lenFunc);
-	const size_t yStep = image.getSizeX();
-	Image::sampleT* const  table = (Image::sampleT*)image.getPtr();
-	for (size_t y = 0; y < lenFunc; ++y)
-	{
-		Image::sampleT* lineStart = table + y * yStep;
-		for (size_t x = 0; x < lenFunc; ++x)
-		{
-			lineStart[x] = (double)x;
-		}
-	}
-}
-
 
 
 BRWL_RENDERER_NS_END
