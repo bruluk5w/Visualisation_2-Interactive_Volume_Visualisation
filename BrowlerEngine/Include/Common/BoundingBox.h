@@ -20,7 +20,7 @@ struct BBox
 	constexpr float dimY() const { return max.y - min.y; }
 	constexpr float dimZ() const { return max.z - min.z; }
 	constexpr Vec3 dim() const { return { dimX(), dimY(), dimZ() }; }
-	constexpr BBox getOBB(const Quaternion& orientation);
+	BBox getOBB(const Quaternion& orientation);
 
 	Vec3 min, max;
 };

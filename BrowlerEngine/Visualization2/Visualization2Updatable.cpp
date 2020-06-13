@@ -48,44 +48,59 @@ bool Visualization2Updatable::init()
 
 void Visualization2Updatable::update(double dt)
 {
-	////const Quaternion& globalRot = camera->getGlobalOrientation();
-	//const Vec3 forward = cameraPawn->forward();
-	//const Vec3 pos = camera->getGlobalPosition();
+	if (engine->input->isKeyPressed(Key::SPACE))
+	{
+		Vec3 strave{ 0.f, 0.f, 0.f };
 
-	
-	//const Vec3 right = cameraPawn->right();
-	//const Vec3 up = cameraPawn->up();
-	Vec3 strave{ 0.f, 0.f, 0.f };
-	
-	if (engine->input->isKeyPressed(Key::W)) {
-		strave.z -= 1;
+		if (engine->input->isKeyPressed(Key::W)) {
+			strave.z -= 1;
+		}
+
+		if (engine->input->isKeyPressed(Key::S)) {
+			strave.z += 1;
+		}
+
+		if (engine->input->isKeyPressed(Key::D)) {
+			strave.x += 1;
+		}
+
+		if (engine->input->isKeyPressed(Key::A)) {
+			strave.x -= 1;
+		}
+
+		if (engine->input->isKeyPressed(Key::Q)) {
+			strave.y += 1;
+		}
+
+		if (engine->input->isKeyPressed(Key::E)) {
+			strave.y -= 1;
+		}
+
+		if (strave.x || strave.y || strave.z) {
+			const float speed = engine->input->isKeyPressed(Key::SHIFT) ? 3.5f : 1.5f;
+			cameraPawn->position() += cameraPawn->rotation() * normalize(strave) * speed * dt;
+		}
+
+		float dx = (float)engine->input->getMouseDeltaX();
+		float dy = (float)engine->input->getMouseDeltaY();
+		if (engine->input->isButtonPressed(Button::MOUSE_1) && (dx != 0 || dy != 0))
+		{
+			//rotX = Utils::clamp(rotX + dy * DEG_2_RAD_F * 0.1f, -PI_F + 0.1f, PI_F - 0.1f);
+			//rotY -= dx * DEG_2_RAD_F * 0.1f;
+			//cameraPawn->rotation() = Quaternion::makeFromEuler({ rotX, rotY, 0.0f });
+
+			{
+				Vec3 euler = cameraPawn->rotation().toEuler();
+				euler.y -= dx / 300.0f;
+				euler.x += dy / 300.0f;
+
+				// clamp ath 90 degrees x rotation
+				euler.x = euler.x > 0.5f * PI_F ? 0.5f * PI_F : euler.x < -0.5f * PI_F ? -0.5f * PI_F : euler.x;
+
+				cameraPawn->rotation().fromEuler(euler.x, euler.y, euler.z);
+			}
+		}
 	}
-
-	if (engine->input->isKeyPressed(Key::S)) {
-		strave.z += 1;
-	}
-
-	if (engine->input->isKeyPressed(Key::D)) {
-		strave.x += 1;
-	}
-
-	if (engine->input->isKeyPressed(Key::A)) {
-		strave.x -= 1;
-	}
-
-	if (engine->input->isKeyPressed(Key::Q)) {
-		strave.y -= 1;
-	}
-
-	if (engine->input->isKeyPressed(Key::E)) {
-		strave.y += 1;
-	}
-
-	if (strave.x || strave.y || strave.z) {
-		const float speed = engine->input->isKeyPressed(Key::SHIFT) ? 3.5f : 1.5f;
-		cameraPawn->position() += cameraPawn->rotation() * normalize(strave) * speed * dt;
-	}
-
 	////const InputManager* i = engine->input.get();
 	////float mouseX = i->getMouseDeltaX();
 	////float mouseY = i->getMouseDeltaY();
@@ -119,26 +134,6 @@ void Visualization2Updatable::update(double dt)
 	////		engine->logger->info(buf);
 	////	}
 	////}
-
-	float dx = (float)engine->input->getMouseDeltaX();
-	float dy = (float)engine->input->getMouseDeltaY();
-	if (engine->input->isButtonPressed(Button::MOUSE_1) && (dx != 0 || dy != 0))
-	{
-		//rotX = Utils::clamp(rotX + dy * DEG_2_RAD_F * 0.1f, -PI_F + 0.1f, PI_F - 0.1f);
-		//rotY -= dx * DEG_2_RAD_F * 0.1f;
-		//cameraPawn->rotation() = Quaternion::makeFromEuler({ rotX, rotY, 0.0f });
-
-		{
-			Vec3 euler = cameraPawn->rotation().toEuler();
-			euler.y -= dx / 300.0f;
-			euler.x += dy / 300.0f;
-
-			// clamp ath 90 degrees x rotation
-			euler.x = euler.x > 0.5f * PI_F ? 0.5f * PI_F : euler.x < -0.5f * PI_F ? -0.5f * PI_F : euler.x;
-
-			cameraPawn->rotation().fromEuler(euler.x, euler.y, euler.z);
-		}
-	}
 
 }
 

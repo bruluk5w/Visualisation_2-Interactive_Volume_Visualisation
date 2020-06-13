@@ -27,6 +27,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Include\Common\BoundingBox.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Include\Common\BrwlMath.h" />
     <ClInclude Include="Include\Common\BrwlMathFwd.h" />
     <ClInclude Include="Include\Common\Common_Precomp.h" />
@@ -71,6 +75,7 @@
     <ClInclude Include="Include\Common\Utilities.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Common\BoundingBox.cpp" />
     <ClCompile Include="Source\Common\BrwlMath.cpp">
       <SubType>
       </SubType>

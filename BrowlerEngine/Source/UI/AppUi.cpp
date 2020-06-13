@@ -5,135 +5,6 @@
 #include "Common/Spline.h"
 #include <algorithm>
 
-//#define IMGUI_DEFINE_MATH_OPERATORS
-
-//#include <ImGui/imgui_internal.h>
-//#include <time.h>
-
-//namespace ImGui
-//{
-//    template<int steps>
-//    void bezier_table(ImVec2 P[4], ImVec2 results[steps + 1]) {
-//        static float C[(steps + 1) * 4], * K = 0;
-//        if (!K) {
-//            K = C;
-//            for (unsigned step = 0; step <= steps; ++step) {
-//                float t = (float)step / (float)steps;
-//                C[step * 4 + 0] = (1 - t) * (1 - t) * (1 - t);   // * P0
-//                C[step * 4 + 1] = 3 * (1 - t) * (1 - t) * t; // * P1
-//                C[step * 4 + 2] = 3 * (1 - t) * t * t;     // * P2
-//                C[step * 4 + 3] = t * t * t;               // * P3
-//            }
-//        }
-//        for (unsigned step = 0; step <= steps; ++step) {
-//            ImVec2 point = {
-//                K[step * 4 + 0] * P[0].x + K[step * 4 + 1] * P[1].x + K[step * 4 + 2] * P[2].x + K[step * 4 + 3] * P[3].x,
-//                K[step * 4 + 0] * P[0].y + K[step * 4 + 1] * P[1].y + K[step * 4 + 2] * P[2].y + K[step * 4 + 3] * P[3].y
-//            };
-//            results[step] = point;
-//        }
-//    }
-//
-//    float BezierValue(float dt01, float P[4]) {
-//        enum { STEPS = 256 };
-//        ImVec2 Q[4] = { { 0, 0 }, { P[0], P[1] }, { P[2], P[3] }, { 1, 1 } };
-//        ImVec2 results[STEPS + 1];
-//        bezier_table<STEPS>(Q, results);
-//        return results[(int)((dt01 < 0 ? 0 : dt01 > 1 ? 1 : dt01) * STEPS)].y;
-//    }
-//
-//    int Bezier(const char* label, float P[5]) {
-//        // visuals
-//        enum { SMOOTHNESS = 64 }; // curve smoothness: the higher number of segments, the smoother curve
-//        enum { CURVE_WIDTH = 4 }; // main curved line width
-//        enum { LINE_WIDTH = 1 }; // handlers: small lines width
-//        enum { GRAB_RADIUS = 8 }; // handlers: circle radius
-//        enum { GRAB_BORDER = 2 }; // handlers: circle border width
-//        enum { AREA_CONSTRAINED = false }; // should grabbers be constrained to grid area?
-//        enum { AREA_WIDTH = 128 }; // area width in pixels. 0 for adaptive size (will use max avail width)
-//
-//        // bezier widget
-//
-//        const ImGuiStyle& Style = GetStyle();
-//        const ImGuiIO& IO = GetIO();
-//        ImDrawList* DrawList = GetWindowDrawList();
-//        ImGuiWindow* Window = GetCurrentWindow();
-//        if (Window->SkipItems)
-//            return false;
-//
-//        // header and spacing
-//        int hovered = IsItemActive() || IsItemHovered(); 
-//
-//        // eval curve
-//        ImVec2 Q[4] = { { 0, 0 }, { P[0], P[1] }, { P[2], P[3] }, { 1, 1 } };
-//        ImVec2 results[SMOOTHNESS + 1];
-//        bezier_table<SMOOTHNESS>(Q, results);
-//
-//        //// control points: 2 lines and 2 circles
-//        //{
-//        //    // handle grabbers
-//        //    ImVec2 mouse = GetIO().MousePos, pos[2];
-//        //    float distance[2];
-//
-//        //    for (int i = 0; i < 2; ++i) {
-//        //        pos[i] = ImVec2(P[i * 2 + 0], 1 - P[i * 2 + 1]) * (bb.Max - bb.Min) + bb.Min;
-//        //        distance[i] = (pos[i].x - mouse.x) * (pos[i].x - mouse.x) + (pos[i].y - mouse.y) * (pos[i].y - mouse.y);
-//        //    }
-//
-//        //    int selected = distance[0] < distance[1] ? 0 : 1;
-//        //    if (distance[selected] < (4 * GRAB_RADIUS * 4 * GRAB_RADIUS))
-//        //    {
-//        //        SetTooltip("(%4.3f, %4.3f)", P[selected * 2 + 0], P[selected * 2 + 1]);
-//
-//        //        if (/*hovered &&*/ (IsMouseClicked(0) || IsMouseDragging(0))) {
-//        //            float& px = (P[selected * 2 + 0] += GetIO().MouseDelta.x / Canvas.x);
-//        //            float& py = (P[selected * 2 + 1] -= GetIO().MouseDelta.y / Canvas.y);
-//
-//        //            if (AREA_CONSTRAINED) {
-//        //                px = (px < 0 ? 0 : (px > 1 ? 1 : px));
-//        //                py = (py < 0 ? 0 : (py > 1 ? 1 : py));
-//        //            }
-//
-//        //            changed = true;
-//        //        }
-//        //    }
-//        //}
-//
-//        ////if (hovered || changed) DrawList->PushClipRectFullScreen();
-//
-//        //// draw curve
-//        //{
-//        //    ImColor color(GetStyle().Colors[ImGuiCol_PlotLines]);
-//        //    for (int i = 0; i < SMOOTHNESS; ++i) {
-//        //        ImVec2 p = { results[i + 0].x, 1 - results[i + 0].y };
-//        //        ImVec2 q = { results[i + 1].x, 1 - results[i + 1].y };
-//        //        ImVec2 r(p.x * (bb.Max.x - bb.Min.x) + bb.Min.x, p.y * (bb.Max.y - bb.Min.y) + bb.Min.y);
-//        //        ImVec2 s(q.x * (bb.Max.x - bb.Min.x) + bb.Min.x, q.y * (bb.Max.y - bb.Min.y) + bb.Min.y);
-//        //        DrawList->AddLine(r, s, color, CURVE_WIDTH);
-//        //    }
-//        //}
-//
-//        //// draw lines and grabbers
-//        //float luma = IsItemActive() || IsItemHovered() ? 0.5f : 1.0f;
-//        //ImVec4 pink(1.00f, 0.00f, 0.75f, luma), cyan(0.00f, 0.75f, 1.00f, luma);
-//        //ImVec2 p1 = ImVec2(P[0], 1 - P[1]) * (bb.Max - bb.Min) + bb.Min;
-//        //ImVec2 p2 = ImVec2(P[2], 1 - P[3]) * (bb.Max - bb.Min) + bb.Min;
-//        //DrawList->AddLine(ImVec2(bb.Min.x, bb.Max.y), p1, ImColor(white), LINE_WIDTH);
-//        //DrawList->AddLine(ImVec2(bb.Max.x, bb.Min.y), p2, ImColor(white), LINE_WIDTH);
-//        //DrawList->AddCircleFilled(p1, GRAB_RADIUS, ImColor(white));
-//        //DrawList->AddCircleFilled(p1, GRAB_RADIUS - GRAB_BORDER, ImColor(pink));
-//        //DrawList->AddCircleFilled(p2, GRAB_RADIUS, ImColor(white));
-//        //DrawList->AddCircleFilled(p2, GRAB_RADIUS - GRAB_BORDER, ImColor(cyan));
-//
-//        return true;
-//    }
-//
-//    void ShowBezierDemo() {
-//        { static float v[5] = { 0.950f, 0.050f, 0.795f, 0.035f }; Bezier("easeInExpo", v); }
-//    }
-//}
-
-#pragma endregion
 
 BRWL_NS
 
@@ -181,7 +52,7 @@ UIResult::TransferFunctionCollection::~TransferFunctionCollection()
 }
 
 UIResult::TransferFunction::TransferFunction()  :
-    bitDepth(UIResult::TransferFunction::BitDepth::BIT_DEPTH_10_BIT),
+    bitDepth(UIResult::TransferFunction::BitDepth::BIT_DEPTH_8_BIT),
     controlPoints{ {0,0}, {1,1} },
     transferFunction { 0 },
     textureID(nullptr)
@@ -254,10 +125,13 @@ using namespace ImGui;
 #define SLIDER_FIX(id) ImGui::BeginChild(#id, ImVec2(ImGui::GetWindowWidth(), ImGui::GetTextLineHeightWithSpacing()), false);
 #define SLIDER_FIX_END() EndChild();
 
+void drawHints();
 
 void renderAppUI(UIResult& result, const UIResult& values)
 {
 #ifdef BRWL_USE_DEAR_IM_GUI
+    drawHints();
+
     ImGui::BeginMainMenuBar();
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     Dummy(ImVec2(20, 0));
@@ -285,147 +159,177 @@ void renderAppUI(UIResult& result, const UIResult& values)
         thread_local float plotHeight = 1;
         thread_local float menuSpaceY = 0; // the height of all the stuff before the graph plot comes
         thread_local bool fitWindow = false;
-        //{
-        //    const float minWindowSizeX = result.transferFunction.getArrayLength() * plotWidth + 25;
-        //    const float minWindowSizeY = Utils::min(GetIO().DisplaySize.y - 20, menuSpaceY + result.transferFunction.getArrayLength() * plotHeight + 20);
-        //    if (fitWindow) {
-        //        ImGui::SetNextWindowSize({ minWindowSizeX + 10, minWindowSizeY + 10 });
-        //        fitWindow = false;
-        //    }
 
-        //    PushStyleVar(ImGuiStyleVar_WindowMinSize, { minWindowSizeX, minWindowSizeY });
-        //}
+        {
+            int arrayLen = result.transferFunctions.array[0].getArrayLength();
+            const float minWindowSizeX = arrayLen * plotWidth + 25.f;
+            const float minWindowSizeY = Utils::min(GetIO().DisplaySize.y - 20, menuSpaceY + 20);
+            if (fitWindow) {
+                ImGui::SetNextWindowSize({ minWindowSizeX + 10, minWindowSizeY + 10 });
+                fitWindow = false;
+            }
+
+            PushStyleVar(ImGuiStyleVar_WindowMinSize, { minWindowSizeX, minWindowSizeY });
+        }
 
         Begin("Tools", &showTools);
         {
-
-            // Expose a couple of the available flags. In most cases you may just call BeginTabBar() with no flags (0).
-            static ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_Reorderable;
-            ImGui::CheckboxFlags("ImGuiTabBarFlags_Reorderable", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_Reorderable);
-            ImGui::CheckboxFlags("ImGuiTabBarFlags_AutoSelectNewTabs", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_AutoSelectNewTabs);
-            ImGui::CheckboxFlags("ImGuiTabBarFlags_TabListPopupButton", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_TabListPopupButton);
-            ImGui::CheckboxFlags("ImGuiTabBarFlags_NoCloseWithMiddleMouseButton", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_NoCloseWithMiddleMouseButton);
-            if ((tab_bar_flags & ImGuiTabBarFlags_FittingPolicyMask_) == 0)
-                tab_bar_flags |= ImGuiTabBarFlags_FittingPolicyDefault_;
-            if (ImGui::CheckboxFlags("ImGuiTabBarFlags_FittingPolicyResizeDown", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_FittingPolicyResizeDown))
-                tab_bar_flags &= ~(ImGuiTabBarFlags_FittingPolicyMask_ ^ ImGuiTabBarFlags_FittingPolicyResizeDown);
-            if (ImGui::CheckboxFlags("ImGuiTabBarFlags_FittingPolicyScroll", (unsigned int*)&tab_bar_flags, ImGuiTabBarFlags_FittingPolicyScroll))
-                tab_bar_flags &= ~(ImGuiTabBarFlags_FittingPolicyMask_ ^ ImGuiTabBarFlags_FittingPolicyScroll);
-
-            // Tab Bar
-            const char* names[4] = { "Artichoke", "Beetroot", "Celery", "Daikon" };
-            static bool opened[4] = { true, true, true, true }; // Persistent user state
-            for (int n = 0; n < IM_ARRAYSIZE(opened); n++)
+            UIResult::TransferFunction::BitDepth resultBitDepth;
+            ENUM_SELECT("Bit Depth", values.transferFunctions.array[0].bitDepth, resultBitDepth, UIResult::TransferFunction, BitDepth, bitDepthNames);
+            for (int i = 0; i < countof(result.transferFunctions.array); ++i)
             {
-                if (n > 0) { ImGui::SameLine(); }
-                ImGui::Checkbox(names[n], &opened[n]);
+                result.transferFunctions.array[i].bitDepth = resultBitDepth;
             }
+
+            thread_local bool lockAspect = false;
+            float plotWidthBefore = plotWidth;
+            float plotHeihgtBefore = plotHeight;
+            // Draw first plot with multiple sources
+            Text("Plot Size: ");
+            SLIDER_FIX(1);
+            Text("Width: "); SameLine(0, 10); int cursorX = GetCursorPosX(); SliderFloat("", &plotWidth, 1, 3, "");
+            if (!lockAspect) { SameLine(); if (Button("Reset")) plotWidth = 1; }
+            SLIDER_FIX_END();
+            SLIDER_FIX(2);
+            Text("Height: "); SameLine(cursorX); SliderFloat("", &plotHeight, 1, 3, "");
+            if (!lockAspect) { SameLine(); if (Button("Reset")) plotHeight = 1; }
+            SLIDER_FIX_END();
+            fitWindow = Button(" Fit Window");
+            if (lockAspect) {
+                if (plotWidth != plotWidthBefore) plotHeight = plotWidth;
+                else if (plotHeight != plotHeihgtBefore) plotWidth = plotHeight;
+                else if (plotHeight != plotWidth) plotHeight = plotWidth = Utils::max(plotHeight, plotWidth);
+            }
+            
+            Checkbox(" Maintain Aspect Ratio", &lockAspect);
+            if (lockAspect) { SameLine(); if (Button("Reset")) plotWidth = plotHeight = 1; }
+            thread_local bool showCoordinatesTooltip = true;
+            Checkbox(" Show Tooltip in Graph", &showCoordinatesTooltip); 
+            thread_local float ctrlPtointScale = 1;
+            SLIDER_FIX(3);
+            Text("Control Point Size: "), SameLine(); SliderFloat("", &ctrlPtointScale, 0.2f, 3.f);
+            SLIDER_FIX_END();
+            
+            // Tab Bar
+            //thread_local bool opened[ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::MAX)] = { true, true, true, true };
 
             // Passing a bool* to BeginTabItem() is similar to passing one to Begin():
             // the underlying bool will be set to false when the tab is closed.
-            if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
+            if (ImGui::BeginTabBar("Transfer Functions", 
+                ImGuiTabBarFlags_FittingPolicyResizeDown | 
+                //ImGuiTabBarFlags_Reorderable | 
+                ImGuiTabBarFlags_AutoSelectNewTabs 
+                //ImGuiTabBarFlags_TabListPopupButton
+            ))
             {
-                for (int n = 0; n < IM_ARRAYSIZE(opened); n++)
-                    if (opened[n] && ImGui::BeginTabItem(names[n], &opened[n], ImGuiTabItemFlags_None))
+                for (int i = 0; i < ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::MAX); i++)
+                    if (ImGui::BeginTabItem(UIResult::TransferFunctionCollection::transferFuncNames[i], nullptr, ImGuiTabItemFlags_None))
                     {
-                        ImGui::Text("This is the %s tab!", names[n]);
-                        if (n & 1)
-                            ImGui::Text("I am an odd tab.");
+                        Text(UIResult::TransferFunctionCollection::transferFuncNames[i]);
+                        const UIResult::TransferFunction& valueTFunc = values.transferFunctions.array[i];
+                        UIResult::TransferFunction& resultTFunc = result.transferFunctions.array[i];
+
+                        bool ctrlPointsChanged = false;
+                        ImGui::PlotConfig conf{ };
+                        conf.values.count = resultTFunc.getArrayLength();
+                        conf.values.ys = resultTFunc.transferFunction; // use ys_list to draw several lines simultaneously
+                        conf.values.ys_count = 1;
+                        const ImU32 graphColor(ImColor(0, 255, 0));
+                        conf.values.colors = &graphColor;
+                        conf.scale.min = 0;
+                        conf.scale.max = 1;
+                        conf.tooltip.show = showCoordinatesTooltip;
+                        conf.tooltip.format = "Idx: %g, Cursor Value: %8.4g, Graph Value %8.4g";
+                        conf.grid_x.show = true;
+                        conf.grid_x.size = 128;
+                        conf.grid_x.subticks = 4;
+                        conf.grid_y.show = true;
+                        conf.grid_y.size = 1.0f;
+                        conf.grid_y.subticks = 5;
+                        conf.selection.show = false;
+                        conf.ctrlPoints = &valueTFunc.controlPoints;
+                        conf.ctrlPointSize = ctrlPtointScale;
+                        conf.values.ctrlPoints = &resultTFunc.controlPoints;
+                        conf.values.ctrlPointsChanged = &ctrlPointsChanged;
+                        //conf.selection.start = &selection_start;
+                        //conf.selection.length = &selection_length;
+                        int texSideLength = valueTFunc.getArrayLength();
+                        float width = texSideLength * plotWidth;
+                        float height = texSideLength * plotHeight;
+                        conf.frame_size = ImVec2(width, height);
+                        if (valueTFunc.textureID != nullptr)
+                        {
+                            conf.useBackGroundTextrue = true;
+                            conf.texID = valueTFunc.textureID;
+                            conf.maxTexVal = 1;// (float)texSideLength;
+                        }
+
+                        ImGui::Plot("plot1", conf);
+                        ctrlPointsChanged |= valueTFunc.bitDepth != resultTFunc.bitDepth;
+                        if (ctrlPointsChanged)
+                        {
+                            decltype(resultTFunc.controlPoints)& array = resultTFunc.controlPoints;
+                            std::sort(array.begin(), array.end(), [](const Vec2& a, const Vec2& b) {return a.x < b.x; });
+                            if (array.size() >= 2)
+                            {
+                                // remove duplicates
+                                array.erase(std::remove_if(array.begin() + 1, array.end(), [&array](::BRWL::Vec2& v){return v.x == array[&v - array.data() - 1].x; }), array.end());
+                            }
+
+                            resultTFunc.updateFunction();
+                        }
+
                         ImGui::EndTabItem();
                     }
                 ImGui::EndTabBar();
             }
-
-           // ENUM_SELECT("Bit Depth", values.transferFunction.bitDepth, result.transferFunction.bitDepth, UIResult::TransferFunction, BitDepth, bitDepthNames);
-
-           // thread_local bool lockAspect = false;
-           // float plotWidthBefore = plotWidth;
-           // float plotHeihgtBefore = plotHeight;
-           // // Draw first plot with multiple sources
-           // Text("Plot Size: ");
-           // SLIDER_FIX(1);
-           // Text("Width: "); SameLine(); SliderFloat("", &plotWidth, 1, 3, "");
-           // if (!lockAspect) { SameLine(); if (Button("Reset")) plotWidth = 1; }
-           // SLIDER_FIX_END();
-           // SLIDER_FIX(2);
-           // Text("Height: "); SameLine(); SliderFloat("", &plotHeight, 1, 3, "");
-           // if (!lockAspect) { SameLine(); if (Button("Reset")) plotHeight = 1; }
-           // SLIDER_FIX_END();
-           // if (lockAspect) {
-           //     if (plotWidth != plotWidthBefore) plotHeight = plotWidth;
-           //     else if (plotHeight != plotHeihgtBefore) plotWidth = plotHeight;
-           //     else if (plotHeight != plotWidth) plotHeight = plotWidth = Utils::max(plotHeight, plotWidth);
-           // }
-
-           // Checkbox(" Maintain Aspect Ratio", &lockAspect);
-           // if (lockAspect) { SameLine(); if (Button("Reset")) plotWidth = plotHeight = 1; }
-           // thread_local bool showCoordinatesTooltip = true;
-           // Checkbox(" Show Tooltip in Graph", &showCoordinatesTooltip); 
-           // thread_local float ctrlPtointScale = 1;
-           // SLIDER_FIX(3);
-           // Text("Control Point Size: "), SameLine(); SliderFloat("", &ctrlPtointScale, 0.2f, 3.f);
-           // SLIDER_FIX_END();
-           //fitWindow = Button(" Fit Window");
-
-           // menuSpaceY = ImGui::GetCursorPosY();
-
-           // bool ctrlPointsChanged = false;
-           // ImGui::PlotConfig conf{ };
-           // conf.values.count = result.transferFunction.getArrayLength();
-           // conf.values.ys = result.transferFunction.transferFunction; // use ys_list to draw several lines simultaneously
-           // conf.values.ys_count = 1;
-           // const ImU32 graphColor(ImColor(0, 255, 0));
-           // conf.values.colors = &graphColor;
-           // conf.scale.min = 0;
-           // conf.scale.max = 1;
-           // conf.tooltip.show = showCoordinatesTooltip;
-           // conf.tooltip.format = "Idx: %g, Cursor Value: %8.4g, Graph Value %8.4g";
-           // conf.grid_x.show = true;
-           // conf.grid_x.size = 128;
-           // conf.grid_x.subticks = 4;
-           // conf.grid_y.show = true;
-           // conf.grid_y.size = 1.0f;
-           // conf.grid_y.subticks = 5;
-           // conf.selection.show = false;
-           // conf.ctrlPoints = &values.transferFunction.controlPoints;
-           // conf.ctrlPointSize = ctrlPtointScale;
-           // conf.values.ctrlPoints = &result.transferFunction.controlPoints;
-           // conf.values.ctrlPointsChanged = &ctrlPointsChanged;
-           // //conf.selection.start = &selection_start;
-           // //conf.selection.length = &selection_length;
-           // int texSideLength = values.transferFunction.getArrayLength();
-           // float width = texSideLength * plotWidth;
-           // float height = texSideLength * plotHeight;
-           // conf.frame_size = ImVec2(width, height);
-           // if (values.transferFunction.textureID != nullptr)
-           // {
-           //     conf.useBackGroundTextrue = true;
-           //     conf.texID = values.transferFunction.textureID;
-           //     conf.maxTexVal = (float)texSideLength;
-           // }
-
-           // ImGui::Plot("plot1", conf);
-           // ctrlPointsChanged |= values.transferFunction.bitDepth != result.transferFunction.bitDepth;
-           // if (ctrlPointsChanged)
-           // {
-           //     decltype(result.transferFunction.controlPoints)& array = result.transferFunction.controlPoints;
-           //     std::sort(array.begin(), array.end(), [](const Vec2& a, const Vec2& b) {return a.x < b.x; });
-           //     if (array.size() >= 2)
-           //     {
-           //         // remove duplicates
-           //         array.erase(std::remove_if(array.begin() + 1, array.end(), [&array](::BRWL::Vec2& v){return v.x == array[&v - array.data() - 1].x; }), array.end());
-           //     }
-           //     result.transferFunction.updateFunction();
-           // }
-
         }
-        End();
+
+        // remember Y position for window fit
+        menuSpaceY = ImGui::GetCursorPosY();
+
+        End(); // Tools
         PopStyleVar();
     }
 
 #endif // BRWL_USE_DEAR_IM_GUI
 
 }
+
+#ifdef BRWL_USE_DEAR_IM_GUI
+
+void drawHints()
+{
+    const ImGuiIO& io = GetIO();
+    //io.DisplaySize
+    ImGuiWindowFlags dummyFlags = 
+        ImGuiWindowFlags_NoTitleBar | 
+        ImGuiWindowFlags_NoResize | 
+        ImGuiWindowFlags_NoMove | 
+        ImGuiWindowFlags_NoScrollbar | 
+        ImGuiWindowFlags_NoSavedSettings | 
+        ImGuiWindowFlags_NoInputs |
+        ImGuiWindowFlags_AlwaysAutoResize;
+    if (!io.WantCaptureMouse) {
+        if (io.MouseDown[0]) {
+            if (!IsKeyDown(io.KeyMap[ImGuiKey_Space])) {
+                SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+                Begin("HintWindow", nullptr, dummyFlags);
+                Text("Rotate FPS view: <SPACE> + <MOUSE LEFT>");
+                End();
+            }
+            else
+            {
+                SetNextWindowPos(ImVec2(io.DisplaySize.x, io.DisplaySize.y), ImGuiCond_Always, ImVec2(1.f, 1.f));
+                Begin("HintWindow", nullptr, dummyFlags);
+                Text("Strave: <WSAD> | Up: <E> | Down: <Q> ");
+                End();
+            }
+        }
+    }
+}
+
+#endif // BRWL_USE_DEAR_IM_GUI
 
 
 BRWL_NS_END

@@ -13,22 +13,50 @@ namespace
 			BRWL_CHAR_LITERAL("Invalid image size."));
 	}
 }
+//
+//void makePreintegrationTable(Image& image, float* transferFunc, unsigned int lenFunc)
+//{
+//	checkSize(image, lenFunc);
+//	const size_t yStep = image.getSizeX();
+//	Image::sampleT* const  table = (Image::sampleT*)image.getPtr();
+//	for (size_t y = 0; y < lenFunc; ++y)
+//	{
+//		Image::sampleT* lineStart = table + y * yStep;
+//		double sum = ((double)transferFunc[y]) * 0.5;
+//		for (size_t x = y + 1; x < lenFunc; ++x)
+//		{
+//			lineStart[x] = (float)(sum + ((double)transferFunc[x]) * 0.5 / (double)x);
+//			sum += transferFunc[x];
+//		}
+//	}
+//
+//	for (size_t y = 0; y < lenFunc; ++y)
+//	{
+//		Image::sampleT* lineStart = table + y * yStep;
+//		for (size_t x = 0; x < y; ++x)
+//		{
+//			lineStart[x] = table[x * yStep + y];
+//		}
+//	}
+//
+//}
 
-float makePreintegrationTable(Image& image, float* transferFunc, unsigned int lenFunc)
+void makePreintegrationTable(Image& image, float* transferFunc, unsigned int lenFunc)
 {
-	float max = 0;
 	checkSize(image, lenFunc);
 	const size_t yStep = image.getSizeX();
 	Image::sampleT* const  table = (Image::sampleT*)image.getPtr();
 	for (size_t y = 0; y < lenFunc; ++y)
 	{
 		Image::sampleT* lineStart = table + y * yStep;
-		double sum = ((double)transferFunc[y]) * 0.5;
 		for (size_t x = y + 1; x < lenFunc; ++x)
-		{
-			lineStart[x] = (float)(sum + ((double)transferFunc[x]) * 0.5 / (double)x);
-			if (lineStart[x] > max) max = lineStart[x];
-			sum += transferFunc[x];
+		{ // integrate from y to x
+			double sum = 0;
+			for (int i = y + 1; i < x; ++i) {
+				sum += (transferFunc[i - 1] + transferFunc[i]) * 0.5;
+			}
+
+			lineStart[x] = sum / (x - y);
 		}
 	}
 
@@ -40,7 +68,6 @@ float makePreintegrationTable(Image& image, float* transferFunc, unsigned int le
 			lineStart[x] = table[x * yStep + y];
 		}
 	}
-	return max;
 }
 
 void makeDiagram(Image& image, float* transferFunc, unsigned int lenFunc)

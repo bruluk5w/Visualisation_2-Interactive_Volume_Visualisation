@@ -27,9 +27,6 @@
 #include "UI/ImGui/imgui.h"
 #include "PAL/imgui_impl_dx12.h"
 
-// DirectX
-#include <d3d12.h>
-#include <dxgi1_4.h>
 #include "GUI_vs_vs.h"
 #include "GUI_ps_ps.h"
 
@@ -347,6 +344,7 @@ void ImGui_ImplDX12_RenderDrawData(ImDrawData* draw_data, ID3D12GraphicsCommandL
 
         ID3D12GraphicsCommandList* cmdList = NULL;
         hr = g_pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, cmdAlloc, NULL, IID_PPV_ARGS(&cmdList));
+        cmdList->SetName(L"ImGui CreateFontsTexture Queue");
         IM_ASSERT(SUCCEEDED(hr));
 
         cmdList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, NULL);

@@ -29,6 +29,7 @@ namespace PAL
 		virtual void render() override;
 		virtual void draw() override;
 		virtual void destroy(bool force = true) override;
+		void waitForLastSubmittedFrame();
 	protected:
 
 		static const Vec4 clearColor;
@@ -55,9 +56,9 @@ namespace PAL
 
 		void createRenderTargets();
 		void destroyRenderTargets();
-		void waitForLastSubmittedFrame();
 		FrameContext* waitForNextFrameResources();
 		FrameContext* getCurrentFrameContext();
+		FrameContext* getNextFrameContext();
 		void resizeSwapChain(HWND hWnd, int width, int height);
 
 

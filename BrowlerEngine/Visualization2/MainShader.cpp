@@ -27,7 +27,7 @@ namespace
         staticSampler.MipLODBias = 0.f;
         staticSampler.MaxAnisotropy = 0;
         staticSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-        staticSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+        staticSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
         staticSampler.MinLOD = 0.f;
         staticSampler.MaxLOD = 0.f;
         staticSampler.ShaderRegister = shaderRegister;

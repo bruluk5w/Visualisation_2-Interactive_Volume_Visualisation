@@ -5,7 +5,7 @@
 BRWL_NS
 
 
-constexpr BBox BBox::getOBB(const Quaternion& orientation)
+BBox BBox::getOBB(const Quaternion& orientation)
 {
 	const Vec3 halfDim = dim() * 0.5f;
 	const Vec3 right = orientation.right() * halfDim.x;

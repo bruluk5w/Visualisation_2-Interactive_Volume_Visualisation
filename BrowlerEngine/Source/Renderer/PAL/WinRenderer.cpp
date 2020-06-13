@@ -187,7 +187,7 @@ namespace PAL
         ImGui::NewFrame();
 #endif // BRWL_USE_DEAR_IM_GUI
 
-        // NOTIC: We open the command list early for the renderer method below to schedule resource barriers after some uploads have finished
+        // NOTICE: We open the command list early for the renderer method below to schedule resource barriers after some uploads have finished
         FrameContext* frameCtxt = waitForNextFrameResources();
         frameCtxt->CommandAllocator->Reset();
         DR(commandList->Reset(frameCtxt->CommandAllocator.Get(), nullptr));
@@ -204,6 +204,7 @@ namespace PAL
     {
         if (!currentFramebufferHeight || !currentFramebufferWidth)
         {
+            ++frameIndex;
             logger->info(BRWL_CHAR_LITERAL("Nothing to draw, framebuffer too small."));
             return;
         }
@@ -256,14 +257,12 @@ namespace PAL
         ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
         commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-        DR(swapChain->Present(1, 0)); // Present with vsync
-        //DR(swapChain->Present(0, 0)); // Present without vsync
-
-        UINT64 fenceValue = frameFenceLastValue + 1;
-        DR(commandQueue->Signal(frameFence.Get(), fenceValue));
-        frameFenceLastValue = fenceValue;
-        getCurrentFrameContext()->FenceValue = fenceValue;
-
+        //DR(swapChain->Present(1, 0)); // Present with vsync
+        DR(swapChain->Present(0, 0)); // Present without vsync
+        ++frameIndex;
+        ++frameFenceLastValue;
+        DR(commandQueue->Signal(frameFence.Get(), frameFenceLastValue));
+        getCurrentFrameContext()->FenceValue = frameFenceLastValue;
 
         if (!dxgiFactory->IsCurrent())
         {
@@ -463,6 +462,7 @@ namespace PAL
             {
                 return false;
             }
+            commandQueue->SetName(L"Render Command Queue");
         }
 
         for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++) {
@@ -477,6 +477,8 @@ namespace PAL
             return false;
         }
 
+        commandList->SetName(L"Render Command List");
+
         if (!BRWL_VERIFY(SUCCEEDED(commandList->Close()), BRWL_CHAR_LITERAL("Failed to close command list.")))
         {
             return false;
@@ -487,7 +489,7 @@ namespace PAL
             return false;
         }
 
-        frameFenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+        frameFenceEvent = CreateEvent(NULL, FALSE, TRUE, NULL);
         if (!BRWL_VERIFY(frameFenceEvent != NULL, BRWL_CHAR_LITERAL("Failed to create frame fence event.")))
         {
             return false;
@@ -620,16 +622,15 @@ namespace PAL
 
         frameFence->SetEventOnCompletion(fenceValue, frameFenceEvent);
         WaitForSingleObject(frameFenceEvent, INFINITE);
+        ResetEvent(frameFenceEvent);
     }
 
     WinRenderer::FrameContext* WinRenderer::waitForNextFrameResources()
     {
-        ++frameIndex;
-
         HANDLE waitableObjects[] = { swapChainWaitableObject, NULL };
         DWORD numWaitableObjects = 1;
 
-        FrameContext* frameCtxt = getCurrentFrameContext();
+        FrameContext* frameCtxt = getNextFrameContext();
         UINT64 fenceValue = frameCtxt->FenceValue;
         if (fenceValue != 0) // means no fence was signaled
         {
@@ -640,13 +641,18 @@ namespace PAL
         }
 
         WaitForMultipleObjects(numWaitableObjects, waitableObjects, TRUE, INFINITE);
-
+        ResetEvent(frameFenceEvent);
         return frameCtxt;
     }
 
     WinRenderer::FrameContext* WinRenderer::getCurrentFrameContext()
     {
         return &frameContext[frameIndex % NUM_FRAMES_IN_FLIGHT];
+    }
+    
+    WinRenderer::FrameContext* WinRenderer::getNextFrameContext()
+    {
+        return &frameContext[(frameIndex + 1) % NUM_FRAMES_IN_FLIGHT];
     }
 
     void WinRenderer::resizeSwapChain(HWND hWnd, int width, int height)

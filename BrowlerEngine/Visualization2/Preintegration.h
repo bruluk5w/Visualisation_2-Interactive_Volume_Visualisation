@@ -6,7 +6,7 @@ BRWL_RENDERER_NS
 
 
 // we expect the image to be null initialized
-float makePreintegrationTable(Image& image, float* transferFunc, unsigned int lenFunc);
+void makePreintegrationTable(Image& image, float* transferFunc, unsigned int lenFunc);
 
 // we expect the image to be null initialized
 void makeDiagram(Image& image, float* transferFunc, unsigned int lenFunc);

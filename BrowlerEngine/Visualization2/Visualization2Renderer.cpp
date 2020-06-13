@@ -72,6 +72,8 @@ bool Visualization2Renderer::init(Renderer* r)
         {
             return false;
         }
+
+        uploadCommandQueue->SetName(L"Upload Command Queue");
     }
 
     if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&uploadCommandAllocator))), BRWL_CHAR_LITERAL("Failed to create direct command allocator.")))
@@ -88,6 +90,8 @@ bool Visualization2Renderer::init(Renderer* r)
     {
         return false;
     }
+
+    uploadCommandList->SetName(L"Upload Command List");
 
     if (!BRWL_VERIFY(mainShader.create(r->device.Get()), BRWL_CHAR_LITERAL("Failed to create main shader.")))
     {
@@ -125,6 +129,9 @@ void Visualization2Renderer::render(Renderer* renderer)
         {
             pitImage.stagedTexture->state = TextureResource::State::RESIDENT;
             pitImage.stagedTexture->uploadHeap = nullptr; // free some resources
+            // We might still have some frames in flight with the old texture
+            // We have to wait until we are sure we that are the only one tampering with resources
+            renderer->waitForLastSubmittedFrame();
             std::swap(pitImage.stagedTexture, pitImage.liveTexture);
             // release old texture
             pitImage.stagedTexture->destroy();
@@ -229,7 +236,7 @@ void Visualization2Renderer::render(Renderer* renderer)
             else
                 pitImage.cpuImage.clear();
 
-            float max = makePreintegrationTable(pitImage.cpuImage, tFuncResult.transferFunction, tFuncResult.getArrayLength());
+            makePreintegrationTable(pitImage.cpuImage, tFuncResult.transferFunction, tFuncResult.getArrayLength());
 
             // upload in draw()
             // pitImage.stagedTexture->descriptorHandle = renderer->srvHeap.allocateHandle(
@@ -275,6 +282,9 @@ void Visualization2Renderer::draw(Renderer* r)
     {
         BRWL_EXCEPTION(dataSet.isValid(), BRWL_CHAR_LITERAL("Invalid state of data set."));
         uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr);
+        
+        // Since the volume texture is not double buffered, we have to wait unil all frames still rendering from the volume texture have finished
+        r->waitForLastSubmittedFrame();
 
         volumeTexture.descriptorHandle = r->srvHeap.allocateHandle(
 #ifdef _DEBUG
@@ -310,49 +320,50 @@ void Visualization2Renderer::draw(Renderer* r)
     }
 
     // check if we have to start uploading textures
-    bool uploading = false;
-    if(std::any_of(pitCollection.array, pitCollection.array + countof(pitCollection.array), [](const PitImage& p) {
+    bool hasUpload = std::any_of(pitCollection.array, pitCollection.array + countof(pitCollection.array), [](const PitImage& p) {
         return p.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD;
-    }))
+        });
+
+    if (hasUpload)
     {
         DR(uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr));
-        uploading = true;
-    }
+        bool uploading[countof(*((decltype(pitCollection.array)*)nullptr))] = { false };
 
-    for (int i = 0; i < countof(pitCollection.array); ++i)
-    {
-        PitImage& pitImage = pitCollection.array[i];
-        if (pitImage.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD)
+        for (int i = 0; i < countof(pitCollection.array); ++i)
         {
-            pitImage.stagedTexture->descriptorHandle = r->srvHeap.allocateHandle(
+            PitImage& pitImage = pitCollection.array[i];
+            if (pitImage.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD)
+            {
+                uploading[i] = true;
+                pitImage.stagedTexture->descriptorHandle = r->srvHeap.allocateHandle(
 #ifdef _DEBUG
-                BRWL_CHAR_LITERAL("StagedPitTexture")
+                    BRWL_CHAR_LITERAL("StagedPitTexture")
 #endif
-            );
-            if (!BRWL_VERIFY(LoadFloatTexture2D(r->device.Get(), uploadCommandList.Get(), &pitImage.cpuImage, *pitImage.stagedTexture), BRWL_CHAR_LITERAL("Failed to load the pitImage texture to the GPU.")))
-            {   // we expect the function to clean up everything necessary
-                continue;
-            };
+                );
+                if (!BRWL_VERIFY(LoadFloatTexture2D(r->device.Get(), uploadCommandList.Get(), &pitImage.cpuImage, *pitImage.stagedTexture), BRWL_CHAR_LITERAL("Failed to load the pitImage texture to the GPU.")))
+                {   // we expect the function to clean up everything necessary
+                    continue;
+                };
+            }
         }
-    }
 
-    if (uploading)
-    {
         DR(uploadCommandList->Close());
         ID3D12CommandList* const ppCommandLists[] = { uploadCommandList.Get() };
         uploadCommandQueue->ExecuteCommandLists(1, ppCommandLists);
 
         for (int i = 0; i < countof(pitCollection.array); ++i)
         {
-            PitImage& pitImage = pitCollection.array[i];
-            ++pitImage.uploadFenceValue;
-            DR(uploadCommandQueue->Signal(pitImage.fence.Get(), pitImage.uploadFenceValue));
-            // instead of waiting here, we check the completion state in render()
+            if (uploading[i])
+            {
+                PitImage& pitImage = pitCollection.array[i];
+                ++pitImage.uploadFenceValue;
+                DR(uploadCommandQueue->Signal(pitImage.fence.Get(), pitImage.uploadFenceValue));
+                // instead of waiting here, we check the completion state in render()
+            }
         }
     }
-
-
 }
+
 
 void Visualization2Renderer::destroy(Renderer* r)
 {
@@ -365,6 +376,7 @@ void Visualization2Renderer::destroy(Renderer* r)
         {
             DR(pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, pitImage.uploadEvent));
             WaitForSingleObject(uploadFenceEvent, INFINITE);
+            ResetEvent(pitImage.uploadEvent);
         }
     }
 
