@@ -16,7 +16,8 @@ DataSet::DataSet(BRWL_STR name) :
 	strideY(0),
 	strideZ(0),
 	bufferSize(0),
-	data(nullptr)
+	data(nullptr),
+	bbox({}, {})
 { }
 
 void DataSet::loadFromFile(BRWL_STR relativePath)
@@ -63,6 +64,8 @@ void DataSet::loadFromFile(BRWL_STR relativePath)
 		bufferSize = strideX = strideY = strideZ = sizeX = sizeY = sizeZ = 0;
 		return;
 	}
+
+	bbox = { {-(float)sizeX * 0.5f, -(float)sizeY * 0.5f, -(float)sizeZ * 0.5f}, {(float)sizeX * 0.5f, (float)sizeY * 0.5f, (float)sizeZ * 0.5f } };
 
 	data = std::unique_ptr<uint8_t[]>(new uint8_t[bufferSize]);
 	/*for (int z = 0; z < sizeZ; ++z) {

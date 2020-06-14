@@ -20,7 +20,9 @@ struct BBox
 	constexpr float dimY() const { return max.y - min.y; }
 	constexpr float dimZ() const { return max.z - min.z; }
 	constexpr Vec3 dim() const { return { dimX(), dimY(), dimZ() }; }
-	BBox getOBB(const Quaternion& orientation);
+	BBox getOBB (const Quaternion& orientation) const;
+	// return distance form center of the closest plane touching the bounding box at a certain direction
+	float getClosestPlaneFromDirection(const Vec3& direction) const;
 
 	Vec3 min, max;
 };

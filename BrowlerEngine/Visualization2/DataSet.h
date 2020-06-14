@@ -1,5 +1,7 @@
 #pragma once // (c) 2020 Lukas Brunner
 
+#include "Common/BoundingBox.h"
+
 class DataSet
 {
 public:
@@ -16,6 +18,7 @@ public:
 	uint64_t getStrideZ() const { checkValid(); return strideZ; }
 	size_t getBufferSize() const { checkValid(); return bufferSize; }
 	const BRWL_CHAR* getName() const { return name.c_str(); }
+	const ::BRWL::BBox& getBoundingBox() const { return bbox; }
 private:
 	void checkValid() const { BRWL_EXCEPTION(valid, BRWL_CHAR_LITERAL("Accessing data of invalid asset.")); }
 	BRWL_STR name;
@@ -30,4 +33,5 @@ private:
 	uint64_t strideZ;
 	size_t bufferSize;
 	std::unique_ptr<uint8_t[]> data;
+	::BRWL::BBox bbox;
 };

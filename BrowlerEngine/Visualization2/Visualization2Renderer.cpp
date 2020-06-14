@@ -1,7 +1,8 @@
 #include "Visualization2Renderer.h"
 
-#include "Core/BrowlerEngine.h"
 #include "Common/Logger.h"
+#include "Common/BoundingBox.h"
+#include "Core/BrowlerEngine.h"
 #include "Preintegration.h"
 #include "Renderer/PAL/imgui_impl_dx12.h"
 #include "Renderer/PAL/d3dx12.h"
@@ -251,13 +252,11 @@ void Visualization2Renderer::render(Renderer* renderer)
             tFuncValue.bitDepth = tFuncResult.bitDepth;
             tFuncValue.controlPoints = tFuncResult.controlPoints;
         }
-        else {
-            // reset
-            //memcpy(r.transferFunction.transferFunction, tFuncValue.transferFunction, sizeof(r.transferFunction.transferFunction));
-            //r.transferFunction.bitDepth = tFuncValue.bitDepth;
-            //r.transferFunction.controlPoints = tFuncValue.controlPoints;
-        }
     }
+
+    // no action needed
+    v.settings.voxelsPerCm = r.settings.voxelsPerCm;
+
     mainShader.render();
 }
 
@@ -313,10 +312,16 @@ void Visualization2Renderer::draw(Renderer* r)
         r->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
     }
 
-    // If we have all resources then we draw else we wait anouther frame
+    // If we have all resources then we draw else we wait another frame
     if (pitCollection.isResident())
     {
-        mainShader.draw(r->device.Get(), r->commandList.Get(), &volumeTexture, pitCollection);
+        const MainShader::DrawData drawData {
+            &dataSet.getBoundingBox(),
+            &volumeTexture,
+            &pitCollection,
+            uiResults[0].settings.voxelsPerCm
+        };
+        mainShader.draw(r->device.Get(), r->commandList.Get(), drawData);
     }
 
     // check if we have to start uploading textures

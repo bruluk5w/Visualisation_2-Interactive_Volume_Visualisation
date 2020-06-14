@@ -317,7 +317,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     const float numSlices = planeStackThickness; // 1 plane per voxel is a very good resolution
     const Vec3 deltaSlice = normalized(-camPos) * planeStackThickness / numSlices ;
     Mat4 modelMatrix = makeRotationMatrix(Vec4(camRotation.x, camRotation.y, camRotation.z, camRotation.w)) * makeAffineTransform(
-        normalized(camPos) * (planeOffsetNear / data.voxelsPerCm),
+        normalized(-camPos) * (planeOffsetNear / data.voxelsPerCm),
         Quaternion(),
         quadScale / data.voxelsPerCm
     );

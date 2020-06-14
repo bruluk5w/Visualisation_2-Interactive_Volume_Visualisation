@@ -228,6 +228,7 @@ Vec3 Quaternion::operator*(const Vec3& rhs) const
 
 Quaternion Quaternion::inverse() const
 {
+	// because we assume a unit quaternion
 	return Quaternion(-x, -y, -z, w);
 }
 

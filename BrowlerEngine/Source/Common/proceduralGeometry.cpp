@@ -7,18 +7,18 @@ BRWL_NS
 
 namespace ProceduralGeometry
 {
-	void makeQuad(float xSize, float zSize, std::vector<VertexData>& vertices)
+	void makeQuad(float xSize, float ySize, std::vector<VertexData>& vertices)
 	{
 		xSize *= 0.5f;
-		zSize *= 0.5f;
+		ySize *= 0.5f;
 
 		vertices.resize(6);
-		vertices[0] = { {-xSize, 0,  zSize}, {0.0f, 0.0f} };
-		vertices[1] = { { xSize, 0,  zSize}, {1.0f, 0.0f} };
-		vertices[2] = { {-xSize, 0, -zSize}, {0.0f, 1.0f} };
-		vertices[3] = { {-xSize, 0, -zSize}, {0.0f, 1.0f} };
-		vertices[4] = { { xSize, 0,  zSize}, {1.0f, 0.0f} };
-		vertices[5] = { { xSize, 0, -zSize}, {1.0f, 1.0f} };
+		vertices[0] = { {-xSize,  ySize, 0}, {0.0f, 0.0f} };
+		vertices[1] = { { xSize,  ySize, 0}, {1.0f, 0.0f} };
+		vertices[2] = { {-xSize, -ySize, 0}, {0.0f, 1.0f} };
+		vertices[3] = { {-xSize, -ySize, 0}, {0.0f, 1.0f} };
+		vertices[4] = { { xSize,  ySize, 0}, {1.0f, 0.0f} };
+		vertices[5] = { { xSize, -ySize, 0}, {1.0f, 1.0f} };
 	}
 
 	void makeQuad(float xSize, float zSize, std::vector<VertexData>& vertices, std::vector<uint32_t>& indices)

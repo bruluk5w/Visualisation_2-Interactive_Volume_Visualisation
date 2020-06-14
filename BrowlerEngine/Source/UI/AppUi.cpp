@@ -31,7 +31,8 @@ const char* UIResult::TransferFunctionCollection::transferFuncNames[] = {
 UIResult::UIResult() :
     settings {
         UIResult::Settings::Font::OPEN_SANS_REGULAR, // font
-        30 // fontSize
+        30, // fontSize
+        300, // voxelsPerCm
     },
     transferFunctions{}
 { }
@@ -148,8 +149,9 @@ void renderAppUI(UIResult& result, const UIResult& values)
         // work around for slider bug where slider is activated when clicking on the combo box above
         SLIDER_FIX(0)
             Text("Font Size:"); SameLine();
-        SliderFloat("", &result.settings.fontSize, 5, 40);
+            SliderFloat("", &result.settings.fontSize, 5, 40);
         SLIDER_FIX_END();
+        Text("Voxels per Centimeter:"); SameLine(); ::ImGui::InputFloat("", &result.settings.voxelsPerCm, 1.f, 5.f);
         End();
     }
 

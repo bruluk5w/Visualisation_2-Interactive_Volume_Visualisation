@@ -1,7 +1,11 @@
 #pragma once // (c) 2020 Lukas Brunner
 
+BRWL_NS
+struct BBox;
+BRWL_NS_END
 
 BRWL_RENDERER_NS
+
 
 struct TextureResource;
 union PitCollection;
@@ -18,8 +22,16 @@ public:
 
     bool create(ID3D12Device* device);
     void render();
-    void draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, TextureResource* volumeTexture, PitCollection& pitCollection);
     void destroy();
+
+    struct DrawData {
+        const BBox* volumeDimensions;
+        const TextureResource* volumeTexture;
+        const PitCollection* pitCollection;
+        const float voxelsPerCm;
+    };
+
+    void draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, const DrawData& data);
 
 private:
     void setup(ID3D12GraphicsCommandList* cmd);

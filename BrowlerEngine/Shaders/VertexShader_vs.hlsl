@@ -1,10 +1,12 @@
 
-struct ModelViewProjection
+struct Constants
 {
-	matrix MVP;
+    matrix ModelMatrix;
+    matrix ViewProjection;
+    float voxelsPerCm;
 };
 
-ConstantBuffer<ModelViewProjection> ModelViewProjectionCB : register(b0);
+ConstantBuffer<Constants> constants : register(b0);
 
 struct VS_INPUT
 {
@@ -15,7 +17,7 @@ struct VS_INPUT
 struct PS_INPUT
 {
 	float4 Position : SV_Position;
-    float2 uv		: TEXCOORD0;
+    float4 uvw : TEXCOORD3D;
 };
 
 PS_INPUT main(VS_INPUT input)
@@ -27,7 +29,9 @@ PS_INPUT main(VS_INPUT input)
 	//return OUT;
 	
     PS_INPUT output;
-    output.Position = mul(ModelViewProjectionCB.MVP, float4(input.Position, 1.f));
-    output.uv = input.uv;
+    float4 worldSpacePos = mul(constants.ModelMatrix, float4(input.Position, 1.f));
+    output.uvw = worldSpacePos * constants.voxelsPerCm;
+    output.Position = mul(constants.ViewProjection, worldSpacePos);
+
     return output;
 }

@@ -23,6 +23,8 @@ struct UIResult
 		float fontSize;
 
 		static const char* fontNames[ENUM_CLASS_TO_NUM(Font::MAX)];
+
+		float voxelsPerCm;
 	} settings;
 
 	struct TransferFunction
