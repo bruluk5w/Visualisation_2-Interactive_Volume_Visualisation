@@ -36,7 +36,9 @@ struct Quaternion
 
 	static void fromAxisAngle(float axisX, float axisY, float axisZ, float angle, Quaternion& out);
 
-	static Quaternion lookAt(Vec3 from, Vec3 to);
+	static Quaternion fromTo(Vec3 from, Vec3 to);
+
+	//static Quaternion lookAt(Vec3 from, Vec3 to);
 
 	float magnitude();
 

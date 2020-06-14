@@ -34,22 +34,23 @@ globallycoherent RWTexture2D<float> buffer : register(u0);
 float4 main(PS_INPUT input) : SV_Target
 {
     //const float voxelScale = 1.f / constantsCB.voxelsPerCm;
-    int3 volumeDim;
-    volumeTexture.GetDimensions(volumeDim.x, volumeDim.y, volumeDim.z);
-    float3 volumeDimension = (float3) volumeDim;
-    //const float3 scaledVolume = ((float3) volumeDim) * voxelScale;
+    int3 a;
+    volumeTexture.GetDimensions(a.x, a.y, a.z);
+    // this is the the dimension of the volume in the same space as the viewing plane
+    const float3 volumeTexDim = ((float3) a);
     
     ////const float pitScale = getScaleForPreintegrationTableScale();
     float accumulated = 0;
     float lastSample = 0;
     float3 sampleOffset = 0;
+    const float3 sampleDir = constants.deltaSlice;
     for (float i = 0; i < constants.numSlices; ++i)
     {
+        const float3 uvw = ((input.uvw + 0.5f * volumeTexDim) + sampleOffset) / volumeTexDim;
         // We need to rescale the values sampled from the volume because we assume only 12 bits out of 16 are used
         // Since our volume texture is normalized to 16bit we would else only use 1/4 of our normalized range
-        const float newSample = volumeTexture.Sample(volumeSampler, (input.uvw + 0.5f * volumeDimension) / volumeDimension + sampleOffset).r * 4.f;
-        accumulated += newSample;
-        //accumulated += refractionIntegTex.Sample(preintegrationSampler, float2(lastSample, newSample)).r;
+        const float newSample = volumeTexture.Sample(volumeSampler, uvw).r * 4.f;
+        accumulated += refractionIntegTex.Sample(preintegrationSampler, float2(lastSample, newSample)).r;
         lastSample = newSample;
         
         // next plane
@@ -57,7 +58,9 @@ float4 main(PS_INPUT input) : SV_Target
     }
     
     //float4 out_col = accumulated * (volumeDim.z / constantsCB.voxelsPerCm);
-    float4 out_col = accumulated;
+    float4 out_col;
+    out_col.xyz = accumulated;
     out_col.w = 1;
     return out_col;
+
 }

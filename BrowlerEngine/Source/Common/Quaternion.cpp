@@ -6,10 +6,14 @@ BRWL_NS
 const Quaternion Quaternion::identity = Quaternion(0, 0, 0, 1);
 
 Quaternion::Quaternion() : x(0), y(0), z(0), w(1)
-{ }
+{
+	normalize();
+}
 
 Quaternion::Quaternion(float x, float y, float z, float w) : x(x), y(y), z(z), w(w)
-{ }
+{ 
+	normalize();
+}
 
 Quaternion::Quaternion(const Vec3& axis, const float angle)
 {
@@ -41,37 +45,51 @@ void Quaternion::fromAxisAngle(const float axisX, const float axisY, const float
 	out.normalize();
 }
 
-// see: http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
-Quaternion Quaternion::lookAt(Vec3 from, Vec3 to)
+Quaternion Quaternion::fromTo(Vec3 from, Vec3 to)
 {
-	// Make an orthogonal basis
-	const Vec3 vecFwd = ::BRWL::normalize(to - from);
-	const Vec3 vecRight = ::BRWL::normalize(cross(::BRWL::forward, vecFwd));
-	const Vec3 vecUp = cross(vecRight, vecFwd);
-
-	// Take the trace of the matrix defined by the basis
-	float t = vecFwd.x + vecRight.y + vecUp.z;
-
-	if (t > 0.f)
-	{	
-		float s = 0.5f / std::sqrtf(t + 1.0f);
-		return Quaternion((vecUp.z - vecFwd.y) * s, (vecFwd.x - vecRight.z) * s, (vecRight.y - vecUp.x) * s, 0.25f / s);
-	}
-	else if (vecRight.x > vecUp.y && vecRight.x > vecFwd.z)
-	{	// right vector is the biggest
-		const float s = 0.5f / sqrt(1.f + vecRight.x - vecUp.y - vecFwd.z);
-		return Quaternion( 0.25f / s, (vecUp.x + vecRight.y) * s, (vecFwd.x + vecRight.z) * s, (vecUp.z - vecFwd.y) * s);
-	}
-	else if (vecUp.y > vecFwd.z)
-	{	// up vector is the biggest
-		const float s = 0.5f / std::sqrtf(1.0f + vecUp.y - vecRight.x - vecFwd.z);
-		return Quaternion((vecUp.x + vecRight.y) * s, 0.25f / s, (vecFwd.y + vecUp.z) * s, (vecFwd.x - vecRight.z) * s);
-	}
-
-	// forward vector is the biggest
-	const float s = 0.5f / std::sqrtf(1.0f + vecFwd.z - vecRight.x - vecUp.y);
-	return Quaternion((vecFwd.x + vecRight.z) * s, (vecFwd.y + vecUp.z) * s, 0.25f / s, (vecRight.y - vecUp.x) * s);
+	const float dot = from * to;
+	if (dot > 0.999999f) return identity;
+	else if (dot < -0.999999f) return Quaternion(0, 0, 1, 0);
+	Quaternion q;
+	Vec3 a = cross(from, to);
+	q.x = a.x;
+	q.y = a.y;
+	q.z = a.z;
+	q.w = std::sqrtf(lengthSq(from) * lengthSq(to)) + dot;
+	return q.normalize();
 }
+
+//// see: http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+//Quaternion Quaternion::lookAt(Vec3 from, Vec3 to)
+//{
+//	// Make an orthogonal basis
+//	const Vec3 vecFwd = ::BRWL::normalize(to - from);
+//	const Vec3 vecRight = ::BRWL::normalize(cross(::BRWL::forward, vecFwd));
+//	const Vec3 vecUp = cross(vecRight, vecFwd);
+//
+//	// Take the trace of the matrix defined by the basis
+//	float t = vecFwd.x + vecRight.y + vecUp.z;
+//
+//	if (t > 0.f)
+//	{	
+//		float s = 0.5f / std::sqrtf(t + 1.0f);
+//		return Quaternion((vecUp.z - vecFwd.y) * s, (vecFwd.x - vecRight.z) * s, (vecRight.y - vecUp.x) * s, 0.25f / s);
+//	}
+//	else if (vecRight.x > vecUp.y && vecRight.x > vecFwd.z)
+//	{	// right vector is the biggest
+//		const float s = 0.5f / sqrt(1.f + vecRight.x - vecUp.y - vecFwd.z);
+//		return Quaternion( 0.25f / s, (vecUp.x + vecRight.y) * s, (vecFwd.x + vecRight.z) * s, (vecUp.z - vecFwd.y) * s);
+//	}
+//	else if (vecUp.y > vecFwd.z)
+//	{	// up vector is the biggest
+//		const float s = 0.5f / std::sqrtf(1.0f + vecUp.y - vecRight.x - vecFwd.z);
+//		return Quaternion((vecUp.x + vecRight.y) * s, 0.25f / s, (vecFwd.y + vecUp.z) * s, (vecFwd.x - vecRight.z) * s);
+//	}
+//
+//	// forward vector is the biggest
+//	const float s = 0.5f / std::sqrtf(1.0f + vecFwd.z - vecRight.x - vecUp.y);
+//	return Quaternion((vecFwd.x + vecRight.z) * s, (vecFwd.y + vecUp.z) * s, 0.25f / s, (vecRight.y - vecUp.x) * s);
+//}
 
 void Quaternion::toAxisAngle(const Quaternion& q, Vec3& outAxis, float& outAngle) {
 	// from www.j3d.org/matrix_faq/matrfaq_latest.html

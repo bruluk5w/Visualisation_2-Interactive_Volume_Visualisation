@@ -23,9 +23,6 @@
       <UniqueIdentifier>{3a6da605-4282-4bb1-9f06-b8dc9178a5dd}</UniqueIdentifier>
       <Extensions>hlsl</Extensions>
     </Filter>
-    <Filter Include="Shaders\Compiled">
-      <UniqueIdentifier>{b37bc236-391e-4ab3-8efb-5268b33b42cb}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Renderer\Renderer_Precomp.h">
@@ -117,6 +114,12 @@
       <Filter>Shaders</Filter>
     </DXCShader>
     <DXCShader Include="Shaders\VertexShader_vs.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
+    <DXCShader Include="Shaders\Guides_ps.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
+    <DXCShader Include="Shaders\Guides_vs.hlsl">
       <Filter>Shaders</Filter>
     </DXCShader>
   </ItemGroup>

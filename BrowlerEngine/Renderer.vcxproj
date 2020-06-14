@@ -433,6 +433,8 @@ if not exist %compiled_folder% (
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <DXCShader Include="Shaders\Guides_ps.hlsl" />
+    <DXCShader Include="Shaders\Guides_vs.hlsl" />
     <DXCShader Include="Shaders\GUI_ps.hlsl" />
     <DXCShader Include="Shaders\GUI_vs.hlsl" />
     <DXCShader Include="Shaders\PixelShader_ps.hlsl" />

@@ -43,6 +43,8 @@ public:
 	void setCamera(Camera* newCamera);
 	Camera* getCamera() const { return camera; }
 	void getFrameBufferSize(unsigned int& width, unsigned int& height) { width = currentFramebufferWidth; height = currentFramebufferHeight; }
+	virtual void setVSync(bool enable) = 0;
+	virtual bool getVSync() const = 0;
 protected:
 	virtual void OnFramebufferResize() = 0;
 

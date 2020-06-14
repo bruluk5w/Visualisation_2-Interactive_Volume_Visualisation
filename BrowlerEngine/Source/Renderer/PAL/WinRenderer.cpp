@@ -82,6 +82,7 @@ namespace PAL
 
     WinRenderer::WinRenderer(EventBusSwitch<Event>* eventSystem, PlatformGlobals* globals) :
         BaseRenderer(eventSystem, globals),
+        vSync(false),
         dxgiFactory(nullptr),
         dxgiAdapter(nullptr),
         device(nullptr),
@@ -257,8 +258,16 @@ namespace PAL
         ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
         commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-        //DR(swapChain->Present(1, 0)); // Present with vsync
-        DR(swapChain->Present(0, 0)); // Present without vsync
+        if (vSync)
+        {
+            DR(swapChain->Present(1, 0));
+        }
+        else
+        {
+
+            DR(swapChain->Present(0, 0));
+        
+        }
         ++frameIndex;
         ++frameFenceLastValue;
         DR(commandQueue->Signal(frameFence.Get(), frameFenceLastValue));

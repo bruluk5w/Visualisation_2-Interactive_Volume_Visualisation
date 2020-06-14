@@ -25,6 +25,9 @@ struct UIResult
 		static const char* fontNames[ENUM_CLASS_TO_NUM(Font::MAX)];
 
 		float voxelsPerCm;
+		bool vsync;
+		bool drawAssetBoundaries;
+		bool drawViewingVolumeBoundaries;
 	} settings;
 
 	struct TransferFunction

@@ -22,9 +22,7 @@ public:
 	std::unique_ptr<RENDERER::Camera> camera;
 
 	size_t windowResizeEvtHdl = 0;
-	float rotY;
-	float rotX;
-	std::unique_ptr<Transform> cameraPawn;
+	//std::unique_ptr<Transform> cameraPawn;
 };
 
 

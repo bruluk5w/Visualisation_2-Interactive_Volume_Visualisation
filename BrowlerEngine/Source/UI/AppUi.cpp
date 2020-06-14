@@ -29,10 +29,13 @@ const char* UIResult::TransferFunctionCollection::transferFuncNames[] = {
 };
 
 UIResult::UIResult() :
-    settings {
+    settings{
         UIResult::Settings::Font::OPEN_SANS_REGULAR, // font
         30, // fontSize
         300, // voxelsPerCm
+        false, // vsync
+        true, // drawAssetBoundaries
+        true, // drawViewingVolumeBoundaries
     },
     transferFunctions{}
 { }
@@ -142,7 +145,8 @@ void renderAppUI(UIResult& result, const UIResult& values)
     showTools = showTools || Button("Tools");
     ImGui::EndMainMenuBar();
 
-    if (showSettings) {
+    if (showSettings)
+    {
         Begin("Settings", &showSettings);
         ENUM_SELECT("GUI Font: ", values.settings.font, result.settings.font, UIResult::Settings, Font, fontNames);
 
@@ -152,6 +156,10 @@ void renderAppUI(UIResult& result, const UIResult& values)
             SliderFloat("", &result.settings.fontSize, 5, 40);
         SLIDER_FIX_END();
         Text("Voxels per Centimeter:"); SameLine(); ::ImGui::InputFloat("", &result.settings.voxelsPerCm, 1.f, 5.f);
+        Checkbox("VSync", &result.settings.vsync);
+        Checkbox("Draw Dataset Boundaries", &result.settings.drawAssetBoundaries);
+        Checkbox("Draw Viewing Volume Boundaries", &result.settings.drawViewingVolumeBoundaries);
+        
         End();
     }
 
@@ -312,21 +320,22 @@ void drawHints()
         ImGuiWindowFlags_NoSavedSettings | 
         ImGuiWindowFlags_NoInputs |
         ImGuiWindowFlags_AlwaysAutoResize;
-    if (!io.WantCaptureMouse) {
-        if (io.MouseDown[0]) {
-            if (!IsKeyDown(io.KeyMap[ImGuiKey_Space])) {
-                SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-                Begin("HintWindow", nullptr, dummyFlags);
-                Text("Rotate FPS view: <SPACE> + <MOUSE LEFT>");
-                End();
-            }
-            else
-            {
-                SetNextWindowPos(ImVec2(io.DisplaySize.x, io.DisplaySize.y), ImGuiCond_Always, ImVec2(1.f, 1.f));
-                Begin("HintWindow", nullptr, dummyFlags);
-                Text("Strave: <WSAD> | Up: <E> | Down: <Q> ");
-                End();
-            }
+    if (!io.WantCaptureMouse)
+    {
+
+        if (false)
+        {
+            SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+            Begin("HintWindowCenter", nullptr, dummyFlags);
+            Text("Rotate FPS view: <SPACE> + <MOUSE LEFT>");
+            End();
+        }
+        else
+        {
+            SetNextWindowPos(ImVec2(io.DisplaySize.x, io.DisplaySize.y), ImGuiCond_Always, ImVec2(1.f, 1.f));
+            Begin("HintWindowBottom", nullptr, dummyFlags);
+            Text("Strave: <WSAD> | Up: <E> | Down: <Q> | Rotate FPS view: <MOUSE LEFT>");
+            End();
         }
     }
 }

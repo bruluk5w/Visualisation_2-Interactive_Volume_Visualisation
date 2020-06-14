@@ -22,7 +22,9 @@ extern const Vec3 right;
 using namespace ::DirectX;
 inline Vec2 normalize(Vec2 x) { XMStoreFloat2(&x, XMVector2Normalize(XMVectorSet(x.x, x.y, 0.f, 0.f))); return x; }
 inline Vec3 normalize(Vec3 x) { XMStoreFloat3(&x, XMVector3Normalize(XMVectorSet(x.x, x.y, x.z, 0.f))); return x; }
-inline Vec3 normalized(Vec3 x) { Vec3 y; XMStoreFloat3(&y, XMVector3Normalize(XMVectorSet(x.x, x.y, x.z, 0.f))); return y; }
+inline Vec3 normalized(const Vec3& x) { Vec3 y; XMStoreFloat3(&y, XMVector3Normalize(XMVectorSet(x.x, x.y, x.z, 0.f))); return y; }
+inline float length(const Vec3& x) { float y;  XMStoreFloat(&y, XMVector3Length(XMVectorSet(x.x, x.y, x.z, 0.f))); return y; }
+inline float lengthSq(const Vec3& x) { float y;  XMStoreFloat(&y, XMVector3LengthSq(XMVectorSet(x.x, x.y, x.z, 0.f))); return y; }
 inline Vec3 cross(Vec3 x, const Vec3& y) { XMStoreFloat3(&x, XMVector3Cross(XMVectorSet(x.x, x.y, x.z, 0.f), XMVectorSet(y.x, y.y, y.z, 0.f))); return x; }
 inline Vec4 extractColumn4(const Mat4& x, size_t idx) { idx &= 0x3;  Vec4 y; y.x = ((float*)&x.r[0])[idx]; y.y = ((float*)&x.r[1])[idx]; y.z = ((float*)&x.r[2])[idx]; y.w = ((float*)&x.r[3])[idx]; return y; }
 inline Vec3 extractColumn3(const Mat4& x, size_t idx) { idx &= 0x3;  Vec3 y; y.x = ((float*)&x.r[0])[idx]; y.y = ((float*)&x.r[1])[idx]; y.z = ((float*)&x.r[2])[idx]; return y; }
@@ -34,7 +36,7 @@ inline Vec3& storeMax(Vec3& a, const Vec3& b) { XMStoreFloat3(&a, XMVectorMax(XM
 inline Mat4 makePerspective(float fovY, float aspect, float near, float far) { return XMMatrixPerspectiveFovLH(fovY, aspect, near, far); }
 inline Mat4 makeOrthographic(float width, float height, float near, float far) { return XMMatrixOrthographicLH(width, height, near, far); }
 inline Mat4 makeAffineTransform(const Vec3& pos, const Vec3& rot, const Vec3& scale) { return XMMatrixAffineTransformation(XMVectorSet(scale.x, scale.y, scale.z, 0), XMVectorSet(0, 0, 0, 0), XMQuaternionRotationRollPitchYawFromVector(XMVectorSet(rot.x, rot.y, rot.z, 0)), XMVectorSet(pos.x, pos.y, pos.z, 0)); }
-inline Mat4 makeAffineTransform(const Vec3& pos, const Quaternion& rot = Quaternion(), const Vec3& scale = Vec3(1,1,1))
+inline Mat4 makeAffineTransform(const Vec3& pos = zero, const Quaternion& rot = Quaternion(), const Vec3& scale = Vec3(1, 1, 1))
 {
 	const float xx = rot.x * rot.x;
 	const float xy = rot.x * rot.y;

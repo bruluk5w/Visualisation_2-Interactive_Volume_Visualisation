@@ -29,6 +29,8 @@ namespace PAL
 		virtual void render() override;
 		virtual void draw() override;
 		virtual void destroy(bool force = true) override;
+		virtual void setVSync(bool enable) override { vSync = enable; }
+		virtual bool getVSync() const override { return vSync; }
 		void waitForLastSubmittedFrame();
 	protected:
 
@@ -49,9 +51,10 @@ namespace PAL
 			uint64_t						FenceValue;
 		};
 
-		static const int			NUM_FRAMES_IN_FLIGHT = 3;
-		FrameContext				frameContext[NUM_FRAMES_IN_FLIGHT];
-		size_t						frameIndex;
+		static const int	NUM_FRAMES_IN_FLIGHT = 3;
+		bool				vSync;
+		FrameContext		frameContext[NUM_FRAMES_IN_FLIGHT];
+		size_t				frameIndex;
 		
 
 		void createRenderTargets();

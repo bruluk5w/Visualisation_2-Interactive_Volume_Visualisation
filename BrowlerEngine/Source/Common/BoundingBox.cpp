@@ -5,16 +5,19 @@
 BRWL_NS
 
 
-BBox BBox::getOBB (const Quaternion& orientation) const
+BBox BBox::getOBB (const Mat4& orientation) const
 {
+	//BRWL_CHECK(std::abs(orientation.x * orientation.x + orientation.y * orientation.y + orientation.z * orientation.z + orientation.w * orientation.w - 1.f) < 0.001f, nullptr);
+	//const Quaternion invOrientation = orientation.inverse();
+	const Mat4 invOrientation = inverse(orientation);
 	const Vec3 halfDim = dim() * 0.5f;
-	const Vec3 right = orientation.right() * halfDim.x;
-	const Vec3 top = orientation.up() * halfDim.y;
-	const Vec3 front = orientation.forward() * halfDim.z;
-	const Vec3 topRight = top + right;
-	const Vec3 topLeft = top - right;
-	const Vec3 bottomRight = right - top;
-	const Vec3 bottomLeft = -right - top;
+	const Vec3 vRight = (right * invOrientation) * halfDim.x;
+	const Vec3 top = (up * invOrientation) * halfDim.y;
+	const Vec3 front = (forward * invOrientation) * halfDim.z;
+	const Vec3 topRight = top + vRight;
+	const Vec3 topLeft = top - vRight;
+	const Vec3 bottomRight = vRight - top;
+	const Vec3 bottomLeft = -vRight - top;
 
 	Vec3 min{ 0, 0, 0 };
 	Vec3 max{ 0, 0, 0 };

@@ -253,9 +253,17 @@ void Visualization2Renderer::render(Renderer* renderer)
             tFuncValue.controlPoints = tFuncResult.controlPoints;
         }
     }
+    if (v.settings.vsync != r.settings.vsync)
+    {
+        renderer->setVSync(r.settings.vsync);
+        v.settings.vsync = r.settings.vsync;
+    }
 
     // no action needed
     v.settings.voxelsPerCm = r.settings.voxelsPerCm;
+    v.settings.font = r.settings.font;
+    v.settings.drawAssetBoundaries = r.settings.drawAssetBoundaries;
+    v.settings.drawViewingVolumeBoundaries = r.settings.drawViewingVolumeBoundaries;
 
     mainShader.render();
 }
@@ -319,7 +327,9 @@ void Visualization2Renderer::draw(Renderer* r)
             &dataSet.getBoundingBox(),
             &volumeTexture,
             &pitCollection,
-            uiResults[0].settings.voxelsPerCm
+            uiResults[0].settings.voxelsPerCm,
+            uiResults[0].settings.drawAssetBoundaries,
+            uiResults[0].settings.drawViewingVolumeBoundaries,
         };
         mainShader.draw(r->device.Get(), r->commandList.Get(), drawData);
     }

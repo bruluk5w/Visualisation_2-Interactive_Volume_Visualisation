@@ -27,10 +27,10 @@ namespace ProceduralGeometry
 		zSize *= 0.5f;
 
 		vertices.resize(4);
-		vertices[0] = { {-xSize, 0,  zSize}, {0.0f, 0.0f} };
-		vertices[1] = { { xSize, 0,  zSize}, {1.0f, 0.0f} };
-		vertices[2] = { { xSize, 0, -zSize}, {1.0f, 1.0f} };
-		vertices[3] = { {-xSize, 0, -zSize}, {0.0f, 1.0f} };
+		vertices[0] = { {-xSize,  zSize, 0}, {0.0f, 0.0f} };
+		vertices[1] = { { xSize,  zSize, 0}, {1.0f, 0.0f} };
+		vertices[2] = { { xSize, -zSize, 0}, {1.0f, 1.0f} };
+		vertices[3] = { {-xSize, -zSize, 0}, {0.0f, 1.0f} };
 
 		indices.resize(6);
 		indices[0] = 0;
@@ -67,6 +67,51 @@ namespace ProceduralGeometry
 		}
 
 		vertices[numZSubdiv * (numXSubdiv + 1) + numXSubdiv + 1] = { {startX + numXSubdiv * xStep, 0,  startZ + numZSubdiv * ZStep}, {1.0f, 1.0f} };
+	}
+
+	void makeCube(float xSize, float ySize, float zSize, std::vector<VertexData>& vertices)
+	{
+		xSize *= 0.5f;
+		ySize *= 0.5f;
+		zSize *= 0.5f;
+
+		vertices.resize(36);
+		vertices[0] = { { -xSize, -ySize,  zSize}, {0, 0} };
+		vertices[1] = { {  xSize, -ySize,  zSize}, {1, 0} };
+		vertices[2] = { {  xSize,  ySize,  zSize}, {1, 1} };
+		vertices[3] = { { -xSize, -ySize,  zSize}, {0, 0} };
+		vertices[4] = { {  xSize,  ySize,  zSize}, {1, 1} };
+		vertices[5] = { { -xSize,  ySize,  zSize}, {0, 1} };
+		vertices[6] = { { -xSize, -ySize, -zSize}, {1, 0} };
+		vertices[7] = { {  xSize,  ySize, -zSize}, {0, 1} };
+		vertices[8] = { {  xSize, -ySize, -zSize}, {0, 0} };
+		vertices[9] = { { -xSize, -ySize, -zSize}, {1, 0} };
+		vertices[10] = { { -xSize,  ySize, -zSize}, {1, 1} };
+		vertices[11] = { {  xSize,  ySize, -zSize}, {0, 1} };
+		vertices[12] = { { -xSize, -ySize, -zSize}, {0, 0} };
+		vertices[13] = { { -xSize, -ySize,  zSize}, {1, 0} };
+		vertices[14] = { { -xSize,  ySize, -zSize}, {0, 1} };
+		vertices[15] = { { -xSize, -ySize,  zSize}, {1, 0} };
+		vertices[16] = { { -xSize,  ySize,  zSize}, {1, 1} };
+		vertices[17] = { { -xSize,  ySize, -zSize}, {0, 1} };
+		vertices[18] = { {  xSize, -ySize, -zSize}, {1, 0} };
+		vertices[19] = { {  xSize,  ySize,  zSize}, {0, 1} };
+		vertices[20] = { {  xSize, -ySize,  zSize}, {0, 0} };
+		vertices[21] = { {  xSize, -ySize, -zSize}, {1, 0} };
+		vertices[22] = { {  xSize,  ySize, -zSize}, {1, 1} };
+		vertices[23] = { {  xSize,  ySize,  zSize}, {0, 1} };
+		vertices[24] = { { -xSize,  ySize,  zSize}, {0, 0} };
+		vertices[25] = { {  xSize,  ySize,  zSize}, {1, 0} };
+		vertices[26] = { {  xSize,  ySize, -zSize}, {1, 1} };
+		vertices[27] = { { -xSize,  ySize,  zSize}, {0, 0} };
+		vertices[28] = { {  xSize,  ySize, -zSize}, {1, 1} };
+		vertices[29] = { { -xSize,  ySize, -zSize}, {0, 1} };
+		vertices[30] = { { -xSize, -ySize, -zSize}, {0, 0} };
+		vertices[31] = { {  xSize, -ySize, -zSize}, {1, 0} };
+		vertices[32] = { { -xSize, -ySize,  zSize}, {0, 1} };
+		vertices[33] = { { -xSize, -ySize,  zSize}, {0, 1} };
+		vertices[34] = { {  xSize, -ySize, -zSize}, {1, 0} };
+		vertices[35] = { {  xSize, -ySize,  zSize}, {1, 1} };
 	}
 
 	void makeCube(float xSize, float ySize, float zSize, std::vector<VertexData>& vertices, std::vector<uint32_t>& indices)

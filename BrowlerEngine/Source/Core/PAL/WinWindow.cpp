@@ -44,10 +44,6 @@ struct WinWindowImpl
         lastTimeTransformUpdated(-1),
         wrapper(wrapper)
     {
-        // for now we only consider the main monitor
-        int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
         RECT rect = { x, y, width, height };
         ::AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, false);
 
