@@ -122,5 +122,8 @@
     <DXCShader Include="Shaders\Guides_vs.hlsl">
       <Filter>Shaders</Filter>
     </DXCShader>
+    <DXCShader Include="Shaders\Initialization_cs.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
   </ItemGroup>
 </Project>

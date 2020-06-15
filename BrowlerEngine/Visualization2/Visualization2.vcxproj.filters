@@ -66,6 +66,9 @@
     <ClInclude Include="PitCollection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="InitializationShader.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Visualization2.cpp">
@@ -105,6 +108,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PitCollection.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="InitializationShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -22,7 +22,6 @@ Texture2D opacityIntegTex: register(t2);
 Texture2D mediumIntegTex: register(t3);
 Texture3D volumeTexture: register(t4);
 
-globallycoherent RWTexture2D<float> buffer : register(u0);
 
 //float getScaleForPreintegrationTableScale()
 //{

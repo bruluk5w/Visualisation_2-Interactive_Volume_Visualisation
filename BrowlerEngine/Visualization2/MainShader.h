@@ -10,6 +10,7 @@ BRWL_RENDERER_NS
 
 struct TextureResource;
 union PitCollection;
+class InitializationShader;
 
 namespace PAL
 {
@@ -32,6 +33,7 @@ class MainShader final
 
 public:
     MainShader();
+    ~MainShader();
 
     bool create(ID3D12Device* device);
     void render();
@@ -52,12 +54,14 @@ private:
     void bindVertexBuffer(ID3D12GraphicsCommandList* cmd, const TriangleList& list);
 
     ComPtr<ID3D12RootSignature>  mainRootSignature;
-    ComPtr<ID3D12RootSignature>  guidesRootSignature;
     ComPtr<ID3D12PipelineState>  mainPipelineState;
+    ComPtr<ID3D12RootSignature>  guidesRootSignature;
     ComPtr<ID3D12PipelineState>  guidesPipelineState;
 
     TriangleList viewingPlane;
     TriangleList assetBounds;
+
+    std::unique_ptr<InitializationShader> initializationShader;
 
     bool initialized;
 };

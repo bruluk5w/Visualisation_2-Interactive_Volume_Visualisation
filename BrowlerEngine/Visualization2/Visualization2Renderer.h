@@ -2,10 +2,10 @@
 
 #include "Renderer/AppRenderer.h"
 #include "UI/AppUi.h"
-#include "Renderer/Renderer.h"
 #include "TextureResource.h"
 #include "DataSet.h"
 #include "PitCollection.h"
+#include "Renderer/RendererFwd.h"
 
 #ifndef BRWL_USE_DEAR_IM_GUI
 #error The project requires Dear ImGui
@@ -18,7 +18,6 @@
 
 
 BRWL_RENDERER_NS
-
 
 class Visualization2Renderer : public AppRenderer
 {

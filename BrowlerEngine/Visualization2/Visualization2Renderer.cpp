@@ -4,6 +4,7 @@
 #include "Common/BoundingBox.h"
 #include "Core/BrowlerEngine.h"
 #include "Preintegration.h"
+#include "Renderer/Renderer.h"
 #include "Renderer/PAL/imgui_impl_dx12.h"
 #include "Renderer/PAL/d3dx12.h"
 

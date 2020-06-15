@@ -17,6 +17,7 @@
 #include "PitCollection.h"
 #include "Common/BoundingBox.h"
 #include "Common/Logger.h"
+#include "InitializationShader.h"
 
 
 namespace
@@ -129,7 +130,11 @@ MainShader::MainShader() :
     guidesRootSignature(nullptr),
     guidesPipelineState(nullptr),
     initialized(false),
-    viewingPlane{}
+    viewingPlane{},
+    initializationShader(nullptr)
+{ }
+
+MainShader::~MainShader()
 { }
 
 bool MainShader::create(ID3D12Device* device)
@@ -406,6 +411,8 @@ bool MainShader::create(ID3D12Device* device)
 
     // TODO: do we need some synchonisation here?
 
+    initializationShader = std::make_unique<InitializationShader>(device);
+
     initialized = true;
     return initialized;
 }
@@ -421,30 +428,62 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     unsigned int width, height;
     engine->renderer->getFrameBufferSize(width, height);
     BRWL::RENDERER::Camera* cam = engine->renderer->getCamera();
+    const Quaternion camRot = cam->getGlobalOrientation();
+    const Vec3 camPos = cam->getGlobalPosition();
+
+    const float volumeScale = 1.f / data.voxelsPerCm;
+
+    // positioning of the viewing plane
+    const Mat4 viewingVolumeOrientation = inverse(makeLookAtTransform(zero, camPos));
+    const BBox viewingVolumeUnscaled = data.volumeDimensions->getOBB(viewingVolumeOrientation);
+    const Vec3 viewingVolumeDimensions = viewingVolumeUnscaled.dim() * volumeScale;
+
+    const Mat4 viewingPlaneModelMatrix =
+        makeAffineTransform({ 0, 0, 0.5f * viewingVolumeDimensions.z }, zero, viewingVolumeDimensions) *
+        makeAffineTransform({ 0, 0, 0 }, zero, one) * viewingVolumeOrientation;
+
+    const Vec2 viewingPlaneDimensions(viewingVolumeDimensions.x, viewingVolumeDimensions.y);
+    const Vec2 viewingPlaneDimensionsUnscaled(viewingVolumeUnscaled.dimX(), viewingVolumeUnscaled.dimY());
+    InitializationShader::ShaderConstants params;
+    {
+        const Vec3 viewingPlaneCenter = extractPosition(viewingPlaneModelMatrix);
+        const Vec3 viewingPlaneRight = Vec3(viewingPlaneDimensions.x, 0, 0) * viewingPlaneModelMatrix;
+        const Vec3 viewingPlaneBottom = Vec3(0, -viewingPlaneDimensions.y, 0) * viewingPlaneModelMatrix;
+        const Vec3 bottom = viewingPlaneRight - viewingPlaneCenter;
+        const Vec3 right = viewingPlaneBottom - viewingPlaneCenter;
+        params.textureSizeWorldSpace = viewingPlaneDimensions;
+        params.textureResolution = viewingPlaneDimensionsUnscaled;
+        params.horizontalPlaneDirection = normalized(right); // normalized
+        params.verticalPlaneDirection = normalized(bottom); // normalized
+        params.topLeft = viewingPlaneCenter - bottom - right;
+        params.eye = camPos;
+    }
+
+    initializationShader->draw(params);
+
     // Setup viewport
     // And get view projection matrix
     D3D12_VIEWPORT vp;
     memset(&vp, 0, sizeof(vp));
-    Mat4 viewProjection;
-    if (cam != nullptr) {
-        vp.MinDepth = cam->getNearPlane();
-        vp.MaxDepth = cam->getFarPlane();
-        viewProjection = cam->getViewProjectionMatrix();
-    }
-    else
-    {
-        vp.MinDepth = 0.f;
-        vp.MaxDepth = 10.f;
-        viewProjection = identity();
-    }
+    const Mat4 viewProjection = [&cam, &vp]() -> const Mat4& {
+        if (cam != nullptr) {
+            vp.MinDepth = cam->getNearPlane();
+            vp.MaxDepth = cam->getFarPlane();
+            return cam->getViewProjectionMatrix();
+        }
+        else
+        {
+            vp.MinDepth = 0.f;
+            vp.MaxDepth = 10.f;
+            return identity();
+        }
+    }();
 
     vp.Width = (float)width;
     vp.Height = (float)height;
     vp.TopLeftX = vp.TopLeftY = 0.0f;
     cmd->RSSetViewports(1, &vp);
 
-    const Quaternion camRot = cam->getGlobalOrientation();
-    const Vec3 camPos = cam->getGlobalPosition();
     if (engine->input->isKeyDown(Key::F1))
     {
         const Vec3 fwd = camRot.forward();
@@ -460,12 +499,6 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     const D3D12_RECT r = { 0, 0, width, height }; // whole frame buffer
     cmd->RSSetScissorRects(1, &r);
 
-    const float volumeScale = 1.f / data.voxelsPerCm;
-
-    // position viewing plane
-    Mat4 viewingVolumeOrientation = inverse(makeLookAtTransform(zero, camPos));
-    BBox viewAlignedBBoxContainingRotatedOBB = data.volumeDimensions->getOBB(viewingVolumeOrientation);
-    Vec3 viewingPlaneDimensions = viewAlignedBBoxContainingRotatedOBB.dim() * volumeScale;
 
     // draw viewing plane
     if (true)
@@ -490,11 +523,9 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
             BRWL_SNPRINTF(buf, countof(buf), BRWL_CHAR_LITERAL("%.2f | %.2f | %.2f"), deltaSlice.x, deltaSlice.y, deltaSlice.z);
             engine->logger->info(buf);
         }
-        Mat4 modelMatrix = 
-            makeAffineTransform({ 0, 0, 0.5f * viewingPlaneDimensions.z}, zero, viewingPlaneDimensions) *
-            makeAffineTransform({ 0, 0, 0}, zero, one) * viewingVolumeOrientation;
 
-        cmd->SetGraphicsRoot32BitConstants(mvpIdx, 16, &modelMatrix, 0);
+
+        cmd->SetGraphicsRoot32BitConstants(mvpIdx, 16, &viewingPlaneModelMatrix, 0);
         cmd->SetGraphicsRoot32BitConstants(mvpIdx, 16, &viewProjection, 16);
         cmd->SetGraphicsRoot32BitConstants(mvpIdx, 1, &data.voxelsPerCm, 32);
         cmd->SetGraphicsRoot32BitConstants(voxelsPerCmIdx, 1, &data.voxelsPerCm, 0);
@@ -527,7 +558,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         }
         if (data.drawViewingVolume)
         {
-            Mat4 mat = makeAffineTransform(zero, zero, viewingPlaneDimensions) * viewingVolumeOrientation * viewProjection;
+            Mat4 mat = makeAffineTransform(zero, zero, viewingVolumeDimensions) * viewingVolumeOrientation * viewProjection;
             cmd->SetGraphicsRoot32BitConstants(0, 16, &mat, 0);
             cmd->DrawInstanced(assetBounds.vertexBufferLength, 1, 0, 0);
         }
@@ -536,8 +567,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
 
 void MainShader::destroy()
 {
-    if (!initialized) return;
-
+    initializationShader = nullptr;
     mainPipelineState = nullptr;
     guidesPipelineState = nullptr;
     mainRootSignature = nullptr;

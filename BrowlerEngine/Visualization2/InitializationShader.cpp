@@ -1,0 +1,90 @@
+#include "InitializationShader.h"
+
+#include "Initialization_cs_cs.h"
+
+#include "TextureResource.h"
+
+BRWL_RENDERER_NS
+
+
+InitializationShader::InitializationShader(ID3D12Device* device)
+{
+
+    D3D12_DESCRIPTOR_RANGE uavDescRange;
+    memset(&uavDescRange, 0, sizeof(uavDescRange));
+    uavDescRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+    uavDescRange.NumDescriptors = 1;
+    uavDescRange.BaseShaderRegister = 0; // register u0
+    uavDescRange.RegisterSpace = 0;
+    uavDescRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    D3D12_ROOT_PARAMETER param[2];
+    memset(&param, 0, sizeof(param));
+    // Model- & ViewProjection matrix & voxelsPerCm
+    param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+    param[0].Constants.ShaderRegister = 0; // register b0
+    param[0].Constants.RegisterSpace = 0;
+    param[0].Constants.Num32BitValues = 19;
+    param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    param[1].DescriptorTable.NumDescriptorRanges = 1;
+    param[1].DescriptorTable.pDescriptorRanges = &uavDescRange;
+    param[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+    D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
+    memset(&rootSignatureDesc, 0, sizeof(rootSignatureDesc));
+    rootSignatureDesc.NumParameters = countof(param);
+    rootSignatureDesc.pParameters = param;
+    rootSignatureDesc.NumStaticSamplers = 0;
+    rootSignatureDesc.pStaticSamplers = nullptr;
+    rootSignatureDesc.Flags =
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+
+
+    ComPtr<ID3DBlob> blob = nullptr;
+    BRWL_VERIFY(SUCCEEDED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &blob, NULL)), BRWL_CHAR_LITERAL("Failed to serialize root signature."));
+
+    if (!BRWL_VERIFY(SUCCEEDED(device->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&rootSignature))), BRWL_CHAR_LITERAL("Failed to create root signature")))
+    {
+        destroy();
+        return;
+    }
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc;
+    memset(&psoDesc, 0, sizeof(psoDesc));
+    psoDesc.pRootSignature = rootSignature.Get();
+    psoDesc.CS = { Initialization_cs_cs, sizeof(Initialization_cs_cs) };
+    psoDesc.NodeMask = 0;
+    psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+
+    if (!BRWL_VERIFY(SUCCEEDED(device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState))), BRWL_CHAR_LITERAL("Failed to create pipeline state.")))
+    {
+        destroy();
+        return;
+    }
+
+}
+
+void InitializationShader::destroy()
+{
+    rootSignature = nullptr;
+    pipelineState = nullptr;
+    uavHandle.destroy();
+}
+
+InitializationShader::~InitializationShader()
+{
+    destroy();
+}
+
+void InitializationShader::draw(ID3D12CommandList* cmd, const ShaderConstants& constants, TextureResource* texToinitialize)
+{
+    cmd->Dispatch();
+}
+
+BRWL_RENDERER_NS_END
