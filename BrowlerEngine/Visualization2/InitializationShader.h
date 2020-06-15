@@ -1,4 +1,4 @@
-#pragma once
+#pragma once // (c) 2020 Lukas Brunner
 
 #include "Renderer/PAL/DescriptorHeap.h"
 
