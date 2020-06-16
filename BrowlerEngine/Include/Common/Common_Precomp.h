@@ -39,6 +39,9 @@ namespace PAL {
 #include <dxgi1_6.h>
 #ifndef SUBMISSION
 #define ENABLE_GRAPHICS_DEBUG_FEATURES
+#endif
+
+#ifdef ENABLE_GRAPHICS_DEBUG_FEATURES
 #include <dxgidebug.h>
 #endif
 
@@ -79,6 +82,16 @@ using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 #ifdef BRWL_PLATFORM_WINDOWS
 #define BRWL_NEWLINE BRWL_CHAR_LITERAL("\r\n")
+#endif
+
+#if defined(BRWL_PLATFORM_WINDOWS) && defined(ENABLE_GRAPHICS_DEBUG_FEATURES)
+#define USE_PIX
+#include "pix3.h"
+#define SCOPED_CPU_EVENT(r, g, b, label, ...) PIXScopedEvent(PIX_COLOR(r, g, b), BRWL_CHAR_LITERAL(label), __VA_ARGS__)
+#define SCOPED_GPU_EVENT(pContext, r, g, b, label, ...) PIXScopedEvent(pContext, PIX_COLOR(r, g, b), BRWL_CHAR_LITERAL(label), __VA_ARGS__)
+#else
+#define SCOPED_CPU_EVENT(...)
+#define SCOPED_GPU_EVENT(...)
 #endif
 
 #ifndef SUBMISSION

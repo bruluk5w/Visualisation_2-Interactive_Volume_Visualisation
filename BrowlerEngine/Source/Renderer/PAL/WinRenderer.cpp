@@ -86,8 +86,8 @@ namespace PAL
         dxgiFactory(nullptr),
         dxgiAdapter(nullptr),
         device(nullptr),
-        rtvHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
-        srvHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE),
+        rtvHeap(),
+        srvHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV),
         frameContext{},
         frameIndex(0),
         commandQueue(nullptr),
@@ -95,7 +95,7 @@ namespace PAL
         frameFence(nullptr),
         frameFenceEvent(NULL),
         frameFenceLastValue(0),
-        fontTextureDescriptorHandle{}
+        fontTextureDescriptorHandle(nullptr)
     {
 #ifdef ENABLE_GRAPHICS_DEBUG_FEATURES
         ComPtr<ID3D12Debug> debugController0;
@@ -163,30 +163,24 @@ namespace PAL
             return false;
         }
 
-#ifdef _DEBUG
-        frameIdxChangeListenerHandle = eventSystem->registerListener(Event::FRAME_IDX_CHANGE, [this](Event, void* param) {return OnFrameIdxChange(castParam<Event::FRAME_IDX_CHANGE>(param)->newFrameIdx); });
-#endif
-
         return true;
     }
 
 #define DR(expression) HandleDeviceRemoved(expression, device.Get(), *logger)
 
-    void WinRenderer::render()
+    void WinRenderer::platformRender()
     {
-        if (!currentFramebufferHeight || !currentFramebufferWidth)
-        {
-            logger->info(BRWL_CHAR_LITERAL("Nothing to render, framebuffer too small."));
-            return;
-        }
-
-
         // Start new frame
 #ifdef BRWL_USE_DEAR_IM_GUI
         ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 #endif // BRWL_USE_DEAR_IM_GUI
+
+#ifdef _DEBUG
+        rtvHeap.notifyNewFrame();
+        srvHeap.notifyNewFrameStarted();
+#endif
 
         // NOTICE: We open the command list early for the renderer method below to schedule resource barriers after some uploads have finished
         FrameContext* frameCtxt = waitForNextFrameResources();
@@ -286,9 +280,6 @@ namespace PAL
 
     void WinRenderer::destroy(bool force /*= false*/)
     {
-#ifdef _DEBUG
-        eventSystem->unregisterListener(Event::FRAME_IDX_CHANGE, frameIdxChangeListenerHandle);
-#endif
         waitForLastSubmittedFrame();
 
         BaseRenderer::destroy(force);
@@ -360,13 +351,14 @@ namespace PAL
                 if (BRWL_VERIFY(SUCCEEDED(D3D12CreateDevice(dxgiAdapter4.Get(), featureLevel, IID_PPV_ARGS(&device))), BRWL_CHAR_LITERAL("Failed to create D3D12Device.")))
                 {
                     Logger::LogLevel logLvl = Logger::LogLevel::INFO;
-                    // check root signature version 1_1 support
-                    D3D12_FEATURE_DATA_ROOT_SIGNATURE highestVersion = { D3D_ROOT_SIGNATURE_VERSION_1_1 };
+                    // check root signature version 1_0 support; everybody should have that
+                    // in case we want static descriptors, we have to switch to version 1_1 and take care updating descriptor locations in the descriptor heap
+                    D3D12_FEATURE_DATA_ROOT_SIGNATURE highestVersion = { D3D_ROOT_SIGNATURE_VERSION_1_0 };
                     const BRWL_CHAR* errorMsg = nullptr;
                     if (!SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &highestVersion, sizeof(highestVersion))))
                     {
                         logLvl = Logger::LogLevel::WARNING;
-                        errorMsg = BRWL_CHAR_LITERAL("Rejected: No support for DX12 root signature version 1_1. Please update driver.");
+                        errorMsg = BRWL_CHAR_LITERAL("Rejected: No support for DX12 root signature version 1_0. Please update driver.");
                     }
 
                     Logger::ScopedMultiLog ml(logger.get(), logLvl);
@@ -533,13 +525,9 @@ namespace PAL
         currentFramebufferWidth = framebufferWidth;
         currentFramebufferHeight = framebufferHeight;
 
-        fontTextureDescriptorHandle = srvHeap.allocateHandle(
-#ifdef _DEBUG
-            BRWL_CHAR_LITERAL("FontTextureDescriptor")
-#endif
-        );
+        fontTextureDescriptorHandle = srvHeap.allocateOne(BRWL_CHAR_LITERAL("FontTextureDescriptor"));
         ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, g_RenderTargetFormat, /*since this is unused, we currently also don't pass any resource*/{ },
-            fontTextureDescriptorHandle.cpu, fontTextureDescriptorHandle.gpu);
+            fontTextureDescriptorHandle->getCpu(), fontTextureDescriptorHandle->getGpu());
 
         if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(appRenderer->rendererInit(this), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))
         {
@@ -552,7 +540,7 @@ namespace PAL
     void WinRenderer::destroyDevice()
     {
         ImGui_ImplDX12_Shutdown();
-        fontTextureDescriptorHandle.destroy();
+        fontTextureDescriptorHandle->release();
 
         if (appRenderer)
         {

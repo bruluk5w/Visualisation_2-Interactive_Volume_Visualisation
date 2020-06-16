@@ -1,5 +1,7 @@
 #pragma once // (c) 2020 Lukas Brunner
 
+#include "Renderer/RendererFwd.h"
+
 BRWL_NS
 struct BBox;
 struct VertexData;
@@ -35,7 +37,7 @@ public:
     MainShader();
     ~MainShader();
 
-    bool create(ID3D12Device* device);
+    bool create(Renderer* renderer);
     void render();
     void destroy();
 

@@ -44,7 +44,7 @@ bool Visualization2Renderer::init(Renderer* r)
     LoadFonts(uiResults[uiResultIdx].settings.fontSize);
     if (!dataSet.isValid())
     {
-        engine->logger->info(BRWL_CHAR_LITERAL("Loading the beatle asset."));
+        engine->logger->info(BRWL_CHAR_LITERAL("Loading the beatle asset from disk."));
         dataSet.loadFromFile(BRWL_CHAR_LITERAL("./Assets/DataSets/stagbeetle832x832x494.dat"));
         if (BRWL_VERIFY(dataSet.isValid(), BRWL_CHAR_LITERAL("Failed to load default asset.")))
         {
@@ -95,7 +95,7 @@ bool Visualization2Renderer::init(Renderer* r)
 
     uploadCommandList->SetName(L"Upload Command List");
 
-    if (!BRWL_VERIFY(mainShader.create(r->device.Get()), BRWL_CHAR_LITERAL("Failed to create main shader.")))
+    if (!BRWL_VERIFY(mainShader.create(r), BRWL_CHAR_LITERAL("Failed to create main shader.")))
     {
         return false;
     }
@@ -152,7 +152,7 @@ void Visualization2Renderer::render(Renderer* renderer)
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
         const PitImage& pitImage = pitCollection.array[i];
-        v.transferFunctions.array[i].textureID = pitImage.liveTexture->state != TextureResource::State::RESIDENT ? nullptr : (ImTextureID)pitImage.liveTexture->descriptorHandle.gpu.ptr;
+        v.transferFunctions.array[i].textureID = pitImage.liveTexture->state != TextureResource::State::RESIDENT ? nullptr : (ImTextureID)pitImage.liveTexture->descriptorHandle->getGpu().ptr;
     }
 
     // execute UI and retrieve results
@@ -278,7 +278,7 @@ void Visualization2Renderer::draw(Renderer* r)
 {
     if (!initialized) return;
 
-    if (!BRWL_VERIFY(r->srvHeap.isCreated() && r->srvHeap.isShaderVisible() && r->srvHeap.getType() == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, BRWL_CHAR_LITERAL("Invalid descriptor heap.")))
+    if (!BRWL_VERIFY(r->srvHeap.isCreated() && r->srvHeap.getType() == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, BRWL_CHAR_LITERAL("Invalid descriptor heap.")))
     {
         return;
     }
@@ -294,11 +294,7 @@ void Visualization2Renderer::draw(Renderer* r)
         // Since the volume texture is not double buffered, we have to wait unil all frames still rendering from the volume texture have finished
         r->waitForLastSubmittedFrame();
 
-        volumeTexture.descriptorHandle = r->srvHeap.allocateHandle(
-#ifdef _DEBUG
-            BRWL_CHAR_LITERAL("VolumeTexture")
-#endif
-        );
+        volumeTexture.descriptorHandle = r->srvHeap.allocateOne(BRWL_CHAR_LITERAL("VolumeTexture"));
         volumeTexture.state = TextureResource::State::REQUESTING_UPLOAD;
         if (!BRWL_VERIFY(LoadVolumeTexture(r->device.Get(), uploadCommandList.Get(), &dataSet, volumeTexture), BRWL_CHAR_LITERAL("Failed to load the volume texture to the GPU.")))
         {   // we expect the function to clean up everything necessary
@@ -351,11 +347,7 @@ void Visualization2Renderer::draw(Renderer* r)
             if (pitImage.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD)
             {
                 uploading[i] = true;
-                pitImage.stagedTexture->descriptorHandle = r->srvHeap.allocateHandle(
-#ifdef _DEBUG
-                    BRWL_CHAR_LITERAL("StagedPitTexture")
-#endif
-                );
+                pitImage.stagedTexture->descriptorHandle = r->srvHeap.allocateOne(BRWL_CHAR_LITERAL("StagedPitTexture"));
                 if (!BRWL_VERIFY(LoadFloatTexture2D(r->device.Get(), uploadCommandList.Get(), &pitImage.cpuImage, *pitImage.stagedTexture), BRWL_CHAR_LITERAL("Failed to load the pitImage texture to the GPU.")))
                 {   // we expect the function to clean up everything necessary
                     continue;
@@ -469,6 +461,9 @@ bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
     texture.texture->SetName(dataSet->getName());
 
     uint64_t requiredSize = GetRequiredIntermediateSize(texture.texture.Get(), 0, 1);
+    BRWL_CHAR buf[100];
+    BRWL_SNPRINTF(buf, countof(buf), BRWL_CHAR_LITERAL("Loading volume data. Rquired VRAM: %.2fMB"), (float)requiredSize / 1048576.f);
+    engine->logger->info(buf);
     // Create the GPU upload buffer.
     hr = device->CreateCommittedResource(
         &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
@@ -508,7 +503,7 @@ bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
     srvDesc.Format = texDesc.Format;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
     srvDesc.Texture3D.MipLevels = 1;
-    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle.cpu);
+    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle->getCpu());
      //hr = device->CreateCommittedResource(
      //   &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
      //   D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES,  // set to none if this is a problem
@@ -619,7 +614,7 @@ bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = 1;
     srvDesc.Texture2D.PlaneSlice = 0;
-    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle.cpu);
+    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle->getCpu());
 
     texture.state = TextureResource::State::LOADING;
     return true;

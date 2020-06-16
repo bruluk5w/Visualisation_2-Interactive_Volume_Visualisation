@@ -16,6 +16,10 @@ public:
 
     struct ShaderConstants
     {
+        static const unsigned int threadGroupSizeX = 8;
+        static const unsigned int threadGroupSizeY = 8;
+        static const unsigned int num32BitValues = 19;
+
         Vec2 textureSizeWorldSpace;
         Vec2 textureResolution;
         Vec3 horizontalPlaneDirection; // normalized
@@ -27,12 +31,11 @@ public:
         Vec3 eye;
     };
 
-    void draw(ID3D12CommandList* cmd, const ShaderConstants& constants, TextureResource* texToinitialize);
-
+    void draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, TextureResource* texToinitialize);
 
     ComPtr<ID3D12RootSignature> rootSignature;
     ComPtr<ID3D12PipelineState> pipelineState;
-    PAL::DescriptorHeap::Handle uavHandle;
+    PAL::DescriptorHeap::Handle* uavHandle;
 };
 
 BRWL_RENDERER_NS_END

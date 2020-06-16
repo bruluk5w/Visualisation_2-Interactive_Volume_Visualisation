@@ -73,6 +73,9 @@
     <ClInclude Include="Include\Renderer\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Renderer\PAL\RtvDescriptorHeap.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Renderer\Renderer_Precomp.cpp">
@@ -98,6 +101,9 @@
     </ClCompile>
     <ClCompile Include="Source\Renderer\Camera.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Renderer\PAL\RtvDescriptorHeap.cpp">
+      <Filter>Source Files\PAL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -125,5 +131,8 @@
     <DXCShader Include="Shaders\Initialization_cs.hlsl">
       <Filter>Shaders</Filter>
     </DXCShader>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

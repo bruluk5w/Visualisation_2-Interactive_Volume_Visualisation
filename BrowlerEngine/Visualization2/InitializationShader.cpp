@@ -24,7 +24,7 @@ InitializationShader::InitializationShader(ID3D12Device* device)
     param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
     param[0].Constants.ShaderRegister = 0; // register b0
     param[0].Constants.RegisterSpace = 0;
-    param[0].Constants.Num32BitValues = 19;
+    param[0].Constants.Num32BitValues = ShaderConstants::num32BitValues;
     param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     param[1].DescriptorTable.NumDescriptorRanges = 1;
@@ -74,7 +74,8 @@ void InitializationShader::destroy()
 {
     rootSignature = nullptr;
     pipelineState = nullptr;
-    uavHandle.destroy();
+    if(uavHandle) uavHandle->release();
+    uavHandle = nullptr;
 }
 
 InitializationShader::~InitializationShader()
@@ -82,9 +83,25 @@ InitializationShader::~InitializationShader()
     destroy();
 }
 
-void InitializationShader::draw(ID3D12CommandList* cmd, const ShaderConstants& constants, TextureResource* texToinitialize)
+void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, TextureResource* texToinitialize)
 {
-    cmd->Dispatch();
+    SCOPED_GPU_EVENT(cmd, 0, 0, 0, "Initialization Compute Shader");
+    BRWL_EXCEPTION(texToinitialize, nullptr);
+    BRWL_EXCEPTION(texToinitialize->state == TextureResource::State::RESIDENT, nullptr);
+
+    cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
+    cmd->SetComputeRootDescriptorTable(1, texToinitialize->descriptorHandle->getGpu());
+    cmd->Dispatch(
+        (unsigned int)std::ceil(constants.textureResolution.x / (float)ShaderConstants::threadGroupSizeX),
+        (unsigned int)std::ceil(constants.textureResolution.y / (float)ShaderConstants::threadGroupSizeY),
+        1
+    );
+    // Since we are writing to the uav resource, and we want to read it later, we have to add a resource barrier
+    D3D12_RESOURCE_BARRIER barrier;
+    memset(&barrier, 0, sizeof(barrier));
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    barrier.UAV.pResource = texToinitialize->texture.Get();
+    cmd->ResourceBarrier(1, &barrier);
 }
 
 BRWL_RENDERER_NS_END

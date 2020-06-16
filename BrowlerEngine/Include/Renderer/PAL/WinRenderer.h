@@ -3,12 +3,14 @@
 #ifdef BRWL_PLATFORM_WINDOWS
 
 #include "BaseRenderer.h"
+#include "RtvDescriptorHeap.h"
 #include "DescriptorHeap.h"
 
 BRWL_RENDERER_NS
 
 
 class Visualization2Renderer;
+class MainShader;
 
 namespace PAL
 {
@@ -18,7 +20,9 @@ namespace PAL
 
 	class WinRenderer : public BaseRenderer
 	{
+		// ugly but no time to write that properly now
 		friend class Visualization2Renderer;
+		friend class MainShader;
 	public:
 		static const D3D_FEATURE_LEVEL	featureLevel;
 		static const unsigned int numBackBuffers = 3;
@@ -26,20 +30,20 @@ namespace PAL
 		WinRenderer(EventBusSwitch<Event>* eventSystem, PlatformGlobals* globals);
 		virtual ~WinRenderer();
 		virtual bool init(const WinRendererParameters params) override;
-		virtual void render() override;
 		virtual void draw() override;
 		virtual void destroy(bool force = true) override;
 		virtual void setVSync(bool enable) override { vSync = enable; }
 		virtual bool getVSync() const override { return vSync; }
 		void waitForLastSubmittedFrame();
 	protected:
+		virtual void platformRender() override;
 
 		static const Vec4 clearColor;
 
 		ComPtr<IDXGIFactory6>	dxgiFactory;
 		ComPtr<IDXGIAdapter4>	dxgiAdapter;
 		ComPtr<ID3D12Device>	device;
-		DescriptorHeap	rtvHeap;
+		RtvDescriptorHeap	rtvHeap;
 		DescriptorHeap	srvHeap;
 
 		bool createDevice(HWND hWnd, unsigned int framebufferWidth = 0, unsigned int framebufferHeight = 0);
@@ -73,17 +77,12 @@ namespace PAL
 		ComPtr<IDXGISwapChain3>				swapChain = nullptr;
 		HANDLE								swapChainWaitableObject = NULL;
 		ComPtr<ID3D12Resource>				mainRenderTargetResource[numBackBuffers] = { nullptr };
-		DescriptorHeap::Handle				mainRenderTargetDescriptor[numBackBuffers] = { };
+		RtvDescriptorHeap::Handle			mainRenderTargetDescriptor[numBackBuffers] = { };
 
 		// Inherited via BaseRenderer
 		virtual void OnFramebufferResize() override;
 
-		DescriptorHeap::Handle fontTextureDescriptorHandle;
-
-#ifdef _DEBUG
-		size_t frameIdxChangeListenerHandle = 0;
-		bool OnFrameIdxChange(size_t newFrameIdx) { srvHeap.setFrameIdx(newFrameIdx); srvHeap.setFrameIdx(newFrameIdx); return false; }
-#endif
+		DescriptorHeap::Handle* fontTextureDescriptorHandle;
 	};
 }
 

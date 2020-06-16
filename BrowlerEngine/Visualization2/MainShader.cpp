@@ -137,9 +137,11 @@ MainShader::MainShader() :
 MainShader::~MainShader()
 { }
 
-bool MainShader::create(ID3D12Device* device)
+bool MainShader::create(Renderer* renderer)
 {
     if (initialized) return true;
+
+    ID3D12Device* device = renderer->device.Get();
 
     // Input Layout is the same for all shaders
     static D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
@@ -284,6 +286,96 @@ bool MainShader::create(ID3D12Device* device)
             destroy();
             return false;
         }
+
+        {
+            TextureResource texture;
+
+            /* if (!image->isValid() || !BRWL_VERIFY(texture.state == TextureResource::State::REQUESTING_UPLOAD, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
+             {
+                 return false;
+             }*/
+
+            texture.texture = nullptr;
+            texture.uploadHeap = nullptr;
+            D3D12_RESOURCE_DESC texDesc;
+            memset(&texDesc, 0, sizeof(texDesc));
+            texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+            texDesc.Alignment = 0;
+            texDesc.Width = 1024;
+            texDesc.Height = 1024;
+            texDesc.DepthOrArraySize = 1;
+            texDesc.MipLevels = 1;
+            texDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
+            texDesc.SampleDesc = { 1, 0 };
+            texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN; // todo: try swizzled texture, may be faster
+            texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+            HRESULT hr = device->CreateCommittedResource(
+                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), // some gpu only memory
+                D3D12_HEAP_FLAG_NONE,
+                &texDesc,
+                D3D12_RESOURCE_STATE_COMMON,
+                nullptr,
+                IID_PPV_ARGS(&texture.texture));
+
+            device->CreatePlacedResource()
+                if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture.")))
+                {
+                    texture.texture = nullptr;
+                    texture.state = TextureResource::State::FAILED;
+                    return false;
+                }
+
+            texture.texture->SetName(image->getName());
+
+            uint64_t requiredSize = GetRequiredIntermediateSize(texture.texture.Get(), 0, 1);
+            // Create the GPU upload buffer.
+            hr = device->CreateCommittedResource(
+                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+                D3D12_HEAP_FLAG_NONE,
+                &CD3DX12_RESOURCE_DESC::Buffer(requiredSize),
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                IID_PPV_ARGS(&texture.uploadHeap));
+
+
+            if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture upload heap.")))
+            {
+                texture.texture = nullptr;
+                texture.uploadHeap = nullptr;
+                texture.state = TextureResource::State::FAILED;
+                return false;
+            }
+
+            D3D12_SUBRESOURCE_DATA textureData{
+                image->getData(),
+                image->getStrideY(),
+                image->getBufferSize()
+            };
+
+            uint64_t result = UpdateSubresources(cmdList, texture.texture.Get(), texture.uploadHeap.Get(), 0, 0, 1, &textureData);
+            if (!BRWL_VERIFY(result != 0, BRWL_CHAR_LITERAL("Failed to upload volume texture.")))
+            {
+                texture.texture = nullptr;
+                texture.uploadHeap = nullptr;
+                texture.state = TextureResource::State::FAILED;
+                return false;
+            }
+
+            // Create a SRV for the texture
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.Format = texDesc.Format;
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Texture2D.MipLevels = 1;
+            srvDesc.Texture2D.PlaneSlice = 0;
+            device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle.cpu);
+
+            texture.state = TextureResource::State::LOADING;
+
+        }
+        
+        return true;
     }
 #pragma endregion
 #pragma region Guides PSO
@@ -459,7 +551,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         params.eye = camPos;
     }
 
-    initializationShader->draw(params);
+    initializationShader->draw(cmd, params,);
 
     // Setup viewport
     // And get view projection matrix

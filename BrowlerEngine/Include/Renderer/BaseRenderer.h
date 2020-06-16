@@ -28,7 +28,7 @@ public:
 	void setLogger(std::shared_ptr<Logger> logger) { this->logger = logger; }
 	virtual bool init(const RendererParameters params);
 	virtual void preRender();
-	virtual void render();
+	void render();
 	virtual void draw();
 	// may be called multiple times
 	virtual void destroy(bool force = false);
@@ -46,6 +46,7 @@ public:
 	virtual void setVSync(bool enable) = 0;
 	virtual bool getVSync() const = 0;
 protected:
+	virtual void platformRender() = 0;
 	virtual void OnFramebufferResize() = 0;
 
 	bool							initialized;

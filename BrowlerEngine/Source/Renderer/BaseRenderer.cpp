@@ -75,6 +75,12 @@ void BaseRenderer::preRender()
 
 void BaseRenderer::render()
 {
+	if (!currentFramebufferHeight || !currentFramebufferWidth)
+	{
+		logger->info(BRWL_CHAR_LITERAL("Nothing to render, framebuffer too small."));
+		return;
+	}
+
 	if (appRenderer)
 	{
 		BRWL_EXCEPTION(appRenderer->isInitalized(), BRWL_CHAR_LITERAL("Invalid renderer state."));
