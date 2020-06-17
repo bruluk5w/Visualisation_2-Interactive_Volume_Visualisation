@@ -134,11 +134,15 @@ void drawHints();
 void renderAppUI(UIResult& result, const UIResult& values)
 {
 #ifdef BRWL_USE_DEAR_IM_GUI
+
     drawHints();
 
+    const ImGuiIO& io = GetIO();
+
     ImGui::BeginMainMenuBar();
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    Dummy(ImVec2(20, 0));
+    Text("%.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y); SameLine();
+    Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    Dummy(ImVec2(40, 0));
     thread_local bool showSettings = false;
     showSettings = showSettings || Button("Settings");
     thread_local bool showTools = false;

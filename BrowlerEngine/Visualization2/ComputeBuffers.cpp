@@ -8,7 +8,8 @@ BRWL_RENDERER_NS
 ComputeBuffers::ComputeBuffers() :
     bufferWidth(0),
     bufferHeight(0),
-    buffers{ nullptr },
+    srvBuffers{ nullptr },
+    uavBuffers{ nullptr },
     bufferHeap(nullptr),
     srvDescriptorRange(nullptr),
     uavDescriptorRange(nullptr),
@@ -23,7 +24,7 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
     bufferWidth = width;
     bufferHeight = height;
 
-    D3D12_RESOURCE_DESC textureDecriptions[countof(*(decltype(buffers)*)(0))];
+    D3D12_RESOURCE_DESC textureDecriptions[numLayers * numBuffers];
     memset(&textureDecriptions, 0, sizeof(textureDecriptions));
     textureDecriptions[0].Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     textureDecriptions[0].Alignment = 0; // should choose D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT automatically
@@ -34,7 +35,7 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
     textureDecriptions[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT; // with alpha because we are rich (and we bind it as a uav which doesn't support RGB-only
     textureDecriptions[0].SampleDesc = { 1, 0 };
     textureDecriptions[0].Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    textureDecriptions[0].Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    textureDecriptions[0].Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
 
     // for now we use the same format for all buffers 
     for (int i = 1; i < 6; ++i) {
@@ -86,7 +87,13 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
     for (int i = 0; i < countof(allocInfoEx); ++i)
     {
         D3D12_RESOURCE_ALLOCATION_INFO1& info = allocInfoEx[i];
-        if (!BRWL_VERIFY(SUCCEEDED(device->CreatePlacedResource(bufferHeap.Get(), info.Offset, &textureDecriptions[i], D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&buffers[i]))), BRWL_CHAR_LITERAL("Failed to place resource into heap.")))
+        if (!BRWL_VERIFY(SUCCEEDED(device->CreatePlacedResource(bufferHeap.Get(), info.Offset, &textureDecriptions[i], D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&srvBuffers[i]))), BRWL_CHAR_LITERAL("Failed to place resource into heap.")))
+        {
+            destroy();
+            return false;
+        }
+
+        if (!BRWL_VERIFY(SUCCEEDED(device->CreatePlacedResource(bufferHeap.Get(), info.Offset, &textureDecriptions[i], D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&uavBuffers[i]))), BRWL_CHAR_LITERAL("Failed to place resource into heap.")))
         {
             destroy();
             return false;
@@ -94,8 +101,8 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
     }
 
     // Create UAVs && SRVs for the textures
-    srvDescriptorRange = srvHeap->allocateRange(countof(buffers), BRWL_CHAR_LITERAL("SRV COMPUTE BUFFERS"));
-    uavDescriptorRange = srvHeap->allocateRange(countof(buffers), BRWL_CHAR_LITERAL("UAV COMPUTE BUFFERS"));
+    srvDescriptorRange = srvHeap->allocateRange(countof(srvBuffers), BRWL_CHAR_LITERAL("SRV COMPUTE BUFFERS"));
+    uavDescriptorRange = srvHeap->allocateRange(countof(uavBuffers), BRWL_CHAR_LITERAL("UAV COMPUTE BUFFERS"));
     for (int i = 0; i < countof(allocInfoEx); ++i)
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -105,7 +112,7 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = 1;
         srvDesc.Texture2D.PlaneSlice = 0;
-        device->CreateShaderResourceView(buffers[i].Get(), &srvDesc, (*srvDescriptorRange)[i].cpu);
+        device->CreateShaderResourceView(srvBuffers[i].Get(), &srvDesc, (*srvDescriptorRange)[i].cpu);
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc;
         memset(&uavDesc, 0, sizeof(uavDesc));
@@ -113,7 +120,8 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         uavDesc.Texture2D.MipSlice = 0;
         uavDesc.Texture2D.PlaneSlice = 0;
-        device->CreateUnorderedAccessView(buffers[i].Get(), nullptr, &uavDesc, (*uavDescriptorRange)[i].cpu);
+        device->CreateUnorderedAccessView(uavBuffers[i].Get(), nullptr, &uavDesc, (*uavDescriptorRange)[i].cpu);
+        device->CreateUnorderedAccessView(uavBuffers[i].Get(), nullptr, &uavDesc, (*uavDescriptorRange)[i].cpu);
     }
 
     created = true;
@@ -126,9 +134,14 @@ void ComputeBuffers::destroy()
 
     bufferWidth = 0;
     bufferHeight = 0;
-    for (int i = 0; i < countof(*(decltype(buffers)*)(0)); ++i)
+    for (int i = 0; i < countof(*(decltype(uavBuffers)*)(0)); ++i)
     {
-        buffers[i] = nullptr;
+        uavBuffers[i] = nullptr;
+    }
+
+    for (int i = 0; i < countof(*(decltype(srvBuffers)*)(0)); ++i)
+    {
+        uavBuffers[i] = nullptr;
     }
 
     bufferHeap = nullptr;
@@ -153,16 +166,16 @@ PAL::DescriptorHandle::NativeHandles ComputeBuffers::getTargetUav(unsigned int i
     return (*uavDescriptorRange)[idx + !pingPong ? 0 : numBuffers];
 }
 
-ID3D12Resource* ComputeBuffers::getSourceResource(unsigned int idx)
+ID3D12Resource* ComputeBuffers::getSourceResource(unsigned int idx, bool before)
 {
     BRWL_CHECK(idx < numBuffers, nullptr);
-    return buffers[idx + pingPong ? 0 : numBuffers].Get();
+    return srvBuffers[idx + pingPong ^ before ? 0 : numBuffers].Get();
 }
 
-ID3D12Resource* ComputeBuffers::getTargetResource(unsigned int idx)
+ID3D12Resource* ComputeBuffers::getTargetResource(unsigned int idx, bool before)
 {
     BRWL_CHECK(idx < ComputeBuffers::numBuffers, nullptr);
-    return buffers[idx + !pingPong ? 0 : numBuffers].Get();
+    return uavBuffers[idx + !pingPong ^ before ? 0 : numBuffers].Get();
 }
 
 BRWL_RENDERER_NS_END

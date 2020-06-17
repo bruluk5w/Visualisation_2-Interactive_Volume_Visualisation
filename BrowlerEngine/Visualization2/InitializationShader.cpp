@@ -81,27 +81,28 @@ InitializationShader::~InitializationShader()
     destroy();
 }
 
+void InitializationShader::swap(ID3D12GraphicsCommandList* cmd, ComputeBuffers* computeBuffers)
+{
+    //// invert ping-pong variable
+    computeBuffers->swap();
+    // we now made all UAVs SRVs and all SRVs became UAVs
+    D3D12_RESOURCE_BARRIER barriers[ComputeBuffers::numBuffers];
+    memset(&barriers, 0, sizeof(barriers));
+    for (int i = 0; i < ComputeBuffers::numBuffers; ++i)
+    {
+        barriers[i].Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
+        barriers[i].Aliasing.pResourceBefore = computeBuffers->getTargetResource(i, true);
+        barriers[i].Aliasing.pResourceAfter = computeBuffers->getTargetResource(i);
+    }
+
+    cmd->ResourceBarrier(countof(barriers), barriers);
+}
+
 void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, ComputeBuffers* computeBuffers)
 {
     SCOPED_GPU_EVENT(cmd, 0, 0, 0, "Initialization Compute Shader");
     BRWL_EXCEPTION(computeBuffers, nullptr);
     BRWL_EXCEPTION(computeBuffers->isResident(), nullptr);
-
-    //// invert ping-pong variable
-    //computeBuffers->swap();
-    //// we now made all UAVs SRVs and all SRVs became UAVs
-    D3D12_RESOURCE_BARRIER barriers[ComputeBuffers::numBuffers];
-    memset(&barriers, 0, sizeof(barriers));
-    //for (int i = 0; i < ComputeBuffers::numBuffers; ++i)
-    //{
-    //    ID3D12Resource* resource = computeBuffers->getTargetResource(i);
-    //    barriers[i].Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
-    //    barriers[i].Aliasing.pResourceBefore = resource;
-    //    barriers[i].Aliasing.pResourceAfter = resource;
-    //}
-
-    //// we wrote to the first plane
-    //cmd->ResourceBarrier(countof(barriers), barriers);
 
     //D3D12_RESOURCE_BARRIER barriers2[ComputeBuffers::numBuffers];
     //memset(&barriers, 0, sizeof(barriers));
@@ -114,20 +115,21 @@ void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderCons
     //cmd->ResourceBarrier(countof(barriers2), barriers2);
 
 
-    D3D12_RESOURCE_BARRIER barriers2[ComputeBuffers::numBuffers];
-    memset(&barriers, 0, sizeof(barriers));
-    for (int i = 0; i < ComputeBuffers::numBuffers; ++i)
-    {
-        ID3D12Resource* resource = computeBuffers->getSourceResource(i);
-        barriers2[i].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barriers2[i].Transition.pResource = resource;
-        barriers2[i].Transition.StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
-        barriers2[i].Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-    }
-    cmd->ResourceBarrier(countof(barriers2), barriers2);
+    //D3D12_RESOURCE_BARRIER barriers2[ComputeBuffers::numBuffers];
+    //memset(&barriers, 0, sizeof(barriers2));
+    //for (int i = 0; i < countof(barriers2); ++i)
+    //{
+    //    ID3D12Resource* resource = computeBuffers->getSourceResource(i);
+    //    barriers2[i].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    //    barriers2[i].Transition.pResource = resource;
+    //    barriers2[i].Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+    //    barriers2[i].Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    //}
+    //cmd->ResourceBarrier(countof(barriers2), barriers2);
 
     //NON_PIXEL_SHADER_RESOURCE
 
+    computeBuffers->swap();
 
     cmd->SetPipelineState(pipelineState.Get());
     cmd->SetComputeRootSignature(rootSignature.Get());
