@@ -81,12 +81,19 @@ void BaseRenderer::render()
 		return;
 	}
 
+	platformRender();
+}
+
+
+void BaseRenderer::platformRender()
+{
 	if (appRenderer)
 	{
 		BRWL_EXCEPTION(appRenderer->isInitalized(), BRWL_CHAR_LITERAL("Invalid renderer state."));
 		appRenderer->render(static_cast<Renderer*>(this));
 	}
 }
+
 
 void BaseRenderer::draw()
 {

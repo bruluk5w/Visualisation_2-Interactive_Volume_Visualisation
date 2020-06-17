@@ -1,6 +1,6 @@
 #pragma once // (c) 2020 Lukas Brunner
 
-#include "Renderer/PAL/DescriptorHeap.h"
+#include "Common/PAL/DescriptorHeap.h"
 
 BRWL_RENDERER_NS
 

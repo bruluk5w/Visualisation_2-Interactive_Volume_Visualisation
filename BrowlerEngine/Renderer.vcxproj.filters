@@ -67,9 +67,6 @@
     <ClInclude Include="Include\Renderer\AppRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Renderer\PAL\DescriptorHeap.h">
-      <Filter>Header Files\PAL</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Renderer\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -95,9 +92,6 @@
     </ClCompile>
     <ClCompile Include="Source\Renderer\AppRenderer.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Renderer\PAL\DescriptorHeap.cpp">
-      <Filter>Source Files\PAL</Filter>
     </ClCompile>
     <ClCompile Include="Source\Renderer\Camera.cpp">
       <Filter>Source Files</Filter>

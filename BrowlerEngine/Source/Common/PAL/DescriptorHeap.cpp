@@ -79,12 +79,10 @@ namespace PAL
 		}
 	}
 
-	const D3D12_CPU_DESCRIPTOR_HANDLE& DescriptorHandle::getCpu()
+	D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHandle::getCpu()
 	{
-		if (resident)
-			return nativeHandles.residentCpu; // directly commit to gpu
-		else:
-			return nativeHandles.cpu; // create in cpu heap and will be copied
+		if (resident) return nativeHandles.residentCpu; // directly commit to gpu
+		else return nativeHandles.cpu; // create in cpu heap and will be copied
 	}
 
 
@@ -182,7 +180,7 @@ namespace PAL
 		lastFree = 0;
 	}
 
-	DescriptorHandle* DescriptorHeap::allocateOne(const BRWL_CHAR* name)
+	DescriptorHandle* DescriptorHeap::allocateOne(const BRWL_CHAR* name, bool forceUpdate)
 	{
 		std::scoped_lock(mutex);
 
@@ -231,6 +229,10 @@ namespace PAL
 		
 		++numOccupiedDescriptors;
 
+		if (forceUpdate) {
+			notifyNewFrameStarted();
+			notifyOldFrameCompleted();
+		}
 		return handle;
 	}
 
@@ -380,7 +382,8 @@ namespace PAL
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHeapCpuStart = cpuHeap->GetCPUDescriptorHandleForHeapStart();
 
 		lastFree = 0;
-		for (int j = 0; j < handles.size(); ++j)
+		int j = 0;
+		while (j < handles.size())
 		{
 			const int handleIdx = cpuOccupied[j];
 			if (handleIdx != -1)
@@ -401,6 +404,10 @@ namespace PAL
 				handle.offset = lastFree;
 				dirtyArray[handleIdx] = true;
 				lastFree += handle.count;
+				j += handle.count;
+			}
+			else {
+				++j;
 			}
 		}
 
@@ -417,7 +424,7 @@ namespace PAL
 		BRWL_CHECK(handles.size() == dirtyArray.size(), nullptr); // todo: remove
 		++queueCompletedIdx;
 
-		BRWL_EXCEPTION(queueCompletedIdx < queueNextIdx, nullptr);
+		BRWL_EXCEPTION(queueCompletedIdx <= queueNextIdx, nullptr);
 
 		std::scoped_lock(mutex);
 		SCOPED_CPU_EVENT(0, 255, 0, "Descriptor Heap Maintain: %s", getHeapName(heapType, true));
@@ -467,7 +474,7 @@ namespace PAL
 			if (isDirty && !handle->resident)
 			{
 				// if it's scheduled for removal then we do not copy the contents.
-				if (!handle->remove) continue;
+				if (handle->remove) continue;
 
 				// update occupied flag for gpu tracking
 				gpuOccupied[handle->offset] = i;
@@ -481,12 +488,13 @@ namespace PAL
 				handle->nativeHandles.residentCpu.ptr = gpuHeapCpuStart.ptr + handle->offset * descriptorSize;
 				handle->nativeHandles.residentGpu.ptr = gpuHeapGpuStart.ptr + handle->offset * descriptorSize;
 
+				handle->resident = true;
 				dirtyArray[i] = false;
 			}
 		}
 
 		// then delete old decriptors
-		while (staleQueue.front() != staleQueue.back() && std::get<0>(staleQueue.front()) <= queueCompletedIdx)
+		while (!staleQueue.empty() && std::get<0>(staleQueue.front()) <= queueCompletedIdx)
 		{
 			DescriptorHandle* handle = std::get<1>(staleQueue.front());
 			staleQueue.pop_front();

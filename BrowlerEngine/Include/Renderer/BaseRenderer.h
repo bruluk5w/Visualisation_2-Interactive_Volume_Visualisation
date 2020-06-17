@@ -46,7 +46,7 @@ public:
 	virtual void setVSync(bool enable) = 0;
 	virtual bool getVSync() const = 0;
 protected:
-	virtual void platformRender() = 0;
+	virtual void platformRender();
 	virtual void OnFramebufferResize() = 0;
 
 	bool							initialized;

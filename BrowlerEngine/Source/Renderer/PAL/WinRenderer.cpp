@@ -171,16 +171,18 @@ namespace PAL
     void WinRenderer::platformRender()
     {
         // Start new frame
+#ifdef _DEBUG
+        rtvHeap.notifyNewFrame();
+#endif
+        srvHeap.notifyNewFrameStarted();
+
 #ifdef BRWL_USE_DEAR_IM_GUI
         ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 #endif // BRWL_USE_DEAR_IM_GUI
 
-#ifdef _DEBUG
-        rtvHeap.notifyNewFrame();
-        srvHeap.notifyNewFrameStarted();
-#endif
+
 
         // NOTICE: We open the command list early for the renderer method below to schedule resource barriers after some uploads have finished
         FrameContext* frameCtxt = waitForNextFrameResources();
@@ -188,7 +190,7 @@ namespace PAL
         DR(commandList->Reset(frameCtxt->CommandAllocator.Get(), nullptr));
 
         // Render
-        BaseRenderer::render();
+        BaseRenderer::platformRender();
 
 #ifdef BRWL_USE_DEAR_IM_GUI
         ImGui::Render();
@@ -276,6 +278,7 @@ namespace PAL
             // Output information is cached on the DXGI Factory. If it is stale we need to create a new factory.
         }
 #undef DR
+        srvHeap.notifyOldFrameCompleted();
     }
 
     void WinRenderer::destroy(bool force /*= false*/)
@@ -294,9 +297,6 @@ namespace PAL
         ImGui_ImplWin32_Shutdown();
     }
 
-#pragma region IMGUI COPY
-
-    // Helper functions
 
     bool WinRenderer::createDevice(HWND hWnd, unsigned int framebufferWidth /*=0 */, unsigned int framebufferHeight /*=0 */)
     {
@@ -525,9 +525,9 @@ namespace PAL
         currentFramebufferWidth = framebufferWidth;
         currentFramebufferHeight = framebufferHeight;
 
-        fontTextureDescriptorHandle = srvHeap.allocateOne(BRWL_CHAR_LITERAL("FontTextureDescriptor"));
+        fontTextureDescriptorHandle = srvHeap.allocateOne(BRWL_CHAR_LITERAL("FontTextureDescriptor"), /*force=*/true);
         ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, g_RenderTargetFormat, /*since this is unused, we currently also don't pass any resource*/{ },
-            fontTextureDescriptorHandle->getCpu(), fontTextureDescriptorHandle->getGpu());
+            fontTextureDescriptorHandle);
 
         if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(appRenderer->rendererInit(this), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))
         {
@@ -709,8 +709,6 @@ namespace PAL
         render();
         draw();
     }
-
-#pragma endregion //IMGUI COPY
 
 } // namespace PAL
 

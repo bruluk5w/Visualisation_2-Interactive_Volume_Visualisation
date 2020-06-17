@@ -48,6 +48,7 @@
     <ClInclude Include="Include\Common\GlobalsFwd.h" />
     <ClInclude Include="Include\Common\Logger.h" />
     <ClInclude Include="Include\Common\PAL\BrowlerWindowsInclude.h" />
+    <ClInclude Include="Include\Common\PAL\DescriptorHeap.h" />
     <ClInclude Include="Include\Common\PAL\WinGlobals.h" />
     <ClInclude Include="Include\Common\PAL\WinStackTrace.h" />
     <ClInclude Include="Include\Common\ProceduralGeometry.h">
@@ -91,6 +92,7 @@
     <ClCompile Include="Source\Common\EventBus.cpp" />
     <ClCompile Include="Source\Common\Exception.cpp" />
     <ClCompile Include="Source\Common\Logger.cpp" />
+    <ClCompile Include="Source\Common\PAL\DescriptorHeap.cpp" />
     <ClCompile Include="Source\Common\PAL\WinGlobals.cpp" />
     <ClCompile Include="Source\Common\PAL\WinStackTrace.cpp" />
     <ClCompile Include="Source\Common\proceduralGeometry.cpp">

@@ -55,6 +55,7 @@ protected:
 	MainShader mainShader;
 
 	bool initialized;
+	bool skipFrame;
 };
 
 BRWL_RENDERER_NS_END

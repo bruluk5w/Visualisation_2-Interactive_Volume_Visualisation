@@ -151,8 +151,8 @@ bool MainShader::create(Renderer* renderer)
 
     // Input Layout is the same for all shaders
     static D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-    { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,   0, (UINT)offsetof(VertexData, position), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-    { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (UINT)offsetof(VertexData, uv),  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,   0, (UINT)offsetof(VertexData, position), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (UINT)offsetof(VertexData, uv),  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     };
 
 #pragma region Main PSO
@@ -301,8 +301,6 @@ bool MainShader::create(Renderer* renderer)
             destroy();
             return false;
         }
-        
-        return true;
     }
 #pragma endregion
 #pragma region Guides PSO

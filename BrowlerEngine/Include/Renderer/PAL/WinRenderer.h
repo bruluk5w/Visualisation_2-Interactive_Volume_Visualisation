@@ -4,7 +4,7 @@
 
 #include "BaseRenderer.h"
 #include "RtvDescriptorHeap.h"
-#include "DescriptorHeap.h"
+#include "Common/PAL/DescriptorHeap.h"
 
 BRWL_RENDERER_NS
 

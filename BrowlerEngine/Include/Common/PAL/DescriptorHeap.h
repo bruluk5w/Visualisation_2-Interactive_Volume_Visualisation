@@ -41,8 +41,8 @@ namespace PAL
         bool isResident() { return resident && !remove; }
         void release();
 
-        const D3D12_CPU_DESCRIPTOR_HANDLE& getCpu();
-        const D3D12_GPU_DESCRIPTOR_HANDLE& getGpu() { BRWL_EXCEPTION(resident && count == 1, nullptr); return nativeHandles.residentGpu; }
+        D3D12_CPU_DESCRIPTOR_HANDLE getCpu();
+        D3D12_GPU_DESCRIPTOR_HANDLE getGpu() { BRWL_EXCEPTION(resident && count == 1, nullptr); return nativeHandles.residentGpu; }
 
     };
 
@@ -57,8 +57,8 @@ namespace PAL
 
         bool create(ID3D12Device* device, unsigned int numDescriptors);
         void destroy();
-        // Allocates a single handle.
-        DescriptorHandle* allocateOne(const BRWL_CHAR* namem );
+        // Allocates a single handle. Only use force update when you know that the gpu will not access any resources at all
+        DescriptorHandle* allocateOne(const BRWL_CHAR* name, bool forceUpdate=false);
         void releaseOne(DescriptorHandle* handle);
         // Allocates a consecutive range of handles and returns a pointer to the first handle.
         // The result is not immediate as the heap may have to move descriptors around to make space.

@@ -23,6 +23,7 @@
 //  2018-06-08: Misc: Extracted imgui_impl_dx12.cpp/.h away from the old combined DX12+Win32 example.
 //  2018-06-08: DirectX12: Use draw_data->DisplayPos and draw_data->DisplaySize to setup projection matrix and clipping rectangle (to ease support for future multi-viewport).
 //  2018-02-22: Merged into master with all Win32 code synchronized to other examples.
+#include "Common/PAL/DescriptorHeap.h"
 
 #include "UI/ImGui/imgui.h"
 #include "PAL/imgui_impl_dx12.h"
@@ -36,8 +37,8 @@ static ComPtr<ID3D12RootSignature>  g_pRootSignature = nullptr;
 static ComPtr<ID3D12PipelineState>  g_pPipelineState = nullptr;
 static DXGI_FORMAT                  g_RTVFormat = DXGI_FORMAT_UNKNOWN;
 static ComPtr<ID3D12Resource>       g_pFontTextureResource = nullptr;
-static D3D12_CPU_DESCRIPTOR_HANDLE  g_hFontSrvCpuDescHandle = {};
-static D3D12_GPU_DESCRIPTOR_HANDLE  g_hFontSrvGpuDescHandle = {};
+// not static because we access it from our render function to set the native descriptor once it's available
+BRWL::RENDERER::PAL::DescriptorHandle* g_FontDescHandle;
 
 struct FrameResources
 {
@@ -375,14 +376,14 @@ void ImGui_ImplDX12_RenderDrawData(ImDrawData* draw_data, ID3D12GraphicsCommandL
         srvDesc.Texture2D.MipLevels = desc.MipLevels;
         srvDesc.Texture2D.MostDetailedMip = 0;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        g_pd3dDevice->CreateShaderResourceView(pTexture.Get(), &srvDesc, g_hFontSrvCpuDescHandle);
+        g_pd3dDevice->CreateShaderResourceView(pTexture.Get(), &srvDesc, g_FontDescHandle->getCpu());
         g_pFontTextureResource = nullptr;
         g_pFontTextureResource = pTexture;
     }
 
     // Store our identifier
-    static_assert(sizeof(ImTextureID) >= sizeof(g_hFontSrvGpuDescHandle.ptr), "Can't pack descriptor handle into TexID, 32-bit not supported yet.");
-    io.Fonts->TexID = (ImTextureID)g_hFontSrvGpuDescHandle.ptr;
+    static_assert(sizeof(ImTextureID) >= sizeof(D3D12_CPU_DESCRIPTOR_HANDLE), "Can't pack descriptor handle into TexID, 32-bit not supported yet.");
+    io.Fonts->TexID = (ImTextureID)g_FontDescHandle->getGpu().ptr;
 }
 
 bool    ImGui_ImplDX12_CreateDeviceObjects()
@@ -545,7 +546,7 @@ void    ImGui_ImplDX12_InvalidateDeviceObjects()
 }
 
 bool ImGui_ImplDX12_Init(ComPtr<ID3D12Device> device, int num_frames_in_flight, DXGI_FORMAT rtv_format, ComPtr<ID3D12DescriptorHeap> cbv_srv_heap,
-                         D3D12_CPU_DESCRIPTOR_HANDLE font_srv_cpu_desc_handle, D3D12_GPU_DESCRIPTOR_HANDLE font_srv_gpu_desc_handle)
+                         BRWL::RENDERER::PAL::DescriptorHandle* font_desc_handle)
 {
     // Setup back-end capabilities flags
     ImGuiIO& io = ImGui::GetIO();
@@ -554,8 +555,7 @@ bool ImGui_ImplDX12_Init(ComPtr<ID3D12Device> device, int num_frames_in_flight, 
 
     g_pd3dDevice = device;
     g_RTVFormat = rtv_format;
-    g_hFontSrvCpuDescHandle = font_srv_cpu_desc_handle;
-    g_hFontSrvGpuDescHandle = font_srv_gpu_desc_handle;
+    g_FontDescHandle = font_desc_handle;
     g_pFrameResources = new FrameResources[num_frames_in_flight];
     g_numFramesInFlight = num_frames_in_flight;
     g_frameIndex = UINT_MAX;
@@ -580,8 +580,7 @@ void ImGui_ImplDX12_Shutdown()
     delete[] g_pFrameResources;
     g_pFrameResources = NULL;
     g_pd3dDevice = nullptr;
-    g_hFontSrvCpuDescHandle.ptr = 0;
-    g_hFontSrvGpuDescHandle.ptr = 0;
+    g_FontDescHandle = nullptr;
     g_numFramesInFlight = 0;
     g_frameIndex = UINT_MAX;
 }

@@ -87,24 +87,52 @@ void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderCons
     BRWL_EXCEPTION(computeBuffers, nullptr);
     BRWL_EXCEPTION(computeBuffers->isResident(), nullptr);
 
-    // invert ping-pong variable
-    computeBuffers->swap();
-    // we now made all UAVs SRVs and all SRVs became UAVs
+    //// invert ping-pong variable
+    //computeBuffers->swap();
+    //// we now made all UAVs SRVs and all SRVs became UAVs
     D3D12_RESOURCE_BARRIER barriers[ComputeBuffers::numBuffers];
+    memset(&barriers, 0, sizeof(barriers));
+    //for (int i = 0; i < ComputeBuffers::numBuffers; ++i)
+    //{
+    //    ID3D12Resource* resource = computeBuffers->getTargetResource(i);
+    //    barriers[i].Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
+    //    barriers[i].Aliasing.pResourceBefore = resource;
+    //    barriers[i].Aliasing.pResourceAfter = resource;
+    //}
+
+    //// we wrote to the first plane
+    //cmd->ResourceBarrier(countof(barriers), barriers);
+
+    //D3D12_RESOURCE_BARRIER barriers2[ComputeBuffers::numBuffers];
+    //memset(&barriers, 0, sizeof(barriers));
+    //for (int i = 0; i < ComputeBuffers::numBuffers; ++i)
+    //{
+    //    ID3D12Resource* resource = computeBuffers->getTargetResource(i);
+    //    barriers2[i].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    //    barriers2[i].UAV.pResource = resource;
+    //}
+    //cmd->ResourceBarrier(countof(barriers2), barriers2);
+
+
+    D3D12_RESOURCE_BARRIER barriers2[ComputeBuffers::numBuffers];
     memset(&barriers, 0, sizeof(barriers));
     for (int i = 0; i < ComputeBuffers::numBuffers; ++i)
     {
-        ID3D12Resource* resource = computeBuffers->getTargetResource(i);
-        barriers[i].Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
-        barriers[i].Aliasing.pResourceBefore = resource;
-        barriers[i].Aliasing.pResourceAfter = resource;
+        ID3D12Resource* resource = computeBuffers->getSourceResource(i);
+        barriers2[i].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barriers2[i].Transition.pResource = resource;
+        barriers2[i].Transition.StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
+        barriers2[i].Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     }
+    cmd->ResourceBarrier(countof(barriers2), barriers2);
 
-    // we wrote to the first plane
-    cmd->ResourceBarrier(countof(barriers), barriers);
+    //NON_PIXEL_SHADER_RESOURCE
 
+
+    cmd->SetPipelineState(pipelineState.Get());
+    cmd->SetComputeRootSignature(rootSignature.Get());
     cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
-    cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetUav(0).gpu);
+    cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetUav(0).residentGpu);
     cmd->Dispatch(
         (unsigned int)std::ceil(constants.textureResolution.x / (float)ShaderConstants::threadGroupSizeX),
         (unsigned int)std::ceil(constants.textureResolution.y / (float)ShaderConstants::threadGroupSizeY),

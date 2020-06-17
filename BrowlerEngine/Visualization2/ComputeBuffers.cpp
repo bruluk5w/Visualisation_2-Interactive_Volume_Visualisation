@@ -31,10 +31,10 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
     textureDecriptions[0].Height = bufferHeight;
     textureDecriptions[0].DepthOrArraySize = 1;
     textureDecriptions[0].MipLevels = 1;
-    textureDecriptions[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+    textureDecriptions[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT; // with alpha because we are rich (and we bind it as a uav which doesn't support RGB-only
     textureDecriptions[0].SampleDesc = { 1, 0 };
     textureDecriptions[0].Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    textureDecriptions[0].Flags = D3D12_RESOURCE_FLAG_NONE;
+    textureDecriptions[0].Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
     // for now we use the same format for all buffers 
     for (int i = 1; i < 6; ++i) {

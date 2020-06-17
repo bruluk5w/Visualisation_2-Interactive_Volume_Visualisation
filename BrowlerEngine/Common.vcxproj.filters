@@ -83,6 +83,9 @@
     <ClInclude Include="Include\Common\BoundingBox.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Common\PAL\DescriptorHeap.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Common\Common_Precomp.cpp">
@@ -117,6 +120,9 @@
     </ClCompile>
     <ClCompile Include="Source\Common\BoundingBox.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Common\PAL\DescriptorHeap.cpp">
+      <Filter>Source Files\PAL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

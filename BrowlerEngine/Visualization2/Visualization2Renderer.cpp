@@ -7,6 +7,7 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/PAL/imgui_impl_dx12.h"
 #include "Renderer/PAL/d3dx12.h"
+#include "Common/PAl/DescriptorHeap.h"
 
 BRWL_RENDERER_NS
 
@@ -26,7 +27,8 @@ Visualization2Renderer::Visualization2Renderer() :
     uploadFenceEvent(NULL),
     volumeTextureFenceValue(0),
     mainShader(),
-    initialized(false)
+    initialized(false),
+    skipFrame(false)
 {
     // trigger building the preintegration tables
     for (int i = 0; i < countof(((UIResult::TransferFunctionCollection*)0)->array); ++i)
@@ -117,9 +119,21 @@ void Visualization2Renderer::preRender(Renderer* renderer)
     }
 }
 
+
 void Visualization2Renderer::render(Renderer* renderer)
 {
     if (!initialized) return;
+#ifdef BRWL_USE_DEAR_IM_GUI
+    if (!g_FontDescHandle->isResident())
+    {
+        skipFrame = true;
+        return;
+    }
+    else {
+        ::ImGui::GetIO().Fonts->TexID = (ImTextureID)g_FontDescHandle->getGpu().ptr;
+    }
+#endif
+
 
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
@@ -276,7 +290,11 @@ bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList
 
 void Visualization2Renderer::draw(Renderer* r)
 {
-    if (!initialized) return;
+    if (!initialized || skipFrame)
+    {
+        skipFrame = false;
+        return;
+    }
 
     if (!BRWL_VERIFY(r->srvHeap.isCreated() && r->srvHeap.getType() == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, BRWL_CHAR_LITERAL("Invalid descriptor heap.")))
     {
