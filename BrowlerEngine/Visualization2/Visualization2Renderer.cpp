@@ -138,7 +138,7 @@ void Visualization2Renderer::render(Renderer* renderer)
             // release old texture
             pitImage.stagedTexture->destroy();
             // Indicate new resource to be used by the pixel shader on the main command queue.
-            // We only do this once after the upload. In the next frames the resource will use implicit state promotion between command and pixel shader resource.
+            // We only do this once after the upload. In the next frames the resource will use implicit state promotion between common and pixel shader resource.
             renderer->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pitImage.liveTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
         }
     }
@@ -241,7 +241,7 @@ void Visualization2Renderer::render(Renderer* renderer)
             makePreintegrationTable(pitImage.cpuImage, tFuncResult.transferFunction, tFuncResult.getArrayLength());
 
             // upload in draw()
-            // pitImage.stagedTexture->descriptorHandle = renderer->srvHeap.allocateHandle(
+            // pitImage.stagedTexture->srvDescriptorRange = renderer->srvHeap.allocateHandle(
 //#ifdef _DEBUG
 //            BRWL_CHAR_LITERAL("StagedPitTexture")
 //#endif
@@ -462,7 +462,7 @@ bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
 
     uint64_t requiredSize = GetRequiredIntermediateSize(texture.texture.Get(), 0, 1);
     BRWL_CHAR buf[100];
-    BRWL_SNPRINTF(buf, countof(buf), BRWL_CHAR_LITERAL("Loading volume data. Rquired VRAM: %.2fMB"), (float)requiredSize / 1048576.f);
+    BRWL_SNPRINTF(buf, countof(buf), BRWL_CHAR_LITERAL("Loading volume data. Required VRAM: %.2fMB"), (float)requiredSize / 1048576.f);
     engine->logger->info(buf);
     // Create the GPU upload buffer.
     hr = device->CreateCommittedResource(

@@ -338,6 +338,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="CLogEdit.h" />
+    <ClInclude Include="ComputeBuffers.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="DataSet.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Image.h">
@@ -379,6 +383,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CLogEdit.cpp" />
+    <ClCompile Include="ComputeBuffers.cpp" />
     <ClCompile Include="DataSet.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="InitializationShader.cpp" />

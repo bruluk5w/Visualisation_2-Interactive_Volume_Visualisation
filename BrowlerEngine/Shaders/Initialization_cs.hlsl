@@ -11,7 +11,12 @@ cbuffer constants: register(b0)
     float3 eye;
 };
 
-RWTexture2D<float3> viewDirectionBuffer : register(u0);
+RWTexture2D<float3> lightBuffer : register(u0);
+RWTexture2D<float3> lightDirectionBuffer : register(u1);
+RWTexture2D<float3> colorBuffer : register(u2);
+RWTexture2D<float3> mediumBuffer : register(u3);
+RWTexture2D<float3> viewingRayPositionBuffer : register(u4);
+RWTexture2D<float3> viewingRayDirectionBuffer : register(u5);
 
 [numthreads(8, 8, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
@@ -23,5 +28,5 @@ void main( uint3 DTid : SV_DispatchThreadID )
         offset.x * horizontalPlaneDirection +
         offset.y * verticalPlaneDirection;
     
-    viewDirectionBuffer[DTid.xy] = normalize(pixelWorldSpace - eye);
+    viewingRayDirectionBuffer[DTid.xy] = normalize(pixelWorldSpace - eye);
 }

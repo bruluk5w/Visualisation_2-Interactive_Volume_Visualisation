@@ -13,6 +13,7 @@ BRWL_RENDERER_NS
 struct TextureResource;
 union PitCollection;
 class InitializationShader;
+class ComputeBuffers;
 
 namespace PAL
 {
@@ -64,6 +65,7 @@ private:
     TriangleList assetBounds;
 
     std::unique_ptr<InitializationShader> initializationShader;
+    std::unique_ptr<ComputeBuffers> computeBuffers;
 
     bool initialized;
 };

@@ -4,6 +4,7 @@
 
 BRWL_RENDERER_NS
 
+// A basic texture meant to be uploaded and sampled from
 struct TextureResource
 {
 	enum class State : uint8_t
@@ -17,7 +18,7 @@ struct TextureResource
 		MIN = 0
 	};
 
-	PAL::DescriptorHeap::Handle* descriptorHandle = nullptr;
+	PAL::DescriptorHandle* descriptorHandle = nullptr;
 	ComPtr<ID3D12Resource> texture = nullptr;
 	ComPtr<ID3D12Resource> uploadHeap = nullptr;
 	State state = State::UNKNOWN;

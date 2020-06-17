@@ -10,7 +10,6 @@ BRWL_RENDERER_NS
 
 
 class Visualization2Renderer;
-class MainShader;
 
 namespace PAL
 {
@@ -35,6 +34,7 @@ namespace PAL
 		virtual void setVSync(bool enable) override { vSync = enable; }
 		virtual bool getVSync() const override { return vSync; }
 		void waitForLastSubmittedFrame();
+		DescriptorHeap& getSrvHeap() { return srvHeap; }
 	protected:
 		virtual void platformRender() override;
 
@@ -43,8 +43,8 @@ namespace PAL
 		ComPtr<IDXGIFactory6>	dxgiFactory;
 		ComPtr<IDXGIAdapter4>	dxgiAdapter;
 		ComPtr<ID3D12Device>	device;
-		RtvDescriptorHeap	rtvHeap;
-		DescriptorHeap	srvHeap;
+		RtvDescriptorHeap		rtvHeap;
+		DescriptorHeap			srvHeap;
 
 		bool createDevice(HWND hWnd, unsigned int framebufferWidth = 0, unsigned int framebufferHeight = 0);
 		void destroyDevice();
@@ -82,7 +82,7 @@ namespace PAL
 		// Inherited via BaseRenderer
 		virtual void OnFramebufferResize() override;
 
-		DescriptorHeap::Handle* fontTextureDescriptorHandle;
+		DescriptorHandle* fontTextureDescriptorHandle;
 	};
 }
 

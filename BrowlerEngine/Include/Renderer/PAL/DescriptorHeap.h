@@ -8,42 +8,50 @@ BRWL_RENDERER_NS
 
 namespace PAL
 {
+    class DescriptorHeap;
+
+    class DescriptorHandle final
+    {
+        friend class DescriptorHeap;
+    public:
+        struct NativeHandles
+        {
+            D3D12_CPU_DESCRIPTOR_HANDLE residentCpu; // gpu visible descriptor - used for rendering
+            D3D12_GPU_DESCRIPTOR_HANDLE residentGpu; // gpu visible descriptor - used for rendering
+            D3D12_CPU_DESCRIPTOR_HANDLE cpu; // cpu side descriptor - used for view creation - later copied to the gpu visible heap
+            D3D12_GPU_DESCRIPTOR_HANDLE gpu; // should not be accessed
+        };
+    private:
+        // No touchy thouchy
+        DescriptorHandle(DescriptorHandle const&) = delete;
+        DescriptorHandle& operator=(DescriptorHandle const&) = delete;
+        NativeHandles nativeHandles;
+        DescriptorHeap* owningHeap;
+        unsigned int offset;
+        unsigned int count;
+        const BRWL_CHAR* name;
+        bool resident;
+    public:
+        // Needed for vector, but do not use!
+        DescriptorHandle();
+        DescriptorHandle(DescriptorHandle&&) = default;
+        DescriptorHandle& operator = (DescriptorHandle&&) = default;
+        NativeHandles operator[](int idx);
+        bool isResident() { return resident; }
+        void release();
+
+        const D3D12_CPU_DESCRIPTOR_HANDLE& getCpu() { BRWL_EXCEPTION(resident && count == 1, nullptr); return nativeHandles.cpu; }
+        const D3D12_GPU_DESCRIPTOR_HANDLE& getGpu() { BRWL_EXCEPTION(resident && count == 1, nullptr); return nativeHandles.gpu; }
+
+    };
 
     // Reorganizing descriptor heap for allocating single handles and ranges
     class DescriptorHeap final
     {
+        friend class DescriptorHandle;
     public:
 
         static const int maxFramesInFlight = 3;
-
-        class Handle
-        {
-            friend class DescriptorHeap;
-
-            // No touchy thouchy
-            Handle(Handle const&) = delete;
-            Handle& operator=(Handle const&) = delete;
-
-            D3D12_CPU_DESCRIPTOR_HANDLE cpu;
-            D3D12_GPU_DESCRIPTOR_HANDLE gpu;
-            DescriptorHeap* owningHeap;
-            size_t offset;
-            bool isRange;
-            bool isFirst;
-            const BRWL_CHAR* name;
-            bool isResident;
-        public:
-            // Needed for vector, but do not use!
-            Handle();
-            Handle(Handle&&) = default;
-            Handle& operator = (Handle&&) = default;
-
-            void release();
-
-            const D3D12_CPU_DESCRIPTOR_HANDLE& getCpu() { BRWL_EXCEPTION(isResident, nullptr); return cpu; }
-            const D3D12_GPU_DESCRIPTOR_HANDLE& getGpu() { BRWL_EXCEPTION(isResident, nullptr); return gpu; }
-
-        };
 
         DescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type);
         ~DescriptorHeap();
@@ -51,16 +59,17 @@ namespace PAL
         bool create(ID3D12Device* device, unsigned int numDescriptors);
         void destroy();
         // Allocates a single handle. The result is immediate and the handle is resident / can be used for resource creation
-        Handle* allocateOne(const BRWL_CHAR* name);
-        void releaseOne(Handle* handle);
+        DescriptorHandle* allocateOne(const BRWL_CHAR* name);
+        void releaseOne(DescriptorHandle* handle);
         // Allocates a consecutive range of handles and returns a pointer to the first handle.
         // The result is not immediate as the heap may have to move descriptors around to make space.
         // Check the isResident flag on the returned handle to see when the handle can be used.
-        Handle* allocateRange(unsigned int n, const BRWL_CHAR* name);
-        //Handle* releaseRange(Handle* handle);
+        DescriptorHandle* allocateRange(unsigned int n, const BRWL_CHAR* name);
+        void releaseRange(DescriptorHandle* handle);
 
         void update();
-        //void maintain();
+        // after maintain lastFree points to the last used descriptor index
+        void maintain();
 
         ID3D12DescriptorHeap* const* getPointerAddress();
         D3D12_DESCRIPTOR_HEAP_TYPE getType() const { return heapType; }
@@ -69,18 +78,24 @@ namespace PAL
         void notifyNewFrameStarted();
         void notifyOldFrameCompleted();
     private:
-        std::mutex mutex;
+        std::recursive_mutex mutex;
         D3D12_DESCRIPTOR_HEAP_TYPE heapType;
 
-        size_t descriptorSize;
+        unsigned int descriptorSize;
         unsigned int numOccupiedDescriptors;
         ComPtr<ID3D12DescriptorHeap> cpuHeap;
         ComPtr<ID3D12DescriptorHeap> gpuHeap;
-        unsigned int queueCompletedIdx;
-        unsigned int queueNextIdx;
+        int queueCompletedIdx;
+        int queueNextIdx;
+        // indices in the dirty queue are relative to the cpu heap
         std::vector<std::array<std::tuple<unsigned int, bool>, maxFramesInFlight>> dirtyQueue;
-        std::vector<Handle> handles;
-        size_t nextOffset;
+        // Handles stay in place
+        std::vector<DescriptorHandle> handles;
+        // indices move upon maintenance
+        std::vector<int> cpuOccupied; // allways up to date
+        std::vector<int> gpuOccupied;
+        int lastHandle; // relative to cpu heap
+        int lastFree; // relative to cpu heap
         bool created;
     };
 

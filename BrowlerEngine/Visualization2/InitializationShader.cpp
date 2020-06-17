@@ -2,7 +2,7 @@
 
 #include "Initialization_cs_cs.h"
 
-#include "TextureResource.h"
+#include "ComputeBuffers.h"
 
 BRWL_RENDERER_NS
 
@@ -13,8 +13,8 @@ InitializationShader::InitializationShader(ID3D12Device* device)
     D3D12_DESCRIPTOR_RANGE uavDescRange;
     memset(&uavDescRange, 0, sizeof(uavDescRange));
     uavDescRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    uavDescRange.NumDescriptors = 1;
-    uavDescRange.BaseShaderRegister = 0; // register u0
+    uavDescRange.NumDescriptors = ComputeBuffers::numBuffers;
+    uavDescRange.BaseShaderRegister = 0; // register u0 - u5
     uavDescRange.RegisterSpace = 0;
     uavDescRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
@@ -74,8 +74,6 @@ void InitializationShader::destroy()
 {
     rootSignature = nullptr;
     pipelineState = nullptr;
-    if(uavHandle) uavHandle->release();
-    uavHandle = nullptr;
 }
 
 InitializationShader::~InitializationShader()
@@ -83,25 +81,37 @@ InitializationShader::~InitializationShader()
     destroy();
 }
 
-void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, TextureResource* texToinitialize)
+void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, ComputeBuffers* computeBuffers)
 {
     SCOPED_GPU_EVENT(cmd, 0, 0, 0, "Initialization Compute Shader");
-    BRWL_EXCEPTION(texToinitialize, nullptr);
-    BRWL_EXCEPTION(texToinitialize->state == TextureResource::State::RESIDENT, nullptr);
+    BRWL_EXCEPTION(computeBuffers, nullptr);
+    BRWL_EXCEPTION(computeBuffers->isResident(), nullptr);
+
+    // invert ping-pong variable
+    computeBuffers->swap();
+    // we now made all UAVs SRVs and all SRVs became UAVs
+    D3D12_RESOURCE_BARRIER barriers[ComputeBuffers::numBuffers];
+    memset(&barriers, 0, sizeof(barriers));
+    for (int i = 0; i < ComputeBuffers::numBuffers; ++i)
+    {
+        ID3D12Resource* resource = computeBuffers->getTargetResource(i);
+        barriers[i].Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
+        barriers[i].Aliasing.pResourceBefore = resource;
+        barriers[i].Aliasing.pResourceAfter = resource;
+    }
+
+    // we wrote to the first plane
+    cmd->ResourceBarrier(countof(barriers), barriers);
 
     cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
-    cmd->SetComputeRootDescriptorTable(1, texToinitialize->descriptorHandle->getGpu());
+    cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetUav(0).gpu);
     cmd->Dispatch(
         (unsigned int)std::ceil(constants.textureResolution.x / (float)ShaderConstants::threadGroupSizeX),
         (unsigned int)std::ceil(constants.textureResolution.y / (float)ShaderConstants::threadGroupSizeY),
         1
     );
-    // Since we are writing to the uav resource, and we want to read it later, we have to add a resource barrier
-    D3D12_RESOURCE_BARRIER barrier;
-    memset(&barrier, 0, sizeof(barrier));
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-    barrier.UAV.pResource = texToinitialize->texture.Get();
-    cmd->ResourceBarrier(1, &barrier);
+    
+
 }
 
 BRWL_RENDERER_NS_END

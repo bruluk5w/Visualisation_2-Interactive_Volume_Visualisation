@@ -36,7 +36,7 @@ namespace PAL
 		const unsigned int occupiedArrayByteLen = minNumDescriptors / 8 + 1;
 		numDescriptors = 8 * occupiedArrayByteLen;
 		desc.NumDescriptors = numDescriptors;
-		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		desc.NodeMask = 0;
 
 		if (BRWL_VERIFY(SUCCEEDED(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap))), BRWL_CHAR_LITERAL("Failed to create render target view descriptor heap.")))

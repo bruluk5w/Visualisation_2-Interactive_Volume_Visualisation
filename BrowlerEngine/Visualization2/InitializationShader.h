@@ -4,7 +4,7 @@
 
 BRWL_RENDERER_NS
 
-struct TextureResource;
+class ComputeBuffers;
 
 class InitializationShader final
 {
@@ -31,11 +31,10 @@ public:
         Vec3 eye;
     };
 
-    void draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, TextureResource* texToinitialize);
+    void draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, ComputeBuffers* texToinitialize);
 
     ComPtr<ID3D12RootSignature> rootSignature;
     ComPtr<ID3D12PipelineState> pipelineState;
-    PAL::DescriptorHeap::Handle* uavHandle;
 };
 
 BRWL_RENDERER_NS_END
