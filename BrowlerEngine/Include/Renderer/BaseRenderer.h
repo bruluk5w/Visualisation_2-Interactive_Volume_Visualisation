@@ -60,7 +60,6 @@ protected:
 	unsigned int					currentFramebufferWidth;
 	unsigned int					currentFramebufferHeight;
 
-
 };
 
 

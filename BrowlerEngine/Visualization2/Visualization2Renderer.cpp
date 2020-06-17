@@ -194,6 +194,7 @@ void Visualization2Renderer::render(Renderer* renderer)
                 // if the staged resource is currently upoading then the fence value has do be lower than the one which we remembered
                 // but only do a weak check since it could theoretically finish in this very moment
                 BRWL_CHECK(pitImage.fence->GetCompletedValue() < pitImage.uploadFenceValue, BRWL_CHAR_LITERAL("Invalid fence/staged resource state."));
+                uint64_t x = pitImage.fence->GetCompletedValue();
                 if (!BRWL_VERIFY(pitImage.stagedTexture->state != TextureResource::State::FAILED, BRWL_CHAR_LITERAL("Invalid state for staged pitTexture.")))
                 {
                     continue;
@@ -279,7 +280,7 @@ void Visualization2Renderer::render(Renderer* renderer)
     v.settings.font = r.settings.font;
     v.settings.drawAssetBoundaries = r.settings.drawAssetBoundaries;
     v.settings.drawViewingVolumeBoundaries = r.settings.drawViewingVolumeBoundaries;
-
+    v.light = r.light;
     mainShader.render();
 }
 
@@ -345,6 +346,11 @@ void Visualization2Renderer::draw(Renderer* r)
             uiResults[0].settings.voxelsPerCm,
             uiResults[0].settings.drawAssetBoundaries,
             uiResults[0].settings.drawViewingVolumeBoundaries,
+            {
+                MainShader::DrawData::Light::Type::DIRECTIONAL,
+                uiResults[0].light.coords,
+                uiResults[0].light.color
+            }
         };
         mainShader.draw(r->device.Get(), r->commandList.Get(), drawData);
     }

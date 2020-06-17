@@ -194,7 +194,9 @@ namespace PAL
 		{
 			lastHandle = (lastHandle + 1) % handles.size();
 			if (handles[lastHandle].owningHeap == nullptr)
+			{
 				break;
+			}
 		}
 
 		DescriptorHandle* handle = &handles[lastHandle];
@@ -208,11 +210,11 @@ namespace PAL
 		{
 			lastFree = (lastFree + 1) % cpuOccupied.size();
 			if (cpuOccupied[lastFree] == -1)
+			{
 				cpuOccupied[lastFree] = lastHandle;
 				break;
+			}
 		}
-		
-
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpu = cpuHeap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_GPU_DESCRIPTOR_HANDLE gpu = cpuHeap->GetGPUDescriptorHandleForHeapStart();
@@ -242,7 +244,7 @@ namespace PAL
 
 		BRWL_EXCEPTION(handle && handle->owningHeap == this, nullptr);
 		size_t idx = handle - handles.data();
-		BRWL_EXCEPTION(idx > 0 && idx < handles.size(), nullptr);
+		BRWL_EXCEPTION(idx >= 0 && idx < handles.size(), nullptr);
 		BRWL_EXCEPTION(handle->count == 1, nullptr);
 
 		// mark as not available but don't free yet completely
@@ -292,7 +294,7 @@ namespace PAL
 		handle->nativeHandles.cpu.ptr = cpu.ptr + descriptorSize * handle->offset;
 		handle->nativeHandles.gpu.ptr = gpu.ptr + descriptorSize * handle->offset;
 		handle->resident = false;
-		lastFree = ((lastFree + n) % cpuOccupied.size()) - 1;
+		lastFree = (lastFree + n - 1) % cpuOccupied.size();
 
 		numOccupiedDescriptors += n;
 
@@ -336,6 +338,7 @@ namespace PAL
 
 		// we are in the same heap and ranges may overlap
 		if (from.ptr == to.ptr) return;
+
 		// we only allow relocating towards the beginning of the heap
 		BRWL_EXCEPTION(to.ptr <= from.ptr, nullptr);
 
@@ -392,6 +395,7 @@ namespace PAL
 				BRWL_EXCEPTION(handle.count > 0, nullptr);
 				for (int i = 0; i < handle.count; ++i)
 				{
+					BRWL_EXCEPTION(cpuOccupied[handle.offset + i] = handleIdx, nullptr);
 					cpuOccupied[handle.offset + i] = -1;
 					BRWL_EXCEPTION(cpuOccupied[lastFree + i] == -1, nullptr);
 					cpuOccupied[lastFree + i] = handleIdx;
@@ -399,7 +403,7 @@ namespace PAL
 
 				D3D12_CPU_DESCRIPTOR_HANDLE target = cpuHeapCpuStart;
 				target.ptr += lastFree * descriptorSize;
-				(handle.count, target, handle.nativeHandles.cpu, cpuHeapCpuStart, cpuHeapCpuStart, heapType);
+				DescriptorRangeCopy(handle.nativeHandles.cpu, target, cpuHeapCpuStart, cpuHeapCpuStart, handle.count);
 
 				handle.offset = lastFree;
 				dirtyArray[handleIdx] = true;
@@ -446,7 +450,9 @@ namespace PAL
 
 				// update occupied flag for gpu tracking
 				unsigned int oldGpuOffset = (handle->nativeHandles.residentCpu.ptr - gpuHeapCpuStart.ptr) / descriptorSize;
-				for (int j = 0; j < handle->count; ++j) {
+				for (int j = 0; j < handle->count; ++j)
+				{
+					BRWL_EXCEPTION(gpuOccupied[oldGpuOffset + j] == i, nullptr); // slot has to belong to us;
 					gpuOccupied[oldGpuOffset + j] = -1;
 					BRWL_EXCEPTION(gpuOccupied[handle->offset + j] == -1, nullptr); // slot has to be free;
 					BRWL_EXCEPTION(cpuOccupied[handle->offset + j] == i, BRWL_CHAR_LITERAL("Inconsistent state of cpu descriptor tracker."));
@@ -477,8 +483,9 @@ namespace PAL
 				if (handle->remove) continue;
 
 				// update occupied flag for gpu tracking
+				BRWL_EXCEPTION(cpuOccupied[handle->offset] == i, nullptr);
+				BRWL_EXCEPTION(gpuOccupied[handle->offset] == -1, nullptr); // must be free
 				gpuOccupied[handle->offset] = i;
-
 				// we copy the initial contents from the cpu heap
 				D3D12_CPU_DESCRIPTOR_HANDLE target = gpuHeapCpuStart;
 				target.ptr += handle->offset * descriptorSize;

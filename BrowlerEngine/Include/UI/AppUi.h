@@ -83,6 +83,12 @@ struct UIResult
 		static const char* transferFuncNames[ENUM_CLASS_TO_NUM(TransferFuncType::MAX)];
 
 	} transferFunctions;
+
+	struct Light
+	{
+		Vec3 coords;
+		Vec4 color;
+	} light;
 };
 
 void renderAppUI(UIResult& result, const UIResult& values);

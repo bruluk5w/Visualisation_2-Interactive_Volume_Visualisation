@@ -97,7 +97,7 @@ namespace PAL
         frameFenceLastValue(0),
         fontTextureDescriptorHandle(nullptr)
     {
-#ifdef ENABLE_GRAPHICS_DEBUG_FEATURES
+#if ENABLE_GRAPHICS_DEBUG_FEATURES
         ComPtr<ID3D12Debug> debugController0;
         if (BRWL_VERIFY(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController0))), BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
         {
@@ -123,7 +123,7 @@ namespace PAL
 
     WinRenderer::~WinRenderer()
     {
-#ifdef ENABLE_GRAPHICS_DEBUG_FEATURES
+#if ENABLE_GRAPHICS_DEBUG_FEATURES
         ComPtr<IDXGIDebug1> pDebug;
         if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pDebug))))
         {
@@ -395,7 +395,7 @@ namespace PAL
 
         }
 
-#if defined(_DEBUG)
+#if ENABLE_GRAPHICS_DEBUG_FEATURES
         // Enable debug messages in debug mode.
         ComPtr<ID3D12InfoQueue> pInfoQueue;
         if (BRWL_VERIFY(SUCCEEDED(device.As(&pInfoQueue)), BRWL_CHAR_LITERAL("Failed to get debug info queue.")))
@@ -449,7 +449,7 @@ namespace PAL
             );
         }
         
-        if (!srvHeap.create(device.Get(), 300))
+        if (!srvHeap.create(device.Get(), 50))
         {
             return false;
         }

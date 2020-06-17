@@ -435,8 +435,9 @@ if not exist %compiled_folder% (
     <DXCShader Include="Shaders\GUI_ps.hlsl" />
     <DXCShader Include="Shaders\GUI_vs.hlsl" />
     <DXCShader Include="Shaders\Initialization_cs.hlsl" />
-    <DXCShader Include="Shaders\PixelShader_ps.hlsl" />
-    <DXCShader Include="Shaders\VertexShader_vs.hlsl" />
+    <DXCShader Include="Shaders\OrthographicXRay_ps.hlsl" />
+    <DXCShader Include="Shaders\OrthographicXRay_vs.hlsl" />
+    <DXCShader Include="Shaders\Propagation_cs.hlsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

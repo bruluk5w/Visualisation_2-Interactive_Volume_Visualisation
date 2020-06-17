@@ -23,13 +23,6 @@ Texture2D mediumIntegTex: register(t3);
 Texture3D volumeTexture: register(t4);
 
 
-//float getScaleForPreintegrationTableScale()
-//{
-//    int2 pitDim; // we expect all preintegration tables to be square and of the same size by convention
-//    refractionIntegTex.GetDimensions(pitDim.x, pitDim.y);
-//    return 1.f / (float)pitDim.x;
-//}
-
 float4 main(PS_INPUT input) : SV_Target
 {
     //const float voxelScale = 1.f / constantsCB.voxelsPerCm;

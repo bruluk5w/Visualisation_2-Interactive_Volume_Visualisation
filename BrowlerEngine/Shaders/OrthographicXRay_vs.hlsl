@@ -22,12 +22,6 @@ struct PS_INPUT
 
 PS_INPUT main(VS_INPUT input)
 {
-	//VSOut OUT;
-	//OUT.Position = mul(ModelViewProjectionCB.MVP, float4(IN.Position, 1.0f));
-	//OUT.Color = float4(IN.Color, 1.0f);
-
-	//return OUT;
-	
     PS_INPUT output;
     float4 worldSpacePos = mul(constants.ModelMatrix, float4(input.Position, 1.f));
     output.uvw = worldSpacePos * constants.voxelsPerCm;

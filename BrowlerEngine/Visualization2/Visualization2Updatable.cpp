@@ -70,7 +70,7 @@ void Visualization2Updatable::update(double dt)
 
 	if (strave.x || strave.y || strave.z) {
 		const float speed = engine->input->isKeyPressed(Key::SHIFT) ? 3.5f : 1.5f;
-		camera->position() += camera->rotation() * normalize(strave) * speed * dt;
+		camera->position() += camera->rotation() * normalized(strave) * speed * dt;
 	}
 
 	float dx = (float)engine->input->getMouseDeltaX();

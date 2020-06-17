@@ -6,13 +6,13 @@ BRWL_RENDERER_NS
 
 class ComputeBuffers;
 
-class InitializationShader final
+class PropagationShader final
 {
     void destroy();
 
 public:
-    InitializationShader(ID3D12Device* device);
-    ~InitializationShader();
+    PropagationShader(ID3D12Device* device);
+    ~PropagationShader();
 
     struct ShaderConstants
     {
@@ -37,6 +37,8 @@ public:
 
     void draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, ComputeBuffers* computeBuffers);
 private:
+    // swaps the aliasing in for the compute buffers and the ping pong variable
+    void swap(ID3D12GraphicsCommandList* cmd, ComputeBuffers* computeBuffers);
 
     ComPtr<ID3D12RootSignature> rootSignature;
     ComPtr<ID3D12PipelineState> pipelineState;

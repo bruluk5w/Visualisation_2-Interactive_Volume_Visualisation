@@ -81,23 +81,6 @@ InitializationShader::~InitializationShader()
     destroy();
 }
 
-void InitializationShader::swap(ID3D12GraphicsCommandList* cmd, ComputeBuffers* computeBuffers)
-{
-    //// invert ping-pong variable
-    computeBuffers->swap();
-    // we now made all UAVs SRVs and all SRVs became UAVs
-    D3D12_RESOURCE_BARRIER barriers[ComputeBuffers::numBuffers];
-    memset(&barriers, 0, sizeof(barriers));
-    for (int i = 0; i < ComputeBuffers::numBuffers; ++i)
-    {
-        barriers[i].Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
-        barriers[i].Aliasing.pResourceBefore = computeBuffers->getTargetResource(i, true);
-        barriers[i].Aliasing.pResourceAfter = computeBuffers->getTargetResource(i);
-    }
-
-    cmd->ResourceBarrier(countof(barriers), barriers);
-}
-
 void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, ComputeBuffers* computeBuffers)
 {
     SCOPED_GPU_EVENT(cmd, 0, 0, 0, "Initialization Compute Shader");
@@ -129,7 +112,7 @@ void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderCons
 
     //NON_PIXEL_SHADER_RESOURCE
 
-    computeBuffers->swap();
+    computeBuffers->swap(cmd);
 
     cmd->SetPipelineState(pipelineState.Get());
     cmd->SetComputeRootSignature(rootSignature.Get());

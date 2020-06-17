@@ -110,12 +110,6 @@
     <DXCShader Include="Shaders\GUI_vs.hlsl">
       <Filter>Shaders</Filter>
     </DXCShader>
-    <DXCShader Include="Shaders\PixelShader_ps.hlsl">
-      <Filter>Shaders</Filter>
-    </DXCShader>
-    <DXCShader Include="Shaders\VertexShader_vs.hlsl">
-      <Filter>Shaders</Filter>
-    </DXCShader>
     <DXCShader Include="Shaders\Guides_ps.hlsl">
       <Filter>Shaders</Filter>
     </DXCShader>
@@ -123,6 +117,15 @@
       <Filter>Shaders</Filter>
     </DXCShader>
     <DXCShader Include="Shaders\Initialization_cs.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
+    <DXCShader Include="Shaders\OrthographicXRay_ps.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
+    <DXCShader Include="Shaders\OrthographicXRay_vs.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
+    <DXCShader Include="Shaders\Propagation_cs.hlsl">
       <Filter>Shaders</Filter>
     </DXCShader>
   </ItemGroup>

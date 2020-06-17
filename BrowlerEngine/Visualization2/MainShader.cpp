@@ -1,7 +1,8 @@
 #include "MainShader.h"
 
-#include "VertexShader_vs_vs.h"
-#include "PixelShader_ps_ps.h"
+#include "OrthographicXRay_vs_vs.h"
+#include "OrthographicXRay_ps_ps.h"
+#include "Propagation_cs_cs.h"
 #include "Guides_vs_vs.h"
 #include "Guides_ps_ps.h"
 
@@ -239,8 +240,8 @@ bool MainShader::create(Renderer* renderer)
         psoDesc.RTVFormats[0] = PAL::g_RenderTargetFormat;
         psoDesc.SampleDesc.Count = 1;
         psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-        psoDesc.VS = { VertexShader_vs_vs, sizeof(VertexShader_vs_vs) };
-        psoDesc.PS = { PixelShader_ps_ps, sizeof(PixelShader_ps_ps) };
+        psoDesc.VS = { OrthographicXRay_vs_vs, sizeof(OrthographicXRay_vs_vs) };
+        psoDesc.PS = { OrthographicXRay_ps_ps, sizeof(OrthographicXRay_ps_ps) };
         psoDesc.InputLayout = { inputLayout, (unsigned int)countof(inputLayout) };
 
 
@@ -472,8 +473,11 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         params.textureResolution = viewingPlaneDimensionsUnscaled;
         params.horizontalPlaneDirection = normalized(right); // normalized
         params.verticalPlaneDirection = normalized(bottom); // normalized
-        params.topLeft = viewingPlaneCenter - bottom - right;
+        params.topLeft = viewingPlaneCenter - bottom - right; // in world space
         params.eye = camPos;
+        params.lightDirection = data.light.coords;
+        params.lightColor = data.light.color;
+
     }
 
 

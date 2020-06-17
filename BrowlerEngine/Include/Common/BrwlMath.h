@@ -21,7 +21,7 @@ extern const Vec3 right;
 
 using namespace ::DirectX;
 inline Vec2 normalize(Vec2 x) { XMStoreFloat2(&x, XMVector2Normalize(XMVectorSet(x.x, x.y, 0.f, 0.f))); return x; }
-inline Vec3 normalize(Vec3 x) { XMStoreFloat3(&x, XMVector3Normalize(XMVectorSet(x.x, x.y, x.z, 0.f))); return x; }
+inline Vec3 normalize(Vec3& x) { XMStoreFloat3(&x, XMVector3Normalize(XMVectorSet(x.x, x.y, x.z, 0.f))); return x; }
 inline Vec3 normalized(const Vec3& x) { Vec3 y; XMStoreFloat3(&y, XMVector3Normalize(XMVectorSet(x.x, x.y, x.z, 0.f))); return y; }
 inline float length(const Vec3& x) { float y;  XMStoreFloat(&y, XMVector3Length(XMVectorSet(x.x, x.y, x.z, 0.f))); return y; }
 inline float lengthSq(const Vec3& x) { float y;  XMStoreFloat(&y, XMVector3LengthSq(XMVectorSet(x.x, x.y, x.z, 0.f))); return y; }

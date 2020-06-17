@@ -265,7 +265,7 @@ Vec3 screenSpaceToWorldRay(float screenX, float screenY, RENDERER::Camera& camer
 	Vec3 normalizedMouse = Vec3((screenX / engine->window->safeWidth() - 0.5f), (0.5f - screenY / engine->window->safeHeight()), 1.f);
 	const Mat4& inv = camera.getInverseViewProjectionMatrix();
 	Vec3 worldRay = normalizedMouse * inv;
-	worldRay = normalize(worldRay);
+	normalize(worldRay);
 	worldRay.z *= -0.5f;
 	return worldRay;
 }

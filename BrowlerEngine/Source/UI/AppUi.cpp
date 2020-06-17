@@ -29,7 +29,7 @@ const char* UIResult::TransferFunctionCollection::transferFuncNames[] = {
 };
 
 UIResult::UIResult() :
-    settings{
+    settings {
         UIResult::Settings::Font::OPEN_SANS_REGULAR, // font
         30, // fontSize
         300, // voxelsPerCm
@@ -37,7 +37,11 @@ UIResult::UIResult() :
         true, // drawAssetBoundaries
         true, // drawViewingVolumeBoundaries
     },
-    transferFunctions{}
+    transferFunctions{},
+    light{
+        {0.f, 0.f, 1.f}, // coords
+        {1.f, 1.f, 1.f, 1.f} // color
+    }
 { }
 
 
@@ -144,9 +148,11 @@ void renderAppUI(UIResult& result, const UIResult& values)
     Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     Dummy(ImVec2(40, 0));
     thread_local bool showSettings = false;
-    showSettings = showSettings || Button("Settings");
-    thread_local bool showTools = false;
-    showTools = showTools || Button("Tools");
+    thread_local bool showLightSettings = false;
+    thread_local bool showTransferFunctions = false;
+    showTransferFunctions ^= Button("Transfer Functions");
+    showSettings ^= Button("Settings");
+    showLightSettings ^= Button("Light");
     ImGui::EndMainMenuBar();
 
     if (showSettings)
@@ -167,7 +173,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
         End();
     }
 
-    if (showTools)
+    if (showTransferFunctions)
     {
         thread_local float plotWidth = 1;
         thread_local float plotHeight = 1;
@@ -186,7 +192,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
             PushStyleVar(ImGuiStyleVar_WindowMinSize, { minWindowSizeX, minWindowSizeY });
         }
 
-        Begin("Tools", &showTools);
+        Begin("Tools", &showTransferFunctions);
         {
             UIResult::TransferFunction::BitDepth resultBitDepth;
             ENUM_SELECT("Bit Depth", values.transferFunctions.array[0].bitDepth, resultBitDepth, UIResult::TransferFunction, BitDepth, bitDepthNames);
@@ -214,29 +220,30 @@ void renderAppUI(UIResult& result, const UIResult& values)
                 else if (plotHeight != plotHeihgtBefore) plotWidth = plotHeight;
                 else if (plotHeight != plotWidth) plotHeight = plotWidth = Utils::max(plotHeight, plotWidth);
             }
-            
+
             Checkbox(" Maintain Aspect Ratio", &lockAspect);
             if (lockAspect) { SameLine(); if (Button("Reset")) plotWidth = plotHeight = 1; }
             thread_local bool showCoordinatesTooltip = true;
-            Checkbox(" Show Tooltip in Graph", &showCoordinatesTooltip); 
+            Checkbox(" Show Tooltip in Graph", &showCoordinatesTooltip);
             thread_local float ctrlPtointScale = 1;
             SLIDER_FIX(3);
             Text("Control Point Size: "), SameLine(); SliderFloat("", &ctrlPtointScale, 0.2f, 3.f);
             SLIDER_FIX_END();
-            
+
             // Tab Bar
             //thread_local bool opened[ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::MAX)] = { true, true, true, true };
 
             // Passing a bool* to BeginTabItem() is similar to passing one to Begin():
             // the underlying bool will be set to false when the tab is closed.
-            if (ImGui::BeginTabBar("Transfer Functions", 
-                ImGuiTabBarFlags_FittingPolicyResizeDown | 
+            if (ImGui::BeginTabBar("Transfer Functions",
+                ImGuiTabBarFlags_FittingPolicyResizeDown |
                 //ImGuiTabBarFlags_Reorderable | 
-                ImGuiTabBarFlags_AutoSelectNewTabs 
+                ImGuiTabBarFlags_AutoSelectNewTabs
                 //ImGuiTabBarFlags_TabListPopupButton
             ))
             {
                 for (int i = 0; i < ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::MAX); i++)
+                {
                     if (ImGui::BeginTabItem(UIResult::TransferFunctionCollection::transferFuncNames[i], nullptr, ImGuiTabItemFlags_None))
                     {
                         Text(UIResult::TransferFunctionCollection::transferFuncNames[i]);
@@ -295,15 +302,28 @@ void renderAppUI(UIResult& result, const UIResult& values)
 
                         ImGui::EndTabItem();
                     }
+                }
+
                 ImGui::EndTabBar();
             }
-        }
 
-        // remember Y position for window fit
-        menuSpaceY = ImGui::GetCursorPosY();
+            // remember Y position for window fit
+            menuSpaceY = ImGui::GetCursorPosY();
+        }
 
         End(); // Tools
         PopStyleVar();
+    }
+    
+    if (showLightSettings)
+    {
+        Begin("Light Settings", &showLightSettings);
+        Text("Light direction (relative to camera):");
+        InputFloat3("", &result.light.coords.x);
+        normalize(result.light.coords);
+        Text("Light Color:");
+        ColorEdit4("test", &result.light.color.x, ImGuiColorEditFlags_HDR);
+        End();
     }
 
 #endif // BRWL_USE_DEAR_IM_GUI

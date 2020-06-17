@@ -154,6 +154,24 @@ bool ComputeBuffers::isResident()
     return srvDescriptorRange && srvDescriptorRange->isResident() && uavDescriptorRange && uavDescriptorRange->isResident();
 }
 
+void ComputeBuffers::swap(ID3D12GraphicsCommandList* cmd)
+{
+    // invert ping-pong variable
+    pingPong = !pingPong;
+
+    // we now made all UAVs SRVs and all SRVs became UAVs
+    D3D12_RESOURCE_BARRIER barriers[ComputeBuffers::numBuffers];
+    memset(&barriers, 0, sizeof(barriers));
+    for (int i = 0; i < ComputeBuffers::numBuffers; ++i)
+    {
+        barriers[i].Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
+        barriers[i].Aliasing.pResourceBefore = getTargetResource(i, true);
+        barriers[i].Aliasing.pResourceAfter = getTargetResource(i);
+    }
+
+    cmd->ResourceBarrier(countof(barriers), barriers);
+}
+
 PAL::DescriptorHandle::NativeHandles ComputeBuffers::getSourceSrv(unsigned int idx)
 {
     BRWL_CHECK(idx < numBuffers, nullptr);

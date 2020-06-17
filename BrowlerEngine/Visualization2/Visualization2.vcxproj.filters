@@ -72,6 +72,9 @@
     <ClInclude Include="ComputeBuffers.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="PropagationShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Visualization2.cpp">

@@ -49,6 +49,15 @@ public:
         const float voxelsPerCm;
         bool drawAssetBounds;
         bool drawViewingVolume;
+        struct Light
+        {
+            enum class Type : uint8_t
+            {
+                DIRECTIONAL
+            } type;
+            Vec3 coords;
+            Vec4 color;
+        } light;
     };
 
     void draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, const DrawData& data);
