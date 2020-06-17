@@ -48,7 +48,8 @@ namespace PAL
 		offset(0),
 		count(0),
 		name(nullptr),
-		resident(false)
+		resident(false),
+		remove(false)
 	{ }
 
 	DescriptorHandle::NativeHandles DescriptorHandle::operator[](int idx)
@@ -78,6 +79,14 @@ namespace PAL
 		}
 	}
 
+	const D3D12_CPU_DESCRIPTOR_HANDLE& DescriptorHandle::getCpu()
+	{
+		if (resident)
+			return nativeHandles.residentCpu; // directly commit to gpu
+		else:
+			return nativeHandles.cpu; // create in cpu heap and will be copied
+	}
+
 
 
 
@@ -89,7 +98,8 @@ namespace PAL
 		gpuHeap(nullptr),
 		queueCompletedIdx(0),
 		queueNextIdx(0),
-		dirtyQueue(),
+		dirtyArray(),
+		staleQueue(),
 		lastHandle(0),
 		lastFree(0),
 		handles(),
@@ -148,7 +158,7 @@ namespace PAL
 		std::fill(cpuOccupied.begin(), cpuOccupied.end(), -1);
 		gpuOccupied.resize(capacity);
 		std::fill(gpuOccupied.begin(), gpuOccupied.end(), -1);
-		dirtyQueue.resize(capacity);
+		dirtyArray.resize(capacity);
 
 		created = true;
 
@@ -163,7 +173,8 @@ namespace PAL
 		numOccupiedDescriptors = 0;
 		cpuHeap = nullptr;
 		gpuHeap = nullptr;
-		dirtyQueue.clear();
+		dirtyArray.clear();
+		staleQueue.clear();
 		handles.clear();
 		cpuOccupied.clear();
 		gpuOccupied.clear();
@@ -180,6 +191,7 @@ namespace PAL
 			return nullptr;
 		}
 
+		// Find a new handle
 		for (int i = 0; i < handles.size(); ++i)
 		{
 			lastHandle = (lastHandle + 1) % handles.size();
@@ -187,6 +199,13 @@ namespace PAL
 				break;
 		}
 
+		DescriptorHandle* handle = &handles[lastHandle];
+		BRWL_CHECK(handle->owningHeap == nullptr, nullptr);
+		BRWL_CHECK(handle->resident == false, nullptr);
+		BRWL_CHECK(handle->remove == false, nullptr);
+		BRWL_EXCEPTION(dirtyArray[lastHandle] == false, nullptr);
+
+		// Find a free descriptor
 		for (int i = 0; i < handles.size(); ++i)
 		{
 			lastFree = (lastFree + 1) % cpuOccupied.size();
@@ -194,11 +213,9 @@ namespace PAL
 				cpuOccupied[lastFree] = lastHandle;
 				break;
 		}
-
-		DescriptorHandle* handle = &handles[lastHandle];
-
-		BRWL_CHECK(handle->owningHeap == nullptr, nullptr);
 		
+
+
 		D3D12_CPU_DESCRIPTOR_HANDLE cpu = cpuHeap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_GPU_DESCRIPTOR_HANDLE gpu = cpuHeap->GetGPUDescriptorHandleForHeapStart();
 
@@ -210,10 +227,7 @@ namespace PAL
 		handle->nativeHandles.gpu.ptr = gpu.ptr + descriptorSize * handle->offset;
 		handle->resident = false;
 		
-		// even though we found a free slot on the up-to-date cpu tracking array, we cannot create the descriptor
-		// directly in the gpu heap because we may overwrite a descriptor which is scheduled to be moved
-		std::get<bool>(dirtyQueue[handle->offset][queueNextIdx % maxFramesInFlight]) = true;
-		std::get<unsigned int>(dirtyQueue[handle->offset][queueNextIdx % maxFramesInFlight]) = queueNextIdx;
+		dirtyArray[lastHandle] = true;
 		
 		++numOccupiedDescriptors;
 
@@ -232,9 +246,8 @@ namespace PAL
 		// mark as not available but don't free yet completely
 		// the rest is done in notifyOldFrameCompleted possibly a few frames later
 		handle->nativeHandles.cpu.ptr = handle->nativeHandles.gpu.ptr = 0;
-		handle->resident = false;
-		std::get<bool>(dirtyQueue[idx][queueNextIdx % maxFramesInFlight]) = true;
-		std::get<unsigned int>(dirtyQueue[idx][queueNextIdx % maxFramesInFlight]) = queueNextIdx;
+		handle->remove = true;
+		staleQueue.emplace_back(queueNextIdx, handle);
 	}
 
 	DescriptorHandle* DescriptorHeap::allocateRange(unsigned int n, const BRWL_CHAR* name)
@@ -264,6 +277,8 @@ namespace PAL
 			BRWL_EXCEPTION(cpuOccupied[lastFree + i] == -1, nullptr);
 			cpuOccupied[lastFree + i] = lastHandle;
 		}
+		
+		dirtyArray[lastHandle] = true;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpu = cpuHeap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_GPU_DESCRIPTOR_HANDLE gpu = cpuHeap->GetGPUDescriptorHandleForHeapStart();
@@ -276,6 +291,7 @@ namespace PAL
 		handle->nativeHandles.gpu.ptr = gpu.ptr + descriptorSize * handle->offset;
 		handle->resident = false;
 		lastFree = ((lastFree + n) % cpuOccupied.size()) - 1;
+
 		numOccupiedDescriptors += n;
 
 		return handle;
@@ -287,41 +303,108 @@ namespace PAL
 
 		BRWL_EXCEPTION(handle && handle->owningHeap == this, nullptr);
 		size_t idx = handle - handles.data();
-		BRWL_EXCEPTION(idx > 0 && idx < handles.size(), nullptr);
+		BRWL_EXCEPTION(idx > 0 && idx + handle->count <= handles.size(), nullptr);
 		BRWL_EXCEPTION(handle->count > 1, nullptr);
 
 		// mark as not available but don't free yet completely
 		// the rest is done in notifyOldFrameCompleted possibly a few frames later
 		handle->nativeHandles.cpu.ptr = handle->nativeHandles.gpu.ptr = 0;
 		handle->resident = false;
-		std::get<bool>(dirtyQueue[idx][queueNextIdx % maxFramesInFlight]) = true;
-		std::get<unsigned int>(dirtyQueue[idx][queueNextIdx % maxFramesInFlight]) = queueNextIdx;
-	}
 
-	void DescriptorHeap::maintain()
-	{
-		// move everything to the beginning of the heap on the cpu side
-		std::scoped_lock(mutex);
-		lastFree = 0;
-		for (const int& handleIdx : cpuOccupied)
-		{
-			if (handleIdx != -1)
-			{
-				DescriptorHandle& handle = handles[handleIdx];
-				BRWL_EXCEPTION(handle.count > 0, nullptr);
-				handle.offset = lastFree;
-				std::get<bool>(dirtyQueue[lastFree][queueNextIdx % maxFramesInFlight]) = true;
-				std::get<unsigned int>(dirtyQueue[lastFree][queueNextIdx % maxFramesInFlight]) = queueNextIdx;
-				lastFree += handle.count;
-			}
-		}
-		if (lastFree) --lastFree;
+		handle->remove = true;
+		staleQueue.emplace_back(queueNextIdx, handle);
 	}
 
 	ID3D12DescriptorHeap* const* DescriptorHeap::getPointerAddress()
 	{
 		BRWL_EXCEPTION(created, BRWL_CHAR_LITERAL("Invalid operation on unitialized heap."));
 		return gpuHeap.GetAddressOf();
+	}
+
+	void DescriptorHeap::DescriptorRangeCopy(D3D12_CPU_DESCRIPTOR_HANDLE from, D3D12_CPU_DESCRIPTOR_HANDLE to, D3D12_CPU_DESCRIPTOR_HANDLE fromHeapStart, D3D12_CPU_DESCRIPTOR_HANDLE toHeapStart, unsigned int count)
+	{
+		ComPtr<ID3D12Device> device;
+		gpuHeap->GetDevice(IID_PPV_ARGS(&device));
+
+		if (fromHeapStart.ptr != toHeapStart.ptr)
+		{
+			device->CopyDescriptorsSimple(count, to, from, heapType);
+			return;
+		}
+
+		// we are in the same heap and ranges may overlap
+		if (from.ptr == to.ptr) return;
+		// we only allow relocating towards the beginning of the heap
+		BRWL_EXCEPTION(to.ptr <= from.ptr, nullptr);
+
+		// copy first to last so that we do not copy into your own range
+		unsigned int cpyStride = (from.ptr - to.ptr) / descriptorSize;
+		unsigned int numCopied = 0;
+		while (numCopied < count)
+		{
+			unsigned int n = (unsigned int) Utils::min((int64_t)cpyStride, (int64_t)count - (int64_t)numCopied);
+			unsigned int step = n * descriptorSize;
+			device->CopyDescriptorsSimple(n, to, from, heapType);
+			from.ptr += step;
+			to.ptr += step;
+			numCopied += n;
+		}
+
+		//{	// copy last to first
+		//	size_t cpyStride = (newOffset - oldOffset);
+		//	size_t numCopied = 0;
+		//	from.ptr += descriptorSize * handle->count;
+		//	to.ptr += descriptorSize * (newOffset + handle->count);
+		//	while (numCopied < handle->count)
+		//	{
+		//		unsigned int toCopy = (unsigned int)std::min((int64_t)cpyStride, (int64_t)handle->count - (int64_t)numCopied);
+		//		size_t step = toCopy * descriptorSize;
+		//		from.ptr -= step;
+		//		to.ptr -= step;
+		//		device->CopyDescriptorsSimple(toCopy, to, from, heapType);
+		//		numCopied += toCopy;
+		//	}
+
+		//	handle->nativeHandles.cpu = to;
+		//	handle->nativeHandles.gpu.ptr = gpuHeapGpuStart.ptr + handle->offset * descriptorSize;
+		//}
+
+	}
+
+	void DescriptorHeap::maintain()
+	{
+		// move everything to the beginning of the heap on the cpu side
+		std::scoped_lock(mutex);
+		ComPtr<ID3D12Device> device;
+		cpuHeap->GetDevice(IID_PPV_ARGS(&device));
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHeapCpuStart = cpuHeap->GetCPUDescriptorHandleForHeapStart();
+
+		lastFree = 0;
+		for (int j = 0; j < handles.size(); ++j)
+		{
+			const int handleIdx = cpuOccupied[j];
+			if (handleIdx != -1)
+			{
+				DescriptorHandle& handle = handles[handleIdx];
+				BRWL_EXCEPTION(handle.count > 0, nullptr);
+				for (int i = 0; i < handle.count; ++i)
+				{
+					cpuOccupied[handle.offset + i] = -1;
+					BRWL_EXCEPTION(cpuOccupied[lastFree + i] == -1, nullptr);
+					cpuOccupied[lastFree + i] = handleIdx;
+				}
+
+				D3D12_CPU_DESCRIPTOR_HANDLE target = cpuHeapCpuStart;
+				target.ptr += lastFree * descriptorSize;
+				(handle.count, target, handle.nativeHandles.cpu, cpuHeapCpuStart, cpuHeapCpuStart, heapType);
+
+				handle.offset = lastFree;
+				dirtyArray[handleIdx] = true;
+				lastFree += handle.count;
+			}
+		}
+
+		if (lastFree) --lastFree;
 	}
 
 	void DescriptorHeap::notifyNewFrameStarted()
@@ -331,102 +414,105 @@ namespace PAL
 
 	void DescriptorHeap::notifyOldFrameCompleted()
 	{
-		BRWL_CHECK(handles.size() == dirtyQueue.size(), nullptr); // todo: remove
+		BRWL_CHECK(handles.size() == dirtyArray.size(), nullptr); // todo: remove
 		++queueCompletedIdx;
 
 		BRWL_EXCEPTION(queueCompletedIdx < queueNextIdx, nullptr);
-		BRWL_EXCEPTION(queueNextIdx - queueCompletedIdx < maxFramesInFlight, nullptr);
+
 		std::scoped_lock(mutex);
 		SCOPED_CPU_EVENT(0, 255, 0, "Descriptor Heap Maintain: %s", getHeapName(heapType, true));
 
-		ComPtr<ID3D12Device> device;
-		gpuHeap->GetDevice(IID_PPV_ARGS(&device));
-
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHeapCpuStart = cpuHeap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_CPU_DESCRIPTOR_HANDLE gpuHeapCpuStart = gpuHeap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_GPU_DESCRIPTOR_HANDLE gpuHeapGpuStart = gpuHeap->GetGPUDescriptorHandleForHeapStart();
 
-		for (int i = 0; i < handles.size(); ++i)
+		// first update layout on gpu heap
+		for (int i = 0; i < dirtyArray.size(); ++i)
 		{
-			unsigned int completed = queueCompletedIdx % maxFramesInFlight;
-			std::tuple<unsigned int, bool>& frameSlot = dirtyQueue[i][completed];
-			bool& isDirty = std::get<bool>(frameSlot);
-			if (isDirty)
+	
+			bool isDirty = dirtyArray[i];
+			DescriptorHandle* handle = &handles[i];
+			if (isDirty && handle->resident)
 			{
-				unsigned int& frameIdx = std::get<unsigned int>(frameSlot);
-				BRWL_EXCEPTION(frameIdx == queueCompletedIdx, BRWL_CHAR_LITERAL("Inconsistent dirty queue state."));
-				DescriptorHandle* handle = &handles[i];
+				// handle is still marked resident, so we want to update its location on the gpu heap
 				BRWL_EXCEPTION(handle->owningHeap != nullptr, BRWL_CHAR_LITERAL("Invalid descriptor state."));
-				if (!handle->resident)
-				{
-					// mark as actually free now
-					numOccupiedDescriptors -= handle->count;
-					for (unsigned int j = 0; j < handle->count; ++j)
-					{
-						occupied[handle->offset + j] = -1;
-					}
-					handle->name = nullptr;
-					handle->owningHeap = nullptr;
-					handle->offset = 0;
-					handle->count = 0;
-				}
-				else
-				{	
-					// handle is still marked resident, so we probably want to update its location on the gpu heap
-					const unsigned int oldOffset = (handle->nativeHandles.cpu.ptr - gpuHeapCpuStart.ptr) / descriptorSize;
-					BRWL_EXCEPTION(oldOffset != handle->offset, nullptr);
-					const unsigned int newOffset = handle->offset;
 
-					// range copy handling overlapping ranges
-					if (newOffset < oldOffset)
-					{	// copy first to last so that we do not copy into your own range
-						unsigned int cpyStride = (oldOffset - newOffset);
-						unsigned int numCopied = 0;
-						D3D12_CPU_DESCRIPTOR_HANDLE from = handle->nativeHandles.cpu;
-						D3D12_CPU_DESCRIPTOR_HANDLE to = gpuHeapCpuStart;
-						to.ptr += descriptorSize * (newOffset + handle->count);
-						while (numCopied < handle->count)
-						{
-							unsigned int toCopy = (unsigned int)std::min((int64_t)cpyStride, (int64_t)handle->count - (int64_t)numCopied);
-							unsigned int step = toCopy * descriptorSize;
-							device->CopyDescriptorsSimple(toCopy, to, from, heapType);
-							from.ptr += step;
-							to.ptr += step;
-							numCopied += toCopy;
-						}
-
-						handle->nativeHandles.cpu = to;
-						handle->nativeHandles.gpu.ptr = gpuHeapGpuStart.ptr + handle->offset * descriptorSize;
-					}
-					else
-					{	// copy last to first
-						size_t cpyStride = (newOffset - oldOffset);
-						size_t numCopied = 0;
-						D3D12_CPU_DESCRIPTOR_HANDLE from = handle->nativeHandles.cpu;
-						from.ptr += descriptorSize * handle->count;
-						D3D12_CPU_DESCRIPTOR_HANDLE to = gpuHeapCpuStart;
-						to.ptr += descriptorSize * (newOffset + handle->count);
-						while (numCopied < handle->count)
-						{
-							unsigned int toCopy = (unsigned int)std::min((int64_t)cpyStride, (int64_t)handle->count - (int64_t)numCopied);
-							size_t step = toCopy * descriptorSize;
-							from.ptr -= step;
-							to.ptr -= step;
-							device->CopyDescriptorsSimple(toCopy, to, from, heapType);
-							numCopied += toCopy;
-						}
-
-						handle->nativeHandles.cpu = to;
-						handle->nativeHandles.gpu.ptr = gpuHeapGpuStart.ptr + handle->offset * descriptorSize;
-					}
+				// update occupied flag for gpu tracking
+				unsigned int oldGpuOffset = (handle->nativeHandles.residentCpu.ptr - gpuHeapCpuStart.ptr) / descriptorSize;
+				for (int j = 0; j < handle->count; ++j) {
+					gpuOccupied[oldGpuOffset + j] = -1;
+					BRWL_EXCEPTION(gpuOccupied[handle->offset + j] == -1, nullptr); // slot has to be free;
+					BRWL_EXCEPTION(cpuOccupied[handle->offset + j] == i, BRWL_CHAR_LITERAL("Inconsistent state of cpu descriptor tracker."));
+					gpuOccupied[handle->offset + j] = i;
 				}
 
-				// rest dirtyflag
-				frameIdx = 0;
-				isDirty = false;
+				// we copy from the cpu heap and orphan the old gpu descriptor
+				D3D12_CPU_DESCRIPTOR_HANDLE target = gpuHeapCpuStart;
+				target.ptr += handle->offset * descriptorSize;
+				DescriptorRangeCopy(handle->nativeHandles.cpu, target, cpuHeapCpuStart, gpuHeapCpuStart, handle->count);
+
+				// update the resident descriptor handles
+				handle->nativeHandles.residentCpu.ptr = gpuHeapCpuStart.ptr + handle->offset * descriptorSize;
+				handle->nativeHandles.residentGpu.ptr = gpuHeapGpuStart.ptr + handle->offset * descriptorSize;
+
+				dirtyArray[i] = false;
 			}
 		}
-	}
 
+		// then copy new descriptors
+		for (int i = 0; i < handles.size(); ++i)
+		{
+			bool isDirty = dirtyArray[i];
+			DescriptorHandle* handle = &handles[i];
+			if (isDirty && !handle->resident)
+			{
+				// if it's scheduled for removal then we do not copy the contents.
+				if (!handle->remove) continue;
+
+				// update occupied flag for gpu tracking
+				gpuOccupied[handle->offset] = i;
+
+				// we copy the initial contents from the cpu heap
+				D3D12_CPU_DESCRIPTOR_HANDLE target = gpuHeapCpuStart;
+				target.ptr += handle->offset * descriptorSize;
+				DescriptorRangeCopy(handle->nativeHandles.cpu, target, cpuHeapCpuStart, gpuHeapCpuStart, handle->count);
+
+				// update the resident descriptor handles
+				handle->nativeHandles.residentCpu.ptr = gpuHeapCpuStart.ptr + handle->offset * descriptorSize;
+				handle->nativeHandles.residentGpu.ptr = gpuHeapGpuStart.ptr + handle->offset * descriptorSize;
+
+				dirtyArray[i] = false;
+			}
+		}
+
+		// then delete old decriptors
+		while (staleQueue.front() != staleQueue.back() && std::get<0>(staleQueue.front()) <= queueCompletedIdx)
+		{
+			DescriptorHandle* handle = std::get<1>(staleQueue.front());
+			staleQueue.pop_front();
+			BRWL_EXCEPTION(handle->remove, nullptr);
+			BRWL_EXCEPTION(gpuOccupied[handle->offset] != -1, nullptr);
+			BRWL_EXCEPTION(cpuOccupied[handle->offset] != -1, nullptr);
+			// mark as actually free now
+			numOccupiedDescriptors -= handle->count;
+			for (unsigned int j = 0; j < handle->count; ++j)
+			{
+				BRWL_EXCEPTION(gpuOccupied[handle->offset + j] == handle - handles.data(), nullptr);
+				BRWL_EXCEPTION(cpuOccupied[handle->offset + j] == handle - handles.data(), nullptr);
+				gpuOccupied[handle->offset + j] = -1;
+				cpuOccupied[handle->offset + j] = -1;
+			}
+
+			handle->nativeHandles.residentCpu.ptr = handle->nativeHandles.residentCpu.ptr = 0;
+			handle->name = nullptr;
+			handle->owningHeap = nullptr;
+			handle->offset = 0;
+			handle->count = 0;
+			handle->remove = false;
+			handle->resident = false;
+		}
+	}
+	
 }
 
 BRWL_RENDERER_NS_END
