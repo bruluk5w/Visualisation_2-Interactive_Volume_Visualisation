@@ -4,6 +4,8 @@
 
 #include "ComputeBuffers.h"
 #include "DxHelpers.h"
+#include "TextureResource.h"
+#include "PitCollection.h"
 
 
 BRWL_RENDERER_NS
@@ -34,23 +36,23 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
         srvRange.RegisterSpace = 0;
         srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-
-        D3D12_ROOT_PARAMETER param[6];
+        D3D12_ROOT_PARAMETER param[8];
         memset(&param, 0, sizeof(param));
+        param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        param[0].Constants.Num32BitValues = 1;
+        param[0].Constants.ShaderRegister = 0;
+        param[0].Constants.RegisterSpace = 0;
+        param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        param[0].DescriptorTable.NumDescriptorRanges = 2;
-        param[0].DescriptorTable.pDescriptorRanges = pingPongRanges;
+        param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        param[1].DescriptorTable.NumDescriptorRanges = 1;
+        param[1].DescriptorTable.pDescriptorRanges = &uavRange;
+        param[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        makePitSrvRootParameter(&param[1], countof(param) - 1, 2, D3D12_SHADER_VISIBILITY_ALL);
-
-        //D3D12_DESCRIPTOR_RANGE volumeSrvRange;
-        //makeSingeSrvDescriptorRange(volumeSrvRange, 5);
-        //param[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        //param[5].DescriptorTable.NumDescriptorRanges = 1;
-        //param[5].DescriptorTable.pDescriptorRanges = &volumeSrvRange;
-        //param[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
+        param[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        param[2].DescriptorTable.NumDescriptorRanges = 1;
+        param[2].DescriptorTable.pDescriptorRanges = &srvRange;
+        param[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
         // preintegration tables and volume texture
         D3D12_DESCRIPTOR_RANGE descriptorRanges[ENUM_CLASS_TO_NUM(PitTex::MAX) + 1];
@@ -65,10 +67,13 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
             range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
         }
 
-        param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        param[1].DescriptorTable.NumDescriptorRanges = countof(descriptorRanges);
-        param[1].DescriptorTable.pDescriptorRanges = descriptorRanges;
-        param[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        for (int i = 0; i < countof(descriptorRanges); ++i)
+        {
+            param[3 + i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+            param[3 + i].DescriptorTable.NumDescriptorRanges = 1;
+            param[3 + i].DescriptorTable.pDescriptorRanges = &descriptorRanges[i];
+            param[3 + i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        }
 
         // volume and preintergration sampler are static samplers since they never change
         D3D12_STATIC_SAMPLER_DESC staticSamplers[2];
@@ -125,26 +130,48 @@ PropagationShader::~PropagationShader()
     destroy();
 }
 
-void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, ComputeBuffers* computeBuffers)
+void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data,
+    ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture)
 {
-    SCOPED_GPU_EVENT(cmd, 0, 0, 0, "Initialization Compute Shader");
+    SCOPED_GPU_EVENT(cmd, 0, 255, 0, "Propagation Compute Shader");
     BRWL_EXCEPTION(computeBuffers, nullptr);
     BRWL_EXCEPTION(computeBuffers->isResident(), nullptr);
 
-    computeBuffers->swap(cmd);
+    
 
     cmd->SetPipelineState(pipelineState.Get());
     cmd->SetComputeRootSignature(rootSignature.Get());
-    cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
-    cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetUav(0).residentGpu);
-    float actualResX = Utils::min<float>(constants.textureResolution.x, computeBuffers->getWidth());
-    float actualResY = Utils::min<float>(constants.textureResolution.y, computeBuffers->getHeight());
-    cmd->Dispatch(
-        (unsigned int)std::ceil(actualResX / (float)ShaderConstants::threadGroupSizeX),
-        (unsigned int)std::ceil(actualResY / (float)ShaderConstants::threadGroupSizeY),
-        1
-    );
 
+    // constants
+    cmd->SetComputeRoot32BitConstants(0, 1, &data.sliceWidth, 0);
+
+    // Set preintegration tables
+    for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
+    {
+        cmd->SetComputeRootDescriptorTable(3 + i, pitCollection->array[i].liveTexture->descriptorHandle->getGpu());
+    }
+
+    // set volume texture
+    cmd->SetComputeRootDescriptorTable(3 + ENUM_CLASS_TO_NUM(PitTex::MAX), volumeTexture->descriptorHandle->getGpu());
+
+    float actualResX = Utils::min<float>(data.textureResolution.x, computeBuffers->getWidth());
+    float actualResY = Utils::min<float>(data.textureResolution.y, computeBuffers->getHeight());
+
+
+    int i = 0;
+    do {
+        computeBuffers->swap(cmd);
+        // cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
+        cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetUav(0).residentGpu);
+        cmd->SetComputeRootDescriptorTable(2, computeBuffers->getSourceSrv(0).residentGpu);
+
+        cmd->Dispatch(
+            (unsigned int)std::ceil(actualResX / (float)DrawData::threadGroupSizeX),
+            (unsigned int)std::ceil(actualResY / (float)DrawData::threadGroupSizeY),
+            1
+        );
+
+    } while (++i < data.numSlices);
 
 }
 

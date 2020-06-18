@@ -5,6 +5,8 @@
 BRWL_RENDERER_NS
 
 class ComputeBuffers;
+union PitCollection;
+struct TextureResource;
 
 class PropagationShader final
 {
@@ -15,31 +17,21 @@ public:
     ~PropagationShader();
 
 #pragma pack(push, 1)
-    struct ShaderConstants
+    struct DrawData
     {
         static const unsigned int threadGroupSizeX = 8;
         static const unsigned int threadGroupSizeY = 8;
-        static const unsigned int num32BitValues = 19;
-
-        Vec2 textureSizeWorldSpace;
+        static const unsigned int num32BitValues = 2;
         Vec2 textureResolution;
-        Vec3 horizontalPlaneDirection; // normalized
-        float padding0;
-        Vec3 verticalPlaneDirection;  // normalized
-        float padding1;
-        Vec3 topLeft;
-        float padding2;
-        Vec3 eye;
-        float padding3;
-        Vec3 lightDirection;
-        float padding4;
-        Vec4 lightColor;
+        float numSlices;
+        float sliceWidth;
     };
 #pragma pack(pop)
 
-    void draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, ComputeBuffers* computeBuffers);
-private:
+    void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const DrawData& data,
+        ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture);
 
+private:
     ComPtr<ID3D12RootSignature> rootSignature;
     ComPtr<ID3D12PipelineState> pipelineState;
 };

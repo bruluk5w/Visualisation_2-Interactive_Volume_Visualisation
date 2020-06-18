@@ -171,6 +171,7 @@ namespace PAL
     void WinRenderer::platformRender()
     {
         // Start new frame
+        SCOPED_CPU_EVENT(0, 255, 0, "RENDER CPU");
 #ifdef _DEBUG
         rtvHeap.notifyNewFrame();
 #endif
@@ -205,7 +206,7 @@ namespace PAL
             logger->info(BRWL_CHAR_LITERAL("Nothing to draw, framebuffer too small."));
             return;
         }
-
+        SCOPED_CPU_EVENT(50, 50, 50, "DRAW CPU");
         // Draw
 
         UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();

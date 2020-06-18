@@ -150,7 +150,7 @@ void ComputeBuffers::destroy()
     uavDescriptorRange = nullptr;
 }
 
-bool ComputeBuffers::isResident()
+bool ComputeBuffers::isResident() const
 {
     return srvDescriptorRange && srvDescriptorRange->isResident() && uavDescriptorRange && uavDescriptorRange->isResident();
 }

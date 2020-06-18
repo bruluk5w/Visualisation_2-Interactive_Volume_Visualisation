@@ -12,7 +12,7 @@ public:
 
 	bool create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, unsigned int width, unsigned int height);
 	void destroy();
-	bool isResident();
+	bool isResident() const;
 	// swaps the aliasing in for the compute buffers and the ping pong variable
 	void swap(ID3D12GraphicsCommandList* cmd);
 	// source handles 0 - numBuffers are guaranteed to be a contiguous range

@@ -410,7 +410,9 @@ void MainShader::render()
 }
 
 void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, const MainShader::DrawData& data)
-{   
+{
+    SCOPED_GPU_EVENT(cmd, 0, 128, 128, "Main Draw");
+
     unsigned int width, height;
     engine->renderer->getFrameBufferSize(width, height);
     BRWL::RENDERER::Camera* cam = engine->renderer->getCamera();
@@ -439,7 +441,8 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     BRWL_CHECK(planeStackThickness > 0, nullptr);
     const float numSlices = planeStackThickness; // 1 plane per voxel is a very good resolution
     // position offset from prevous to next plane
-    const Vec3 deltaSlice = normalized(-camPos) * planeStackThickness / numSlices;
+    const float sliceWidth = planeStackThickness / (numSlices  * data.voxelsPerCm);
+    const Vec3 deltaSlice = normalized(-camPos) * sliceWidth;
 
     if (engine->input->isKeyDown(Key::F1))
     {
@@ -462,25 +465,32 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     if (hasComputeBuffers)
     {
         // Dispatch ping-pong compute work 
-        InitializationShader::ShaderConstants params;
+        InitializationShader::ShaderConstants initParams;
         {
             const Vec3 viewingPlaneCenter = extractPosition(viewingPlaneModelMatrix);
             const Vec3 viewingPlaneRight = Vec3(viewingPlaneDimensions.x, 0, 0) * viewingPlaneModelMatrix;
             const Vec3 viewingPlaneBottom = Vec3(0, -viewingPlaneDimensions.y, 0) * viewingPlaneModelMatrix;
             const Vec3 bottom = viewingPlaneRight - viewingPlaneCenter;
             const Vec3 right = viewingPlaneBottom - viewingPlaneCenter;
-            params.textureSizeWorldSpace = viewingPlaneDimensions;
-            params.textureResolution = viewingPlaneDimensionsUnscaled;
-            params.horizontalPlaneDirection = normalized(right); // normalized
-            params.verticalPlaneDirection = normalized(bottom); // normalized
-            params.topLeft = viewingPlaneCenter - bottom - right; // in world space
-            params.eye = camPos;
-            params.lightDirection = data.light.coords;
-            params.lightColor = data.light.color;
+            initParams.textureSizeWorldSpace = viewingPlaneDimensions;
+            initParams.textureResolution = viewingPlaneDimensionsUnscaled;
+            initParams.horizontalPlaneDirection = normalized(right); // normalized
+            initParams.verticalPlaneDirection = normalized(bottom); // normalized
+            initParams.topLeft = viewingPlaneCenter - bottom - right; // in world space
+            initParams.eye = camPos;
+            initParams.lightDirection = data.light.coords;
+            initParams.lightColor = data.light.color;
 
         }
-
-        initializationShader->draw(cmd, params, computeBuffers.get());
+        initializationShader->draw(cmd, initParams, computeBuffers.get());
+        PropagationShader::DrawData propParams;
+        {
+            propParams.textureResolution = viewingPlaneDimensions;
+            propParams.numSlices = numSlices;
+            propParams.sliceWidth = sliceWidth;
+        }
+        computeBuffers->swap(cmd);
+        propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexture);
         // during rendering:
         // - activate opposite alias
         // - place resource barrier to ensure previous compute dispatch has written all data
@@ -533,7 +543,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         memset(&psConstants, 0, sizeof(psConstants));
         psConstants.voxelsPerCm = data.voxelsPerCm;
         psConstants.numSlices = numSlices;
-        psConstants.deltaSlice = deltaSlice;
+        psConstants.deltaSlice = deltaSlice / sliceWidth;
 
         cmd->SetGraphicsRoot32BitConstants(1, 7, &psConstants, 0);
 

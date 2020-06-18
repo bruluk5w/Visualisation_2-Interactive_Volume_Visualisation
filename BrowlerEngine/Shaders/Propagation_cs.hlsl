@@ -1,3 +1,8 @@
+cbuffer constants : register(b0)
+{
+    float sliceWidth;
+};
+
 SamplerState preintegrationSampler : register(s0);
 SamplerState volumeSampler : register(s1);
 
@@ -26,5 +31,13 @@ Texture3D<float> volumeTexture : register(t10);
 [numthreads(8, 8, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
-   
+    const float3 read_idx = float3(DTid.xy, 0);
+    const uint2 write_idx = DTid.xy;
+    
+    float3 viewingRayPosition = viewingRayPositionBufferRead.Load(read_idx).xyz;
+    float3 viewingRayDirection = viewingRayDirectionBufferRead.Load(read_idx).xyz;
+    
+    //advance viewing ray in world space
+    viewingRayPositionBufferWrite[write_idx].xyz = viewingRayPosition + viewingRayDirection * sliceWidth;
+    viewingRayDirectionBufferWrite[write_idx].xyz = viewingRayDirection; // has to be normalized
 }
