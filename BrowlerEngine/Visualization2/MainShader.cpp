@@ -422,13 +422,13 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     const float volumeScale = 1.f / data.voxelsPerCm;
 
     // positioning of the viewing plane
-    const Mat4 viewingVolumeOrientation = inverse(makeLookAtTransform(zero, camPos));
+    const Mat4 viewingVolumeOrientation = inverse(makeLookAtTransform(VEC3_ZERO, -camPos));
     const BBox viewingVolumeUnscaled = data.volumeDimensions->getOBB(viewingVolumeOrientation);
     const Vec3 viewingVolumeDimensions = viewingVolumeUnscaled.dim() * volumeScale;
 
     const Mat4 viewingPlaneModelMatrix =
-        makeAffineTransform({ 0, 0, 0.5f * viewingVolumeDimensions.z }, zero, viewingVolumeDimensions) *
-        makeAffineTransform({ 0, 0, 0 }, zero, one) * viewingVolumeOrientation;
+        makeAffineTransform({ 0, 0, -0.5f * viewingVolumeDimensions.z }, VEC3_ZERO, viewingVolumeDimensions) *
+        makeAffineTransform({ 0, 0, 0 }, VEC3_ZERO, VEC3_ONE) * viewingVolumeOrientation;
 
     const Vec2 viewingPlaneDimensions(viewingVolumeDimensions.x, viewingVolumeDimensions.y);
     const Vec2 viewingPlaneDimensionsUnscaled(viewingVolumeUnscaled.dimX(), viewingVolumeUnscaled.dimY());
@@ -468,20 +468,20 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         InitializationShader::ShaderConstants initParams;
         {
             const Vec3 viewingPlaneCenter = extractPosition(viewingPlaneModelMatrix);
-            const Vec3 viewingPlaneRight = Vec3(viewingPlaneDimensions.x, 0, 0) * viewingPlaneModelMatrix;
-            const Vec3 viewingPlaneBottom = Vec3(0, -viewingPlaneDimensions.y, 0) * viewingPlaneModelMatrix;
-            const Vec3 bottom = viewingPlaneRight - viewingPlaneCenter;
-            const Vec3 right = viewingPlaneBottom - viewingPlaneCenter;
+            const Vec3 right = normalized(toVec3(VEC4_RIGHT * viewingPlaneModelMatrix));
+            const Vec3 down = normalized(toVec3(-VEC4_UP * viewingPlaneModelMatrix));
+            const Vec2 halfDimension = (0.5f * viewingPlaneDimensions);
+
             initParams.textureSizeWorldSpace = viewingPlaneDimensions;
             initParams.textureResolution = viewingPlaneDimensionsUnscaled;
-            initParams.horizontalPlaneDirection = normalized(right); // normalized
-            initParams.verticalPlaneDirection = normalized(bottom); // normalized
-            initParams.topLeft = viewingPlaneCenter - bottom - right; // in world space
+            initParams.horizontalPlaneDirection = right;
+            initParams.verticalPlaneDirection = down;
+            initParams.topLeft = viewingPlaneCenter - halfDimension.x * right - halfDimension.y * down; // in world space
             initParams.eye = camPos;
-            initParams.lightDirection = data.light.coords;
+            initParams.lightDirection = Quaternion::fromTo(VEC3_FWD, -camPos) * data.light.coords; // relative to eye-origin vector, so that the light source stays in the same hemisphere when we move around then origin
             initParams.lightColor = data.light.color;
-
         }
+
         initializationShader->draw(cmd, initParams, computeBuffers.get());
         PropagationShader::DrawData propParams;
         {
@@ -566,14 +566,14 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         cmd->SetGraphicsRootSignature(guidesRootSignature.Get());
         if (data.drawAssetBounds)
         {
-            Mat4 mat = makeAffineTransform(zero, Quaternion(), data.volumeDimensions->dim() * volumeScale);
+            Mat4 mat = makeAffineTransform(VEC3_ZERO, Quaternion::identity, data.volumeDimensions->dim() * volumeScale);
             mat = mat * viewProjection;
             cmd->SetGraphicsRoot32BitConstants(0, 16, &mat, 0);
             cmd->DrawInstanced(assetBounds.vertexBufferLength, 1, 0, 0);
         }
         if (data.drawViewingVolume)
         {
-            Mat4 mat = makeAffineTransform(zero, zero, viewingVolumeDimensions) * viewingVolumeOrientation * viewProjection;
+            Mat4 mat = makeAffineTransform(VEC3_ZERO, VEC3_ZERO, viewingVolumeDimensions) * viewingVolumeOrientation * viewProjection;
             cmd->SetGraphicsRoot32BitConstants(0, 16, &mat, 0);
             cmd->DrawInstanced(assetBounds.vertexBufferLength, 1, 0, 0);
         }

@@ -47,6 +47,8 @@ void Quaternion::fromAxisAngle(const float axisX, const float axisY, const float
 
 Quaternion Quaternion::fromTo(Vec3 from, Vec3 to)
 {
+	BRWL::normalize(from);
+	BRWL::normalize(to);
 	const float dot = from * to;
 	if (dot > 0.999999f) return identity;
 	else if (dot < -0.999999f) return Quaternion(0, 0, 1, 0);
@@ -64,7 +66,7 @@ Quaternion Quaternion::fromTo(Vec3 from, Vec3 to)
 //{
 //	// Make an orthogonal basis
 //	const Vec3 vecFwd = ::BRWL::normalize(to - from);
-//	const Vec3 vecRight = ::BRWL::normalize(cross(::BRWL::forward, vecFwd));
+//	const Vec3 vecRight = ::BRWL::normalize(cross(VEC3_FWD, vecFwd));
 //	const Vec3 vecUp = cross(vecRight, vecFwd);
 //
 //	// Take the trace of the matrix defined by the basis

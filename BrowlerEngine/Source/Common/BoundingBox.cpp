@@ -11,16 +11,16 @@ BBox BBox::getOBB (const Mat4& orientation) const
 	//const Quaternion invOrientation = orientation.inverse();
 	const Mat4 invOrientation = inverse(orientation);
 	const Vec3 halfDim = dim() * 0.5f;
-	const Vec3 vRight = (right * invOrientation) * halfDim.x;
-	const Vec3 top = (up * invOrientation) * halfDim.y;
-	const Vec3 front = (forward * invOrientation) * halfDim.z;
+	const Vec3 vRight = (VEC3_RIGHT * invOrientation) * halfDim.x;
+	const Vec3 top = (VEC3_UP * invOrientation) * halfDim.y;
+	const Vec3 front = (VEC3_FWD * invOrientation) * halfDim.z;
 	const Vec3 topRight = top + vRight;
 	const Vec3 topLeft = top - vRight;
 	const Vec3 bottomRight = vRight - top;
 	const Vec3 bottomLeft = -vRight - top;
 
-	Vec3 min{ 0, 0, 0 };
-	Vec3 max{ 0, 0, 0 };
+	Vec3 min = VEC3_ZERO;
+	Vec3 max = VEC3_ZERO;
 	Vec3 corner = topRight + front;
 	storeMin(min, corner); storeMax(max, corner);
 	corner = topLeft + front;
