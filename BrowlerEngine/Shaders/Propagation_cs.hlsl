@@ -28,7 +28,7 @@ Texture2D<float> mediumIntegTex : register(t9);
 Texture3D<float> volumeTexture : register(t10);
 
 
-[numthreads(8, 8, 1)]
+[numthreads(16, 16, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     const float3 read_idx = float3(DTid.xy, 0);

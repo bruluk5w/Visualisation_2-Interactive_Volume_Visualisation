@@ -25,8 +25,8 @@ RWTexture2D<float4> viewingRayDirectionBuffer : register(u5);
 [numthreads(8, 8, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
-    lightBuffer[DTid.xy].xyzw = lightColor;
-    lightDirectionBuffer[DTid.xy].rgb = lightDirection; // directional light only for now
+    lightBuffer[DTid.xy] = float4(lightColor.xyz, 1);
+    lightDirectionBuffer[DTid.xy].xyz = lightDirection; // directional light only for now
     colorBuffer[DTid.xy].xyzw = float4(0.f, 0.f, 0.f, 0.f); // starting with no color and fully transparent
     // ?? is this correct?
     mediumBuffer[DTid.xy].xyzw = float4(0.f, 0.f, 0.f, 0.f); // starting with no color and fully transparent

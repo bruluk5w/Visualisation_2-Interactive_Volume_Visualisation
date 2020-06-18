@@ -19,8 +19,8 @@ public:
 #pragma pack(push, 1)
     struct DrawData
     {
-        static const unsigned int threadGroupSizeX = 8;
-        static const unsigned int threadGroupSizeY = 8;
+        static const unsigned int threadGroupSizeX = 16;
+        static const unsigned int threadGroupSizeY = 16;
         static const unsigned int num32BitValues = 2;
         Vec2 textureResolution;
         float numSlices;
