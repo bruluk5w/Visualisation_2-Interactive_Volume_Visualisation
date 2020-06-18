@@ -7,7 +7,9 @@
 BRWL_RENDERER_NS
 
 
-InitializationShader::InitializationShader(ID3D12Device* device)
+InitializationShader::InitializationShader(ID3D12Device* device) :
+    rootSignature(nullptr),
+    pipelineState(nullptr)
 {
 
     D3D12_DESCRIPTOR_RANGE uavDescRange;
@@ -87,40 +89,17 @@ void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderCons
     BRWL_EXCEPTION(computeBuffers, nullptr);
     BRWL_EXCEPTION(computeBuffers->isResident(), nullptr);
 
-    //D3D12_RESOURCE_BARRIER barriers2[ComputeBuffers::numBuffers];
-    //memset(&barriers, 0, sizeof(barriers));
-    //for (int i = 0; i < ComputeBuffers::numBuffers; ++i)
-    //{
-    //    ID3D12Resource* resource = computeBuffers->getTargetResource(i);
-    //    barriers2[i].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-    //    barriers2[i].UAV.pResource = resource;
-    //}
-    //cmd->ResourceBarrier(countof(barriers2), barriers2);
-
-
-    //D3D12_RESOURCE_BARRIER barriers2[ComputeBuffers::numBuffers];
-    //memset(&barriers, 0, sizeof(barriers2));
-    //for (int i = 0; i < countof(barriers2); ++i)
-    //{
-    //    ID3D12Resource* resource = computeBuffers->getSourceResource(i);
-    //    barriers2[i].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    //    barriers2[i].Transition.pResource = resource;
-    //    barriers2[i].Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-    //    barriers2[i].Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    //}
-    //cmd->ResourceBarrier(countof(barriers2), barriers2);
-
-    //NON_PIXEL_SHADER_RESOURCE
-
     computeBuffers->swap(cmd);
 
     cmd->SetPipelineState(pipelineState.Get());
     cmd->SetComputeRootSignature(rootSignature.Get());
     cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
     cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetUav(0).residentGpu);
+    float actualResX = Utils::min<float>(constants.textureResolution.x, computeBuffers->getWidth());
+    float actualResY = Utils::min<float>(constants.textureResolution.y, computeBuffers->getHeight());
     cmd->Dispatch(
-        (unsigned int)std::ceil(constants.textureResolution.x / (float)ShaderConstants::threadGroupSizeX),
-        (unsigned int)std::ceil(constants.textureResolution.y / (float)ShaderConstants::threadGroupSizeY),
+        (unsigned int)std::ceil(actualResX / (float)ShaderConstants::threadGroupSizeX),
+        (unsigned int)std::ceil(actualResY / (float)ShaderConstants::threadGroupSizeY),
         1
     );
     

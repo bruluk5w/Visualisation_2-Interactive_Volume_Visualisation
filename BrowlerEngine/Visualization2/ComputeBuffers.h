@@ -22,11 +22,13 @@ public:
 	// source buffer 0 - numBuffers are guaranted to be a contiguous range
 	// the resource to read from 
 	// if before is true, then returns the resource which the alias referred to before 
-	ID3D12Resource* getSourceResource(unsigned int idx, bool before = false);
+	ID3D12Resource* getSrvResource(unsigned int idx, bool before = false);
 	// target buffer 0 - numBuffers are guaranted to be a contiguous range
 	// the resource to write to
 	// if before is true, then returns the resource which the alias referred to before 
-	ID3D12Resource* getTargetResource(unsigned int idx, bool before = false);
+	ID3D12Resource* getUavResource(unsigned int idx, bool before = false);
+	unsigned int getWidth() const { return bufferWidth; }
+	unsigned int getHeight() const { return bufferHeight; }
 	// 6 buffers with 2 layers each for ping-pong renderering
 	const static unsigned int numBuffers = 6;
 	const static unsigned int numLayers = 2;

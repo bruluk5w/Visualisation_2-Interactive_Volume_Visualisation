@@ -92,12 +92,14 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
             destroy();
             return false;
         }
+        srvBuffers[i]->SetName(L"ALIASED COMPUTE SRV");
 
         if (!BRWL_VERIFY(SUCCEEDED(device->CreatePlacedResource(bufferHeap.Get(), info.Offset, &textureDecriptions[i], D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&uavBuffers[i]))), BRWL_CHAR_LITERAL("Failed to place resource into heap.")))
         {
             destroy();
             return false;
         }
+        uavBuffers[i]->SetName(L"ALIASED COMPUTE UAV");
     }
 
     // Create UAVs && SRVs for the textures
@@ -121,7 +123,6 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
         uavDesc.Texture2D.MipSlice = 0;
         uavDesc.Texture2D.PlaneSlice = 0;
         device->CreateUnorderedAccessView(uavBuffers[i].Get(), nullptr, &uavDesc, (*uavDescriptorRange)[i].cpu);
-        device->CreateUnorderedAccessView(uavBuffers[i].Get(), nullptr, &uavDesc, (*uavDescriptorRange)[i].cpu);
     }
 
     created = true;
@@ -141,7 +142,7 @@ void ComputeBuffers::destroy()
 
     for (int i = 0; i < countof(*(decltype(srvBuffers)*)(0)); ++i)
     {
-        uavBuffers[i] = nullptr;
+        srvBuffers[i] = nullptr;
     }
 
     bufferHeap = nullptr;
@@ -160,13 +161,20 @@ void ComputeBuffers::swap(ID3D12GraphicsCommandList* cmd)
     pingPong = !pingPong;
 
     // we now made all UAVs SRVs and all SRVs became UAVs
-    D3D12_RESOURCE_BARRIER barriers[ComputeBuffers::numBuffers];
+    D3D12_RESOURCE_BARRIER barriers[numBuffers * numLayers];
     memset(&barriers, 0, sizeof(barriers));
-    for (int i = 0; i < ComputeBuffers::numBuffers; ++i)
+    for (int i = 0; i < numBuffers; ++i)
     {
         barriers[i].Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
-        barriers[i].Aliasing.pResourceBefore = getTargetResource(i, true);
-        barriers[i].Aliasing.pResourceAfter = getTargetResource(i);
+        barriers[i].Aliasing.pResourceBefore = getSrvResource(i, true);
+        barriers[i].Aliasing.pResourceAfter = getUavResource(i);
+    }
+
+    for (int i = 0; i < numBuffers; ++i)
+    {
+        barriers[numBuffers + i].Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
+        barriers[numBuffers + i].Aliasing.pResourceBefore = getUavResource(i, true);
+        barriers[numBuffers + i].Aliasing.pResourceAfter = getSrvResource(i);
     }
 
     cmd->ResourceBarrier(countof(barriers), barriers);
@@ -175,25 +183,25 @@ void ComputeBuffers::swap(ID3D12GraphicsCommandList* cmd)
 PAL::DescriptorHandle::NativeHandles ComputeBuffers::getSourceSrv(unsigned int idx)
 {
     BRWL_CHECK(idx < numBuffers, nullptr);
-    return (*srvDescriptorRange)[idx + pingPong ? 0 : numBuffers];
+    return (*srvDescriptorRange)[idx + (pingPong ? 0 : numBuffers)];
 }
 
 PAL::DescriptorHandle::NativeHandles ComputeBuffers::getTargetUav(unsigned int idx)
 {
     BRWL_CHECK(idx < numBuffers, nullptr);
-    return (*uavDescriptorRange)[idx + !pingPong ? 0 : numBuffers];
+    return (*uavDescriptorRange)[idx + (!pingPong ? 0 : numBuffers)];
 }
 
-ID3D12Resource* ComputeBuffers::getSourceResource(unsigned int idx, bool before)
+ID3D12Resource* ComputeBuffers::getSrvResource(unsigned int idx, bool before)
 {
     BRWL_CHECK(idx < numBuffers, nullptr);
-    return srvBuffers[idx + pingPong ^ before ? 0 : numBuffers].Get();
+    return srvBuffers[idx + (pingPong ^ before ? 0 : numBuffers)].Get();
 }
 
-ID3D12Resource* ComputeBuffers::getTargetResource(unsigned int idx, bool before)
+ID3D12Resource* ComputeBuffers::getUavResource(unsigned int idx, bool before)
 {
-    BRWL_CHECK(idx < ComputeBuffers::numBuffers, nullptr);
-    return uavBuffers[idx + !pingPong ^ before ? 0 : numBuffers].Get();
+    BRWL_CHECK(idx < numBuffers, nullptr);
+    return uavBuffers[idx + (!pingPong ^ before ? 0 : numBuffers)].Get();
 }
 
 BRWL_RENDERER_NS_END

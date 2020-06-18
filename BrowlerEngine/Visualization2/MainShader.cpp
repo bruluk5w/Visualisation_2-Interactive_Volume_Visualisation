@@ -18,43 +18,10 @@
 #include "PitCollection.h"
 #include "Common/BoundingBox.h"
 #include "Common/Logger.h"
-#include "InitializationShader.h"
 #include "ComputeBuffers.h"
-
-
-namespace
-{
-    void makeStaticSamplerDescription(D3D12_STATIC_SAMPLER_DESC& staticSampler, unsigned int shaderRegister)
-    {
-        memset(&staticSampler, 0, sizeof(staticSampler));
-        staticSampler.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-        staticSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-        staticSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-        staticSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-        staticSampler.MipLODBias = 0.f;
-        staticSampler.MaxAnisotropy = 0;
-        staticSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-        staticSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-        staticSampler.MinLOD = 0.f;
-        staticSampler.MaxLOD = 0.f;
-        staticSampler.ShaderRegister = shaderRegister;
-        staticSampler.RegisterSpace = 0;
-        staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    }
-
-    const int mvpIdx = 0;
-    const int voxelsPerCmIdx = mvpIdx + 1;
-
-    const int texturesMin = voxelsPerCmIdx + 1;
-    const int refractionIntegTexIdx = texturesMin;
-    const int particleColIntegTexIdx = refractionIntegTexIdx + 1;
-    const int opacityIntegTexIdx = particleColIntegTexIdx + 1;
-    const int mediumIntegTexIdx = opacityIntegTexIdx + 1;
-    const int volumeTextureIdx = mediumIntegTexIdx + 1;
-    const int numTextures = volumeTextureIdx + 1 - texturesMin;
-    const int numRootParameters = volumeTextureIdx + 1;
-
-}
+#include "InitializationShader.h"
+#include "PropagationShader.h"
+#include "DxHelpers.h"
 
 
 BRWL_RENDERER_NS
@@ -134,6 +101,7 @@ MainShader::MainShader() :
     initialized(false),
     viewingPlane{},
     initializationShader(nullptr),
+    propagationShader(nullptr),
     computeBuffers(nullptr)
 {
     computeBuffers = std::make_unique<ComputeBuffers>();
@@ -158,51 +126,48 @@ bool MainShader::create(Renderer* renderer)
 
 #pragma region Main PSO
     {
-        // volume and preintergration sampler are static samplers since they never change
-        unsigned int samplerRegister = 0;
-        D3D12_STATIC_SAMPLER_DESC staticSamplers[2];
-        D3D12_STATIC_SAMPLER_DESC& preintegrationSampler = staticSamplers[0];
-        makeStaticSamplerDescription(preintegrationSampler, samplerRegister++);
-        D3D12_STATIC_SAMPLER_DESC& volumeSampler = staticSamplers[1];
-        makeStaticSamplerDescription(volumeSampler, samplerRegister++);
-
-        // textures go each into a single table of srv descriptor ranges
-        // each table and each range are of size 1 because the handles are not located in a continuous range
-        D3D12_DESCRIPTOR_RANGE srvDescRanges[numTextures];
-        memset(&srvDescRanges, 0, sizeof(srvDescRanges));
-        for (int i = 0; i < numTextures; ++i)
-        {
-            D3D12_DESCRIPTOR_RANGE& srvRange = srvDescRanges[i];
-            srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-            srvRange.NumDescriptors = 1;
-            srvRange.BaseShaderRegister = i; // starting with register(t0), going up to register(t[numTextures])
-            srvRange.RegisterSpace = 0;
-            srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-        }
-
-        unsigned int cbufferRegister = 0;
-        D3D12_ROOT_PARAMETER param[numRootParameters];
+        D3D12_ROOT_PARAMETER param[7];
         memset(&param, 0, sizeof(param));
-        // Model- & ViewProjection matrix & voxelsPerCm
-        param[mvpIdx].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        param[mvpIdx].Constants.ShaderRegister = cbufferRegister++;
-        param[mvpIdx].Constants.RegisterSpace = 0;
-        param[mvpIdx].Constants.Num32BitValues = 33;
-        param[mvpIdx].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-        // voxelsPerCm
-        param[voxelsPerCmIdx].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        param[voxelsPerCmIdx].Constants.ShaderRegister = cbufferRegister++;
-        param[voxelsPerCmIdx].Constants.RegisterSpace = 0;
-        param[voxelsPerCmIdx].Constants.Num32BitValues = 7;
-        param[voxelsPerCmIdx].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-        // Root srv parameters for textures (because the descriptor handles are not located in a continuous range)
-        for (int i = texturesMin; i < texturesMin + numTextures; ++i)
+
+        // Vertex shader constants
+        param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        param[0].Constants.ShaderRegister = 0;
+        param[0].Constants.RegisterSpace = 0;
+        param[0].Constants.Num32BitValues = 33;
+        param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+        // Pixel shader constants
+        param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        param[1].Constants.ShaderRegister = 1;
+        param[1].Constants.RegisterSpace = 0;
+        param[1].Constants.Num32BitValues = 7;
+        param[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        
+        // preintegration tables and volume texture
+        D3D12_DESCRIPTOR_RANGE descriptorRanges[ENUM_CLASS_TO_NUM(PitTex::MAX) + 1];
+        memset(&descriptorRanges, 0, sizeof(descriptorRanges));
+        for (int i = 0; i < countof(descriptorRanges); ++i)
         {
-            param[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-            param[i].DescriptorTable.NumDescriptorRanges = 1;
-            param[i].DescriptorTable.pDescriptorRanges = &srvDescRanges[i - texturesMin];
-            param[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+            D3D12_DESCRIPTOR_RANGE& range = descriptorRanges[i];
+            range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+            range.NumDescriptors = 1;
+            range.BaseShaderRegister = i;
+            range.RegisterSpace = 0;
+            range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
         }
+        
+        for (int i = 0; i < countof(descriptorRanges); ++i)
+        {
+            param[2 + i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+            param[2 + i].DescriptorTable.NumDescriptorRanges = 1;
+            param[2 + i].DescriptorTable.pDescriptorRanges = &descriptorRanges[i];
+            param[2 + i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        }
+
+        // volume and preintergration sampler are static samplers since they never change
+        D3D12_STATIC_SAMPLER_DESC staticSamplers[2];
+        makeStaticSamplerDescription(staticSamplers[0], 0);
+        makeStaticSamplerDescription(staticSamplers[1], 1);
 
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
         memset(&rootSignatureDesc, 0, sizeof(rootSignatureDesc));
@@ -218,8 +183,12 @@ bool MainShader::create(Renderer* renderer)
 
 
         ComPtr<ID3DBlob> blob = nullptr;
-        if (!BRWL_VERIFY(SUCCEEDED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &blob, NULL)), BRWL_CHAR_LITERAL("Failed to serialize root signature.")))
+        ComPtr<ID3DBlob> errorBlob = nullptr;
+        if (!BRWL_VERIFY(SUCCEEDED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &blob, &errorBlob)), BRWL_CHAR_LITERAL("Failed to serialize root signature.")))
         {
+            if (errorBlob != nullptr) {
+                engine->logger->error((BRWL_CHAR*)errorBlob->GetBufferPointer());
+            }
             destroy();
             return false;
         }
@@ -293,17 +262,8 @@ bool MainShader::create(Renderer* renderer)
             destroy();
             return false;
         }
-
-
-           
-        // Create compute buffers
-        if (!computeBuffers->create(device, &renderer->getSrvHeap(), 1024, 1024))
-        {
-            destroy();
-            return false;
-        }
     }
-#pragma endregion
+#pragma endregion Main PSO
 #pragma region Guides PSO
     {
         unsigned int cbufferRegister = 0;
@@ -427,9 +387,17 @@ bool MainShader::create(Renderer* renderer)
         assetBounds.vertexBuffer->SetName(L"Asset bounds vertex buffer");
     }
 
+    // Create compute buffers
+    if (!computeBuffers->create(device, &renderer->getSrvHeap(), 1024, 1024))
+    {
+        destroy();
+        return false;
+    }
+
     // TODO: do we need some synchonisation here?
 
     initializationShader = std::make_unique<InitializationShader>(device);
+    propagationShader = std::make_unique <PropagationShader>(device);
 
     initialized = true;
     return initialized;
@@ -441,7 +409,7 @@ void MainShader::render()
     //if (vertexBuffer == nullptr)
 }
 
-void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, const DrawData& data)
+void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, const MainShader::DrawData& data)
 {   
     unsigned int width, height;
     engine->renderer->getFrameBufferSize(width, height);
@@ -462,34 +430,60 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
 
     const Vec2 viewingPlaneDimensions(viewingVolumeDimensions.x, viewingVolumeDimensions.y);
     const Vec2 viewingPlaneDimensionsUnscaled(viewingVolumeUnscaled.dimX(), viewingVolumeUnscaled.dimY());
-    InitializationShader::ShaderConstants params;
-    {
-        const Vec3 viewingPlaneCenter = extractPosition(viewingPlaneModelMatrix);
-        const Vec3 viewingPlaneRight = Vec3(viewingPlaneDimensions.x, 0, 0) * viewingPlaneModelMatrix;
-        const Vec3 viewingPlaneBottom = Vec3(0, -viewingPlaneDimensions.y, 0) * viewingPlaneModelMatrix;
-        const Vec3 bottom = viewingPlaneRight - viewingPlaneCenter;
-        const Vec3 right = viewingPlaneBottom - viewingPlaneCenter;
-        params.textureSizeWorldSpace = viewingPlaneDimensions;
-        params.textureResolution = viewingPlaneDimensionsUnscaled;
-        params.horizontalPlaneDirection = normalized(right); // normalized
-        params.verticalPlaneDirection = normalized(bottom); // normalized
-        params.topLeft = viewingPlaneCenter - bottom - right; // in world space
-        params.eye = camPos;
-        params.lightDirection = data.light.coords;
-        params.lightColor = data.light.color;
 
+    // the nearest plane in texture space
+    const float planeOffsetNear = data.volumeDimensions->getClosestPlaneFromDirection(camPos);
+    // the farthes plane in texture space
+    const float planeOffsetFar = -data.volumeDimensions->getClosestPlaneFromDirection(-camPos);
+    const float planeStackThickness = planeOffsetNear - planeOffsetFar;
+    BRWL_CHECK(planeStackThickness > 0, nullptr);
+    const float numSlices = planeStackThickness; // 1 plane per voxel is a very good resolution
+    // position offset from prevous to next plane
+    const Vec3 deltaSlice = normalized(-camPos) * planeStackThickness / numSlices;
+
+    if (engine->input->isKeyDown(Key::F1))
+    {
+        const Vec3 fwd = camRot.forward();
+        BRWL_CHAR buf[100];
+        BRWL_SNPRINTF(buf, countof(buf),
+            BRWL_CHAR_LITERAL("Camera Transform: Position:%.2f | %.2f | %.2f, Look Direction: %.2f | %.2f | %.2f"),
+            camPos.x, camPos.y, camPos.z, fwd.x, fwd.y, fwd.z);
+        engine->logger->info(buf);
     }
 
+    if (engine->input->isKeyDown(Key::F2))
+    {
+        BRWL_CHAR buf[100];
+        BRWL_SNPRINTF(buf, countof(buf), BRWL_CHAR_LITERAL("%.2f | %.2f | %.2f"), deltaSlice.x, deltaSlice.y, deltaSlice.z);
+        engine->logger->info(buf);
+    }
 
-
-    // during rendering:
-    // - activate opposite alias
-    // - place resource barrier to ensure previous compute dispatch has written all data
     bool hasComputeBuffers = computeBuffers->isResident();
     if (hasComputeBuffers)
     {
+        // Dispatch ping-pong compute work 
+        InitializationShader::ShaderConstants params;
+        {
+            const Vec3 viewingPlaneCenter = extractPosition(viewingPlaneModelMatrix);
+            const Vec3 viewingPlaneRight = Vec3(viewingPlaneDimensions.x, 0, 0) * viewingPlaneModelMatrix;
+            const Vec3 viewingPlaneBottom = Vec3(0, -viewingPlaneDimensions.y, 0) * viewingPlaneModelMatrix;
+            const Vec3 bottom = viewingPlaneRight - viewingPlaneCenter;
+            const Vec3 right = viewingPlaneBottom - viewingPlaneCenter;
+            params.textureSizeWorldSpace = viewingPlaneDimensions;
+            params.textureResolution = viewingPlaneDimensionsUnscaled;
+            params.horizontalPlaneDirection = normalized(right); // normalized
+            params.verticalPlaneDirection = normalized(bottom); // normalized
+            params.topLeft = viewingPlaneCenter - bottom - right; // in world space
+            params.eye = camPos;
+            params.lightDirection = data.light.coords;
+            params.lightColor = data.light.color;
+
+        }
 
         initializationShader->draw(cmd, params, computeBuffers.get());
+        // during rendering:
+        // - activate opposite alias
+        // - place resource barrier to ensure previous compute dispatch has written all data
     }
 
     // Setup viewport
@@ -515,22 +509,10 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     vp.TopLeftX = vp.TopLeftY = 0.0f;
     cmd->RSSetViewports(1, &vp);
 
-    if (engine->input->isKeyDown(Key::F1))
-    {
-        const Vec3 fwd = camRot.forward();
-        BRWL_CHAR buf[100];
-        BRWL_SNPRINTF(buf, countof(buf),
-            BRWL_CHAR_LITERAL("Camera Transform: Position:%.2f | %.2f | %.2f, Look Direction: %.2f | %.2f | %.2f"),
-            camPos.x, camPos.y, camPos.z, fwd.x, fwd.y, fwd.z);
-        engine->logger->info(buf);
-    }
-
-
     // scissor
     const D3D12_RECT r = { 0, 0, width, height }; // whole frame buffer
     cmd->RSSetScissorRects(1, &r);
-
-
+    
     // draw viewing plane
     if (true)
     {
@@ -539,37 +521,29 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         cmd->SetGraphicsRootSignature(mainRootSignature.Get());
 
 
-        // the nearest plane in texture space
-        const float planeOffsetNear = data.volumeDimensions->getClosestPlaneFromDirection(camPos);
-        // the farthes plane in texture space
-        const float planeOffsetFar = -data.volumeDimensions->getClosestPlaneFromDirection(-camPos);
-        const float planeStackThickness = planeOffsetNear - planeOffsetFar;
-        BRWL_CHECK(planeStackThickness > 0, nullptr);
-        const float numSlices = planeStackThickness; // 1 plane per voxel is a very good resolution
-        // position offset from prevous to next plane
-        const Vec3 deltaSlice = normalized(-camPos) * planeStackThickness / numSlices;
-        if (engine->input->isKeyDown(Key::F2))
-        {
-            BRWL_CHAR buf[100];
-            BRWL_SNPRINTF(buf, countof(buf), BRWL_CHAR_LITERAL("%.2f | %.2f | %.2f"), deltaSlice.x, deltaSlice.y, deltaSlice.z);
-            engine->logger->info(buf);
-        }
+        VsConstants vsConstants;
+        memset(&vsConstants, 0, sizeof(vsConstants));
+        vsConstants.modelMatrix = viewingPlaneModelMatrix;
+        vsConstants.viewProjection = viewProjection;
+        vsConstants.voxelsPerCm = data.voxelsPerCm;
+        
+        cmd->SetGraphicsRoot32BitConstants(0, 33, &vsConstants, 0);
 
+        PsConstants psConstants;
+        memset(&psConstants, 0, sizeof(psConstants));
+        psConstants.voxelsPerCm = data.voxelsPerCm;
+        psConstants.numSlices = numSlices;
+        psConstants.deltaSlice = deltaSlice;
 
-        cmd->SetGraphicsRoot32BitConstants(mvpIdx, 16, &viewingPlaneModelMatrix, 0);
-        cmd->SetGraphicsRoot32BitConstants(mvpIdx, 16, &viewProjection, 16);
-        cmd->SetGraphicsRoot32BitConstants(mvpIdx, 1, &data.voxelsPerCm, 32);
-        cmd->SetGraphicsRoot32BitConstants(voxelsPerCmIdx, 1, &data.voxelsPerCm, 0);
-        cmd->SetGraphicsRoot32BitConstants(voxelsPerCmIdx, 1, &numSlices, 1);
-        cmd->SetGraphicsRoot32BitConstants(voxelsPerCmIdx, 3, &deltaSlice, 4);
+        cmd->SetGraphicsRoot32BitConstants(1, 7, &psConstants, 0);
+
         // Set all textures
-        // the volume texture is the one with the hightest register index by convention, so we leave it out in the loop
-        for (int i = texturesMin; i < texturesMin + numTextures - 1; ++i)
+        for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
         {
-            cmd->SetGraphicsRootDescriptorTable(i, data.pitCollection->array[i - texturesMin].liveTexture->descriptorHandle->getGpu());
+            cmd->SetGraphicsRootDescriptorTable(2 + i, data.pitCollection->array[i].liveTexture->descriptorHandle->getGpu());
         }
 
-        cmd->SetGraphicsRootDescriptorTable(volumeTextureIdx, data.volumeTexture->descriptorHandle->getGpu());
+        cmd->SetGraphicsRootDescriptorTable(2 + ENUM_CLASS_TO_NUM(PitTex::MAX), data.volumeTexture->descriptorHandle->getGpu());
 
         cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
     }
@@ -599,13 +573,14 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
 void MainShader::destroy()
 {
     computeBuffers->destroy();
+    propagationShader = nullptr;
     initializationShader = nullptr;
-    mainPipelineState = nullptr;
-    guidesPipelineState = nullptr;
-    mainRootSignature = nullptr;
-    guidesRootSignature = nullptr;
-
+    assetBounds.destroy();
     viewingPlane.destroy();
+    guidesPipelineState = nullptr;
+    guidesRootSignature = nullptr;
+    mainPipelineState = nullptr;
+    mainRootSignature = nullptr;
 
     initialized = false;
 }
@@ -622,67 +597,6 @@ void MainShader::bindVertexBuffer(ID3D12GraphicsCommandList* cmd, const Triangle
     vbv.StrideInBytes = stride;
     cmd->IASetVertexBuffers(0, 1, &vbv);
     cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    /*D3D12_INDEX_BUFFER_VIEW ibv;
-    memset(&ibv, 0, sizeof(ibv));
-    ibv.BufferLocation = fr->IndexBuffer->GetGPUVirtualAddress();
-    ibv.SizeInBytes = fr->IndexBufferSize * sizeof(VertexData);
-    ibv.Format = sizeof(ImDrawIdx) == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;*/
-    //ctx->IASetIndexBuffer(&ibv);
-
-    // Setup blend factor
-   /* const float blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
-    cmd->OMSetBlendFactor(blend_factor);*/
-
-    //   // TODO: remove
-//   
-//   Vec3 worldRay = screenSpaceToWorldRay(engine->input->getMouseX(), engine->input->getMouseY(), *engine->renderer->getCamera());
-//   Vec3 pos = engine->renderer->getCamera()->getGlobalPosition();
-//   if (worldRay.y != 0 && std::abs(pos.y) - 0.02 > std::abs(worldRay.y + pos.y))
-//   {
-//       // intersect with plane y = 0;
-//       worldRay *= pos.y / worldRay.y;
-//       mvp = makeAffineTransform(Vec3(-worldRay.x, 0.5f, worldRay.z), { 90.f * DEG_2_RAD_F , 0.f, 0.f }, { 1,1,1 }) * viewProjection;
-
-//   }
-
-
-
-
-        // Render command lists
-    // (Because we merged all buffers into a single one, we maintain our own offset into them)
-    //int global_vtx_offset = 0;
-    //int global_idx_offset = 0;
-    //ImVec2 clip_off = draw_data->DisplayPos;
-    //for (int n = 0; n < draw_data->CmdListsCount; n++)
-    //{
-        //const ImDrawList* cmd_list = draw_data->CmdLists[n];
-        //for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
-        //{
-        //    const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-        //    if (pcmd->UserCallback != NULL)
-        //    {
-        //        // User callback, registered via ImDrawList::AddCallback()
-        //        // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
-        //        if (pcmd->UserCallback == ImDrawCallback_ResetRenderState)
-        //            ImGui_ImplDX12_SetupRenderState(draw_data, ctx, fr);
-        //        else
-        //            pcmd->UserCallback(cmd_list, pcmd);
-        //    }
-        //    else
-        //    {
-        //        if (pcmd->ClipRect.z <= 0 || pcmd->ClipRect.x >= draw_data->DisplaySize.x || pcmd->ClipRect.w <= 0 || pcmd->ClipRect.y >= draw_data->DisplaySize.y ||
-        //            pcmd->ClipRect.x == pcmd->ClipRect.z || pcmd->ClipRect.y == pcmd->ClipRect.w)
-        //            continue;
-                // Apply Scissor, Bind texture, Draw
-                //const D3D12_RECT r = { (LONG)(pcmd->ClipRect.x - clip_off.x), (LONG)(pcmd->ClipRect.y - clip_off.y), (LONG)(pcmd->ClipRect.z - clip_off.x), (LONG)(pcmd->ClipRect.w - clip_off.y) };
-                //cmd->SetGraphicsRootDescriptorTable(1, *(D3D12_GPU_DESCRIPTOR_HANDLE*)&pcmd->TextureId);
-                //ctx->RSSetScissorRects(1, &r);
-                //cmd->DrawIndexedInstanced(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);
-        //    }
-        //}
-        //global_idx_offset += cmd_list->IdxBuffer.Size;
-        //global_vtx_offset += cmd_list->VtxBuffer.Size;  
-    //}
 }
 
 BRWL_RENDERER_NS_END

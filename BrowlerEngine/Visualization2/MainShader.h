@@ -13,6 +13,7 @@ BRWL_RENDERER_NS
 struct TextureResource;
 union PitCollection;
 class InitializationShader;
+class PropagationShader;
 class ComputeBuffers;
 
 namespace PAL
@@ -33,6 +34,23 @@ class MainShader final
         unsigned int vertexBufferLength;
         bool loaded;
     };
+#pragma pack(push, 1)
+     struct VsConstants
+    {
+        Mat4 modelMatrix;
+        Mat4 viewProjection;
+        float voxelsPerCm;
+    };
+
+    struct PsConstants
+    {
+        float voxelsPerCm;
+        float numSlices;
+        float pad0;
+        float pad1;
+        Vec3 deltaSlice;
+    };
+#pragma pack(pop)
 
 public:
     MainShader();
@@ -74,6 +92,7 @@ private:
     TriangleList assetBounds;
 
     std::unique_ptr<InitializationShader> initializationShader;
+    std::unique_ptr<PropagationShader> propagationShader;
     std::unique_ptr<ComputeBuffers> computeBuffers;
 
     bool initialized;

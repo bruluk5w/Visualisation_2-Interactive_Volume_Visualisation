@@ -1,8 +1,8 @@
 
 struct Constants
 {
-    matrix ModelMatrix;
-    matrix ViewProjection;
+    matrix modelMatrix;
+    matrix viewProjection;
     float voxelsPerCm;
 };
 
@@ -23,9 +23,9 @@ struct PS_INPUT
 PS_INPUT main(VS_INPUT input)
 {
     PS_INPUT output;
-    float4 worldSpacePos = mul(constants.ModelMatrix, float4(input.Position, 1.f));
+    float4 worldSpacePos = mul(constants.modelMatrix, float4(input.Position, 1.f));
     output.uvw = worldSpacePos * constants.voxelsPerCm;
-    output.Position = mul(constants.ViewProjection, worldSpacePos);
+    output.Position = mul(constants.viewProjection, worldSpacePos);
 
     return output;
 }

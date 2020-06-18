@@ -343,6 +343,7 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="DataSet.h" />
+    <ClInclude Include="DxHelpers.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Image.h">
       <SubType>
@@ -389,6 +390,7 @@
     <ClCompile Include="CLogEdit.cpp" />
     <ClCompile Include="ComputeBuffers.cpp" />
     <ClCompile Include="DataSet.cpp" />
+    <ClCompile Include="DxHelpers.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="InitializationShader.cpp" />
     <ClCompile Include="LogHandler.cpp" />
@@ -404,6 +406,7 @@
     <ClCompile Include="PitCollection.cpp" />
     <ClCompile Include="PitImage.cpp" />
     <ClCompile Include="Preintegration.cpp" />
+    <ClCompile Include="PropagationShader.cpp" />
     <ClCompile Include="Visualization2.cpp" />
     <ClCompile Include="Visualization2Dlg.cpp" />
     <ClCompile Include="Visualization2Renderer.cpp" />

@@ -14,6 +14,7 @@ public:
     InitializationShader(ID3D12Device* device);
     ~InitializationShader();
 
+#pragma pack(push, 1)
     struct ShaderConstants
     {
         static const unsigned int threadGroupSizeX = 8;
@@ -34,6 +35,7 @@ public:
         float padding4;
         Vec4 lightColor;
     };
+#pragma pack(pop)
 
     void draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, ComputeBuffers* computeBuffers);
 private:

@@ -208,21 +208,24 @@ void Visualization2Renderer::render(Renderer* renderer)
 
     // gather all events we still have to wait for
     HANDLE waitHandles[countof(blocked)] = { NULL };
-    unsigned int numWaithandles = 0;
+    unsigned int numWaitHandles = 0;
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
         if (blocked[i])
         {
             PitImage& pitImage = pitCollection.array[i];
-            waitHandles[numWaithandles] = pitImage.uploadEvent;
-            ++numWaithandles;
+            waitHandles[numWaitHandles] = pitImage.uploadEvent;
+            ++numWaitHandles;
         }
     }
 
     // TODO: meanwhile we could already recompute the non-blocked tables
 
     // wait and clean up event state 
-    WaitForMultipleObjects(numWaithandles, waitHandles, true, INFINITE);
+    if (numWaitHandles)
+    {
+        WaitForMultipleObjects(numWaitHandles, waitHandles, true, INFINITE);
+    }
 
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
@@ -352,6 +355,7 @@ void Visualization2Renderer::draw(Renderer* r)
                 uiResults[0].light.color
             }
         };
+
         mainShader.draw(r->device.Get(), r->commandList.Get(), drawData);
     }
 

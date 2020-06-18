@@ -14,6 +14,7 @@ public:
     PropagationShader(ID3D12Device* device);
     ~PropagationShader();
 
+#pragma pack(push, 1)
     struct ShaderConstants
     {
         static const unsigned int threadGroupSizeX = 8;
@@ -34,11 +35,10 @@ public:
         float padding4;
         Vec4 lightColor;
     };
+#pragma pack(pop)
 
     void draw(ID3D12GraphicsCommandList* cmd, const ShaderConstants& constants, ComputeBuffers* computeBuffers);
 private:
-    // swaps the aliasing in for the compute buffers and the ping pong variable
-    void swap(ID3D12GraphicsCommandList* cmd, ComputeBuffers* computeBuffers);
 
     ComPtr<ID3D12RootSignature> rootSignature;
     ComPtr<ID3D12PipelineState> pipelineState;
