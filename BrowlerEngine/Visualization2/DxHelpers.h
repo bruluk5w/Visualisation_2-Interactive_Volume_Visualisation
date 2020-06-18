@@ -1,4 +1,4 @@
-#pragma once
+#pragma once // (c) 2020 Lukas Brunner
 
 
 void makeStaticSamplerDescription(D3D12_STATIC_SAMPLER_DESC& staticSampler, unsigned int shaderRegister);
