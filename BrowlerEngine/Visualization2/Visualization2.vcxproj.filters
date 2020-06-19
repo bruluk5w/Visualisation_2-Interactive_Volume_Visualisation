@@ -78,6 +78,9 @@
     <ClInclude Include="DxHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ImposterShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Visualization2.cpp">
@@ -130,6 +133,9 @@
     </ClCompile>
     <ClCompile Include="DxHelpers.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ImposterShader.cpp">
+      <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

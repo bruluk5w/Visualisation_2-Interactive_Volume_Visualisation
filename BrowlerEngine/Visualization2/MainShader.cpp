@@ -22,6 +22,8 @@
 #include "InitializationShader.h"
 #include "PropagationShader.h"
 #include "DxHelpers.h"
+#include "ImposterShader.h"
+#include "Common/PAL/DescriptorHeap.h"
 
 namespace
 {
@@ -129,7 +131,8 @@ MainShader::MainShader() :
     viewingPlane{},
     initializationShader(nullptr),
     propagationShader(nullptr),
-    computeBuffers(nullptr)
+    computeBuffers(nullptr),
+    imposterShader(nullptr)
 {
     computeBuffers = std::make_unique<ComputeBuffers>();
 }
@@ -425,6 +428,7 @@ bool MainShader::create(Renderer* renderer)
 
     initializationShader = std::make_unique<InitializationShader>(device);
     propagationShader = std::make_unique <PropagationShader>(device);
+    imposterShader = std::make_unique <ImposterShader>(device);
 
     initialized = true;
     return initialized;
@@ -439,12 +443,15 @@ void MainShader::render()
 void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, const MainShader::DrawData& data)
 {
     SCOPED_GPU_EVENT(cmd, 0, 128, 128, "Main Draw");
-
     unsigned int width, height;
     engine->renderer->getFrameBufferSize(width, height);
+
     BRWL::RENDERER::Camera* cam = engine->renderer->getCamera();
+    BRWL_EXCEPTION(cam != nullptr, nullptr);
     const Quaternion camRot = cam->getGlobalOrientation();
     const Vec3 camPos = cam->getGlobalPosition();
+    const Mat4& viewProjection = cam->getViewProjectionMatrix();
+
 
     const float volumeScale = 1.f / data.voxelsPerCm;
 
@@ -510,6 +517,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         }
 
         initializationShader->draw(cmd, initParams, computeBuffers.get());
+
         PropagationShader::DrawData propParams;
         {
             propParams.textureResolution = viewingPlaneDimensionsUnscaled;
@@ -518,8 +526,8 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
             propParams.voxelsPerCm = data.voxelsPerCm;
             propParams.volumeTexelDimensions = data.volumeDimensions->dim();
         }
-        computeBuffers->swap(cmd);
 
+        computeBuffers->swap(cmd);
 
         transitionResourceFromPixelToComputeShader(cmd, data.volumeTexture->texture.Get());
         transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.mediumColorPit.liveTexture->texture.Get());
@@ -527,37 +535,55 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.particleColorPit.liveTexture->texture.Get());
         transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.refractionPit.liveTexture->texture.Get());
 
-        propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexture);
+        ID3D12Resource* colorBuffer;
+        PAL::DescriptorHandle::NativeHandles colorBufferDescriptorHandle;
+        propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexture, colorBuffer, colorBufferDescriptorHandle);
+        
+        transitionResourceFromComputeToPixelShader(cmd, colorBuffer);
+
+        bindVertexBuffer(cmd, viewingPlane);
+        ImposterShader::VsConstants imposterVsConstants;
+        memset(&imposterVsConstants, 0, sizeof(imposterVsConstants));
+        {
+            imposterVsConstants.modelMatrix = viewingPlaneModelMatrix;
+            imposterVsConstants.viewProjection = viewProjection;
+            // we have a scale and offset because of the buffer around the area where actual results are propagated
+            imposterVsConstants.uvOffset.x = PropagationShader::DrawData::bufferWidth / computeBuffers->getWidth();
+            imposterVsConstants.uvOffset.y = PropagationShader::DrawData::bufferWidth / computeBuffers->getHeight();
+            const Vec2 actualRes(
+                Utils::min<float>(viewingPlaneDimensionsUnscaled.x, computeBuffers->getWidth() - 2.f * PropagationShader::DrawData::bufferWidth),
+                Utils::min<float>(viewingPlaneDimensionsUnscaled.y, computeBuffers->getHeight() - 2.f * PropagationShader::DrawData::bufferWidth));
+            imposterVsConstants.uvRangeScale.x = computeBuffers->getWidth() / actualRes.x;
+            imposterVsConstants.uvRangeScale.y = computeBuffers->getHeight() / actualRes.y;
+        }
+        ImposterShader::PsConstants imposterPsConstants;
+        memset(&imposterPsConstants, 0, sizeof(imposterPsConstants));
+        {
+            // Todo: remove
+        }
+
+        imposterShader->setupDraw(cmd, imposterVsConstants, imposterPsConstants, colorBufferDescriptorHandle);
+
+        cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
 
         transitionResourceFromComputeToPixelShader(cmd, data.volumeTexture->texture.Get());
         transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.mediumColorPit.liveTexture->texture.Get());
         transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.opacityPit.liveTexture->texture.Get());
         transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.particleColorPit.liveTexture->texture.Get());
         transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.refractionPit.liveTexture->texture.Get());
+
+        transitionResourceFromPixelToComputeShader(cmd, colorBuffer);
     }
 
-    // Setup viewport
-    // And get view projection matrix
-    D3D12_VIEWPORT vp;
-    memset(&vp, 0, sizeof(vp));
-    const Mat4 viewProjection = [&cam, &vp]() -> const Mat4 {
-        if (cam != nullptr) {
-            vp.MinDepth = cam->getNearPlane();
-            vp.MaxDepth = cam->getFarPlane();
-            return cam->getViewProjectionMatrix();
-        }
-        else
-        {
-            vp.MinDepth = 0.f;
-            vp.MaxDepth = 10.f;
-            return identity();
-        }
-    }();
-
-    vp.Width = (float)width;
-    vp.Height = (float)height;
-    vp.TopLeftX = vp.TopLeftY = 0.0f;
-    cmd->RSSetViewports(1, &vp);
+    // Setup viewport for rest
+    D3D12_VIEWPORT wholeScreenVp;
+    memset(&wholeScreenVp, 0, sizeof(wholeScreenVp));
+    wholeScreenVp.MinDepth = cam->getNearPlane();
+    wholeScreenVp.MaxDepth = cam->getFarPlane();
+    wholeScreenVp.Width = (float)width;
+    wholeScreenVp.Height = (float)height;
+    wholeScreenVp.TopLeftX = wholeScreenVp.TopLeftY = 0.0f;
+    cmd->RSSetViewports(1, &wholeScreenVp);
 
     // scissor
     const D3D12_RECT r = { 0, 0, width, height }; // whole frame buffer
@@ -566,7 +592,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     // todo:draw viewing plane
     if (data.drawOrthographicXRay)
     {
-        bindVertexBuffer(cmd, viewingPlane);
+       
         cmd->SetPipelineState(mainPipelineState.Get());
         cmd->SetGraphicsRootSignature(mainRootSignature.Get());
 

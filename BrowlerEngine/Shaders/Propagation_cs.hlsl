@@ -30,7 +30,7 @@ Texture3D<float> volumeTexture : register(t10);
 
 
 
-[numthreads(16, 16, 1)]
+[numthreads(8, 8, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     static const uint bufferWidth = 10; // in pixel

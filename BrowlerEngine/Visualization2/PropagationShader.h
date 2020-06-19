@@ -20,8 +20,8 @@ public:
     struct DrawData
     {
         static const unsigned int bufferWidth = 10; // has to be the same as in InitializationShader.h and the respective .hlsl files
-        static const unsigned int threadGroupSizeX = 16;
-        static const unsigned int threadGroupSizeY = 16;
+        static const unsigned int threadGroupSizeX = 8;
+        static const unsigned int threadGroupSizeY = 8;
         Vec2 textureResolution;
         Vec3 volumeTexelDimensions;
         float voxelsPerCm;
@@ -29,9 +29,9 @@ public:
         float sliceWidth;
     };
 #pragma pack(pop)
-
-    void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const DrawData& data,
-        ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture);
+    // propagates light and viewing rays throught the volume and returns the last color buffer
+    void draw(ID3D12GraphicsCommandList* cmd, const DrawData& data, ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture,
+        ID3D12Resource* outColorBufferResource, PAL::DescriptorHandle::NativeHandles& outColorBufferDescriptorHandle);
 
 private:
     ComPtr<ID3D12RootSignature> rootSignature;

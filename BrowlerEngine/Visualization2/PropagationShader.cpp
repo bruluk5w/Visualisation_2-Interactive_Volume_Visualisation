@@ -130,8 +130,8 @@ PropagationShader::~PropagationShader()
     destroy();
 }
 
-void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data,
-    ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture)
+void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data, ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture,
+    ID3D12Resource* outColorBufferResource, PAL::DescriptorHandle::NativeHandles& outColorBufferDescriptorHandle)
 {
     SCOPED_GPU_EVENT(cmd, 0, 255, 0, "Propagation Compute Shader");
     BRWL_EXCEPTION(computeBuffers, nullptr);
@@ -176,6 +176,10 @@ void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationSh
         );
 
     } while (++i < data.numSlices);
+
+    computeBuffers->swap(cmd);
+    outColorBufferResource = computeBuffers->getSrvResource(2); // return the color buffer
+    outColorBufferDescriptorHandle = computeBuffers->getSourceSrv(2);
 
 }
 

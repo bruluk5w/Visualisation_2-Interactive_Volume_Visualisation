@@ -15,6 +15,7 @@ union PitCollection;
 class InitializationShader;
 class PropagationShader;
 class ComputeBuffers;
+class ImposterShader;
 
 namespace PAL
 {
@@ -95,6 +96,7 @@ private:
     std::unique_ptr<InitializationShader> initializationShader;
     std::unique_ptr<PropagationShader> propagationShader;
     std::unique_ptr<ComputeBuffers> computeBuffers;
+    std::unique_ptr<ImposterShader> imposterShader;
 
     bool initialized;
 };
