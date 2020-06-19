@@ -33,6 +33,7 @@
 
 // DirectX data
 static ComPtr<ID3D12Device>         g_pd3dDevice = nullptr;
+static BRWL::Renderer::PAL::DescriptorHeap* g_descriptorHeap = nullptr;
 static ComPtr<ID3D12RootSignature>  g_pRootSignature = nullptr;
 static ComPtr<ID3D12PipelineState>  g_pPipelineState = nullptr;
 static DXGI_FORMAT                  g_RTVFormat = DXGI_FORMAT_UNKNOWN;
@@ -376,14 +377,19 @@ void ImGui_ImplDX12_RenderDrawData(ImDrawData* draw_data, ID3D12GraphicsCommandL
         srvDesc.Texture2D.MipLevels = desc.MipLevels;
         srvDesc.Texture2D.MostDetailedMip = 0;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        g_pd3dDevice->CreateShaderResourceView(pTexture.Get(), &srvDesc, g_FontDescHandle->getCpu());
+        if (g_FontDescHandle) g_FontDescHandle->release();
+        g_FontDescHandle = g_descriptorHeap->allocateOne(BRWL_CHAR_LITERAL("ImGui FontTexture"));
+        g_pd3dDevice->CreateShaderResourceView(pTexture.Get(), &srvDesc, g_FontDescHandle->getNonResident().cpu);
         g_pFontTextureResource = nullptr;
         g_pFontTextureResource = pTexture;
     }
 
-    // Store our identifier
-    static_assert(sizeof(ImTextureID) >= sizeof(D3D12_CPU_DESCRIPTOR_HANDLE), "Can't pack descriptor handle into TexID, 32-bit not supported yet.");
-    io.Fonts->TexID = (ImTextureID)g_FontDescHandle->getGpu().ptr;
+    // This will typically not work,so we rely on the font TexID to be checked and set (if necessary) before rendering
+    if (g_FontDescHandle->isResident())
+    {
+        static_assert(sizeof(ImTextureID) >= sizeof(D3D12_CPU_DESCRIPTOR_HANDLE), "Can't pack descriptor handle into TexID, 32-bit not supported yet.");
+        io.Fonts->TexID = (ImTextureID)g_FontDescHandle->getResident().residentGpu.ptr;
+    }
 }
 
 bool    ImGui_ImplDX12_CreateDeviceObjects()
@@ -545,8 +551,7 @@ void    ImGui_ImplDX12_InvalidateDeviceObjects()
     }
 }
 
-bool ImGui_ImplDX12_Init(ComPtr<ID3D12Device> device, int num_frames_in_flight, DXGI_FORMAT rtv_format, ComPtr<ID3D12DescriptorHeap> cbv_srv_heap,
-                         BRWL::RENDERER::PAL::DescriptorHandle* font_desc_handle)
+bool ImGui_ImplDX12_Init(ComPtr<ID3D12Device> device, int num_frames_in_flight, DXGI_FORMAT rtv_format, BRWL::RENDERER::PAL::DescriptorHeap* descriptorHeap)
 {
     // Setup back-end capabilities flags
     ImGuiIO& io = ImGui::GetIO();
@@ -555,11 +560,11 @@ bool ImGui_ImplDX12_Init(ComPtr<ID3D12Device> device, int num_frames_in_flight, 
 
     g_pd3dDevice = device;
     g_RTVFormat = rtv_format;
-    g_FontDescHandle = font_desc_handle;
+    g_descriptorHeap = descriptorHeap;
+    g_FontDescHandle = nullptr; // we set this only when loading the font texture
     g_pFrameResources = new FrameResources[num_frames_in_flight];
     g_numFramesInFlight = num_frames_in_flight;
     g_frameIndex = UINT_MAX;
-    IM_UNUSED(cbv_srv_heap); // Unused in master branch (will be used by multi-viewports)
 
     // Create buffers with a default size (they will later be grown as needed)
     for (int i = 0; i < num_frames_in_flight; i++)

@@ -66,6 +66,8 @@ ImposterShader::ImposterShader(ID3D12Device* device, const D3D12_INPUT_LAYOUT_DE
             return;
         }
 
+        rootSignature->SetName(L"Imposter Root Signature");
+
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
         memset(&psoDesc, 0, sizeof(psoDesc));
         psoDesc.NodeMask = 0;
@@ -143,7 +145,7 @@ ImposterShader::~ImposterShader()
     destroy();
 }
 
-void ImposterShader::setupDraw(ID3D12GraphicsCommandList* cmd, const ImposterShader::VsConstants& vsConstants, const PAL::DescriptorHandle::NativeHandles& outColorBufferDescriptorHandle)
+void ImposterShader::setupDraw(ID3D12GraphicsCommandList* cmd, const ImposterShader::VsConstants& vsConstants, const PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle)
 {
     SCOPED_GPU_EVENT(cmd, 0, 255, 0, "Imposter Shader");
 

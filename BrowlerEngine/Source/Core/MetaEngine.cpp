@@ -182,7 +182,6 @@ void MetaEngine::detachedRun(EngineData* engineData)
 
 	while (engineData->threaded)
 	{
-		Sleep(10);
 		engineData->tickProvider->nextFrame();
 		engineData->engine->update();
 	}

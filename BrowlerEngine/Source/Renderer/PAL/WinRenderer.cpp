@@ -95,7 +95,6 @@ namespace PAL
         frameFence(nullptr),
         frameFenceEvent(NULL),
         frameFenceLastValue(0),
-        fontTextureDescriptorHandle(nullptr)
     {
 #if ENABLE_GRAPHICS_DEBUG_FEATURES
         ComPtr<ID3D12Debug> debugController0;
@@ -134,6 +133,13 @@ namespace PAL
 
     bool WinRenderer::init(const WinRendererParameters rendererParameters)
     {
+        // wrap initialization in a pseudo frame for preloading resources like the font texture
+        struct RAII {
+            RAII(DescriptorHeap* h) : h(h) { h->notifyNewFrameStarted(); }
+            ~RAII() { h->notifyOldFrameCompleted(); }
+            DescriptorHeap* h;
+        } pseudoFrame(&srvHeap);
+
 #ifdef BRWL_USE_DEAR_IM_GUI
         IMGUI_CHECKVERSION();
         // Setup Dear ImGui context
@@ -458,7 +464,7 @@ namespace PAL
         {
             D3D12_COMMAND_QUEUE_DESC desc = {};
             desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-            desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+            desc.Flags = D3D12_COMMAND_QUEUE_FLAG_DISABLE_GPU_TIMEOUT; // Is this even good? Well, ... we'll see.
             desc.NodeMask = 0;
             if (!BRWL_VERIFY(SUCCEEDED(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&commandQueue))), BRWL_CHAR_LITERAL("Failed to create direct command queue.")))
             {
@@ -526,9 +532,7 @@ namespace PAL
         currentFramebufferWidth = framebufferWidth;
         currentFramebufferHeight = framebufferHeight;
 
-        fontTextureDescriptorHandle = srvHeap.allocateOne(BRWL_CHAR_LITERAL("FontTextureDescriptor"), /*force=*/true);
-        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, g_RenderTargetFormat, /*since this is unused, we currently also don't pass any resource*/{ },
-            fontTextureDescriptorHandle);
+        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, g_RenderTargetFormat, &srvHeap);
 
         if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(appRenderer->rendererInit(this), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))
         {
@@ -541,7 +545,6 @@ namespace PAL
     void WinRenderer::destroyDevice()
     {
         ImGui_ImplDX12_Shutdown();
-        fontTextureDescriptorHandle->release();
 
         if (appRenderer)
         {

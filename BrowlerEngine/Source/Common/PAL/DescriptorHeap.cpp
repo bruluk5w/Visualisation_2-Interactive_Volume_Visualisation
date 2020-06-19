@@ -52,27 +52,42 @@ namespace PAL
 		remove(false)
 	{ }
 
-	DescriptorHandle::NativeHandles DescriptorHandle::getResident(int idx)
+	DescriptorHandle::NonResidentHandles DescriptorHandle::getNonResident(int idx)
 	{
 		BRWL_EXCEPTION(count > 0 && owningHeap != nullptr, BRWL_CHAR_LITERAL("Accessing invalid descriptor"));
 		BRWL_EXCEPTION(idx >= 0 && idx < count, BRWL_CHAR_LITERAL("Invalid descriptor access."));
-		NativeHandles handles = nativeHandles;
-		handles.residentCpu.ptr += owningHeap->descriptorSize * idx;
-		handles.residentGpu.ptr += owningHeap->descriptorSize * idx;
-		return handles;
-	}
-
-	DescriptorHandle::NativeHandles DescriptorHandle::getNonResident(int idx)
-	{
-		BRWL_EXCEPTION(count > 0 && owningHeap != nullptr, BRWL_CHAR_LITERAL("Accessing invalid descriptor"));
-		BRWL_EXCEPTION(idx >= 0 && idx < count, BRWL_CHAR_LITERAL("Invalid descriptor access."));
-		NativeHandles handles = nativeHandles;
+		NonResidentHandles handles{ nativeHandles.cpu, nativeHandles.gpu };
 		handles.cpu.ptr += owningHeap->descriptorSize * idx;
 		handles.gpu.ptr += owningHeap->descriptorSize * idx;
 		// TODO: IMPROVE THIS! THIS IS UGLY!
 		// if we have been accessed on the cpu side, then we expect the data to maybe have changed
 		owningHeap->dirtyArray[this - owningHeap->handles.data()] = true;
 		return handles;
+	}
+
+	DescriptorHandle::ResidentHandles DescriptorHandle::getResident(int idx)
+	{
+		BRWL_EXCEPTION(count > 0 && owningHeap != nullptr, BRWL_CHAR_LITERAL("Accessing invalid descriptor"));
+		BRWL_EXCEPTION(idx >= 0 && idx < count, BRWL_CHAR_LITERAL("Invalid descriptor access."));
+		ResidentHandles handles{ nativeHandles.residentCpu, nativeHandles.residentGpu };
+		handles.residentCpu.ptr += owningHeap->descriptorSize * idx;
+		handles.residentGpu.ptr += owningHeap->descriptorSize * idx;
+		return handles;
+	}
+
+	DescriptorHandle::NonResidentHandles DescriptorHandle::getNonResident() const
+	{
+		BRWL_EXCEPTION(count == 1, BRWL_CHAR_LITERAL("Invalid descriptor access."));
+		// TODO: IMPROVE THIS! THIS IS UGLY!
+		// if we have been accessed on the cpu side, then we expect the data to maybe have changed
+		owningHeap->dirtyArray[this - owningHeap->handles.data()] = true;
+		return { nativeHandles.cpu, nativeHandles.gpu };
+	}
+
+	DescriptorHandle::ResidentHandles DescriptorHandle::getResident() const
+	{
+		BRWL_EXCEPTION(count == 1, BRWL_CHAR_LITERAL("Invalid descriptor access."));
+		return { nativeHandles.residentCpu, nativeHandles.residentGpu };
 	}
 
 	void DescriptorHandle::release()
@@ -91,15 +106,6 @@ namespace PAL
 			BRWL_CHECK(false, BRWL_CHAR_LITERAL("Invalid descriptor handle release."));
 		}
 	}
-
-	D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHandle::getCpu()
-	{
-		if (resident) return nativeHandles.residentCpu; // directly commit to gpu
-		else return nativeHandles.cpu; // create in cpu heap and will be copied
-	}
-
-
-
 
 	DescriptorHeap::DescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) :
 		heapType(type),

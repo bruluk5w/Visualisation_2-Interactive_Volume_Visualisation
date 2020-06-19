@@ -23,7 +23,7 @@ struct PS_INPUT
 PS_INPUT main(VS_INPUT input)
 {
     PS_INPUT output;
-    output.uv = input.uv * constants.uvRangeScale ;
+    output.uv = input.uv * constants.uvRangeScale + constants.uvOffset;
     output.Position = mul(constants.modelviewProjection, float4(input.Position, 1.f));
     return output;
 }

@@ -180,13 +180,13 @@ void ComputeBuffers::swap(ID3D12GraphicsCommandList* cmd)
     cmd->ResourceBarrier(countof(barriers), barriers);
 }
 
-PAL::DescriptorHandle::NativeHandles ComputeBuffers::getSourceSrv(unsigned int idx)
+PAL::DescriptorHandle::ResidentHandles ComputeBuffers::getSourceSrv(unsigned int idx)
 {
     BRWL_CHECK(idx < numBuffers, nullptr);
     return srvDescriptorRange->getResident(idx + (pingPong ? 0 : numBuffers));
 }
 
-PAL::DescriptorHandle::NativeHandles ComputeBuffers::getTargetUav(unsigned int idx)
+PAL::DescriptorHandle::ResidentHandles ComputeBuffers::getTargetUav(unsigned int idx)
 {
     BRWL_CHECK(idx < numBuffers, nullptr);
     return uavDescriptorRange->getResident(idx + (!pingPong ? 0 : numBuffers));

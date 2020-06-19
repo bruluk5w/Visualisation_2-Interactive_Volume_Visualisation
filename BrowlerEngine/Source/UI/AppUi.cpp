@@ -33,6 +33,7 @@ UIResult::UIResult() :
         UIResult::Settings::Font::OPEN_SANS_REGULAR, // font
         30, // fontSize
         300, // voxelsPerCm
+        0.1f, // numSlicesPerVoxel
         false, // vsync
         false, // freeCamMovement
         true, // drawAssetBoundaries
@@ -164,10 +165,15 @@ void renderAppUI(UIResult& result, const UIResult& values)
 
         // work around for slider bug where slider is activated when clicking on the combo box above
         SLIDER_FIX(0)
-            Text("Font Size:"); SameLine();
-            SliderFloat("", &result.settings.fontSize, 5, 40);
+            Text("Font Size:"); SameLine(); SliderFloat("", &result.settings.fontSize, 5, 40);
+            result.settings.fontSize = Utils::clamp(result.settings.fontSize, 5.f, 40.f);
         SLIDER_FIX_END();
         Text("Voxels per Centimeter:"); SameLine(); ::ImGui::InputFloat("", &result.settings.voxelsPerCm, 1.f, 5.f, "%.0f");
+        result.settings.voxelsPerCm = Utils::clamp(result.settings.voxelsPerCm, 1.f, 1000.f);
+        SLIDER_FIX(1)
+            Text("Number of slices per voxel:"); SameLine(); ::ImGui::InputFloat("", &result.settings.numSlicesPerVoxel, 0.01f, 1.f, "%.0f");
+            result.settings.numSlicesPerVoxel = Utils::clamp(result.settings.numSlicesPerVoxel, 0.01f, 1.f);
+        SLIDER_FIX_END();
         Checkbox("VSync", &result.settings.vsync);
         Checkbox("Free Camera Movement", &result.settings.freeCamMovement);
         Checkbox("Draw Dataset Boundaries", &result.settings.drawAssetBoundaries);

@@ -16,9 +16,9 @@ public:
 	// swaps the aliasing in for the compute buffers and the ping pong variable
 	void swap(ID3D12GraphicsCommandList* cmd);
 	// source handles 0 - numBuffers are guaranteed to be a contiguous range
-	PAL::DescriptorHandle::NativeHandles getSourceSrv(unsigned int idx);
+	PAL::DescriptorHandle::ResidentHandles getSourceSrv(unsigned int idx);
 	// target handles 0 - numBuffers are guaranteed to be a contiguous range
-	PAL::DescriptorHandle::NativeHandles getTargetUav(unsigned int idx);
+	PAL::DescriptorHandle::ResidentHandles getTargetUav(unsigned int idx);
 	// source buffer 0 - numBuffers are guaranted to be a contiguous range
 	// the resource to read from 
 	// if before is true, then returns the resource which the alias referred to before 

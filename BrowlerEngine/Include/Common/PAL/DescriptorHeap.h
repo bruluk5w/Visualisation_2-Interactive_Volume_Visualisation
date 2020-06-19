@@ -13,11 +13,20 @@ namespace PAL
     class DescriptorHandle final
     {
         friend class DescriptorHeap;
-    public:
         struct NativeHandles
         {
             D3D12_CPU_DESCRIPTOR_HANDLE residentCpu; // gpu visible descriptor - used for rendering
             D3D12_GPU_DESCRIPTOR_HANDLE residentGpu; // gpu visible descriptor - used for rendering
+            D3D12_CPU_DESCRIPTOR_HANDLE cpu; // cpu side descriptor - used for view creation - later copied to the gpu visible heap
+            D3D12_GPU_DESCRIPTOR_HANDLE gpu; // should not be accessed
+        };
+    public:
+        // different types help to distinguish whether we have a cpu only or a gpu valid handle
+        struct ResidentHandles {
+            D3D12_CPU_DESCRIPTOR_HANDLE residentCpu; // gpu visible descriptor - used for rendering
+            D3D12_GPU_DESCRIPTOR_HANDLE residentGpu; // gpu visible descriptor - used for rendering
+        };
+        struct NonResidentHandles {
             D3D12_CPU_DESCRIPTOR_HANDLE cpu; // cpu side descriptor - used for view creation - later copied to the gpu visible heap
             D3D12_GPU_DESCRIPTOR_HANDLE gpu; // should not be accessed
         };
@@ -37,13 +46,13 @@ namespace PAL
         DescriptorHandle();
         DescriptorHandle(DescriptorHandle&&) = default;
         DescriptorHandle& operator = (DescriptorHandle&&) = default;
-        NativeHandles getResident(int idx);
-        NativeHandles getNonResident(int idx);
         bool isResident() { return resident && !remove; }
         void release();
 
-        D3D12_CPU_DESCRIPTOR_HANDLE getCpu();
-        D3D12_GPU_DESCRIPTOR_HANDLE getGpu() { BRWL_EXCEPTION(resident && count == 1, nullptr); return nativeHandles.residentGpu; }
+        ResidentHandles getResident(int idx);
+        NonResidentHandles getNonResident(int idx);
+        ResidentHandles getResident() const;
+        NonResidentHandles getNonResident() const;
 
     };
 

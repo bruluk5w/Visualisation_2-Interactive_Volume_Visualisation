@@ -91,9 +91,11 @@ void Visualization2Updatable::update(double dt)
 			float rotY = dt * (-direction.x * 0.7f  + (hasMouseAction ? dx * rotationMultiplier : 0.f)) * speed;
 			float rotX = dt * (direction.z * 0.7f + (hasMouseAction ? dy * rotationMultiplier : 0.f)) * speed;
 
-			constrainedRotation.x += rotX;
+			// apply a maximum delta per frame in case we have a super low frame rate
+			constrainedRotation.x += Utils::clamp(rotX, -PI_F * 0.0625f, PI_F * 0.0625f);
+			// clamp to +-90°
 			constrainedRotation.x = Utils::clamp(constrainedRotation.x, 0.5f * PI_F - 0.0001f, -0.5f * PI_F + 0.0001f);
-			constrainedRotation.y += rotY;
+			constrainedRotation.y += Utils::clamp(rotY, -PI_F * 0.125f, PI_F * 0.125f);
 			camera->rotation().fromEuler(constrainedRotation.x, constrainedRotation.y, 0);
 
 			camera->position() = camera->rotation() * -VEC3_FWD * constrainedRadius;

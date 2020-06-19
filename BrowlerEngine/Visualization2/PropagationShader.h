@@ -31,7 +31,7 @@ public:
 #pragma pack(pop)
     // propagates light and viewing rays throught the volume and returns the last color buffer
     void draw(ID3D12GraphicsCommandList* cmd, const DrawData& data, ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture,
-        ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::NativeHandles& outColorBufferDescriptorHandle);
+        ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle);
 
 private:
     ComPtr<ID3D12RootSignature> rootSignature;

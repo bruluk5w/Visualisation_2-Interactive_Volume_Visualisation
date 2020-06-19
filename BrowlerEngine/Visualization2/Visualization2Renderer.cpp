@@ -58,6 +58,7 @@ bool Visualization2Renderer::init(Renderer* r)
 
 
     LoadFonts(uiResults[uiResultIdx].settings.fontSize);
+
     if (!dataSet.isValid())
     {
         engine->logger->info(BRWL_CHAR_LITERAL("Loading the beatle asset from disk."));
@@ -123,19 +124,13 @@ bool Visualization2Renderer::init(Renderer* r)
 
 void Visualization2Renderer::preRender(Renderer* renderer)
 {
-    if (initialized) return;
-
     const UIResult& r = uiResults[uiResultIdx]; // results
     UIResult& v = uiResults[uiResultIdx ? 0 : 1]; // values
     if (v.settings.fontSize != r.settings.fontSize) {
+        renderer->waitForLastSubmittedFrame();
         LoadFonts(r.settings.fontSize);
         v.settings.fontSize = r.settings.fontSize;
     }
-
-    BoolParam param{ r.settings.freeCamMovement };
-    engine->eventSystem->postEvent<::BRWL::Event::SET_FREE_CAM_MOVEMENT>(&param);
-
-    initialized = true;
 }
 
 
@@ -148,8 +143,9 @@ void Visualization2Renderer::render(Renderer* renderer)
         skipFrame = true;
         return;
     }
-    else {
-        ::ImGui::GetIO().Fonts->TexID = (ImTextureID)g_FontDescHandle->getGpu().ptr;
+    else
+    {
+        ::ImGui::GetIO().Fonts->TexID = (ImTextureID)g_FontDescHandle->getResident().residentGpu.ptr;
     }
 #endif
 
@@ -184,7 +180,7 @@ void Visualization2Renderer::render(Renderer* renderer)
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
         const PitImage& pitImage = pitCollection.array[i];
-        v.transferFunctions.array[i].textureID = pitImage.liveTexture->state != TextureResource::State::RESIDENT ? nullptr : (ImTextureID)pitImage.liveTexture->descriptorHandle->getGpu().ptr;
+        v.transferFunctions.array[i].textureID = pitImage.liveTexture->state != TextureResource::State::RESIDENT ? nullptr : (ImTextureID)pitImage.liveTexture->descriptorHandle->getResident().residentGpu.ptr;
     }
 
     // execute UI and retrieve results
@@ -305,6 +301,7 @@ void Visualization2Renderer::render(Renderer* renderer)
 
     // no action needed
     v.settings.voxelsPerCm = r.settings.voxelsPerCm;
+    v.settings.numSlicesPerVoxel = r.settings.numSlicesPerVoxel;
     v.settings.font = r.settings.font;
     v.settings.drawAssetBoundaries = r.settings.drawAssetBoundaries;
     v.settings.drawViewingVolumeBoundaries = r.settings.drawViewingVolumeBoundaries;
@@ -373,6 +370,7 @@ void Visualization2Renderer::draw(Renderer* r)
             &volumeTexture,
             &pitCollection,
             uiResults[0].settings.voxelsPerCm,
+            uiResults[0].settings.numSlicesPerVoxel,
             uiResults[0].settings.drawAssetBoundaries,
             uiResults[0].settings.drawViewingVolumeBoundaries,
             uiResults[0].settings.drawOrthographicXRay,
@@ -558,7 +556,7 @@ bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
     srvDesc.Format = texDesc.Format;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
     srvDesc.Texture3D.MipLevels = 1;
-    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle->getCpu());
+    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle->getNonResident().cpu);
      //hr = device->CreateCommittedResource(
      //   &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
      //   D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES,  // set to none if this is a problem
@@ -669,7 +667,7 @@ bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = 1;
     srvDesc.Texture2D.PlaneSlice = 0;
-    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle->getCpu());
+    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle->getNonResident().cpu);
 
     texture.state = TextureResource::State::LOADING;
     return true;

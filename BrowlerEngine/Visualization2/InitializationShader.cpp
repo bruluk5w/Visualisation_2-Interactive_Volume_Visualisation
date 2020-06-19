@@ -57,6 +57,8 @@ InitializationShader::InitializationShader(ID3D12Device* device) :
         return;
     }
 
+    rootSignature->SetName(L"Initialization Root Signature");
+
     D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc;
     memset(&psoDesc, 0, sizeof(psoDesc));
     psoDesc.pRootSignature = rootSignature.Get();

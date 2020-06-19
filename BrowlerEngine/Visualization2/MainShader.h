@@ -67,6 +67,7 @@ public:
         const TextureResource* volumeTexture;
         const PitCollection* pitCollection;
         const float voxelsPerCm;
+        const float numSlicesPerVoxel;
         bool drawAssetBounds;
         bool drawViewingVolume;
         bool drawOrthographicXRay;

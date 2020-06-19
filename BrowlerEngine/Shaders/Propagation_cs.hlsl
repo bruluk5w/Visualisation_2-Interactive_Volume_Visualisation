@@ -37,9 +37,25 @@ void main(uint3 DTid : SV_DispatchThreadID)
     
     const float3 read_idx = float3(DTid.xy + bufferWidth, 0);
     const uint2 write_idx = DTid.xy + bufferWidth;
+    // light propagation
+    const float3 lightOld = lightBufferRead.Load(read_idx).xyz;
+    const float3 lightNew = lightOld;
+    lightBufferWrite[write_idx].xyz = lightNew;
     
+    const float3 lightDirectionOld = lightDirectionBufferRead.Load(read_idx).xyz;
+    const float3 lightDirectionNew = lightDirectionOld;
+    lightDirectionBufferWrite[write_idx].xyz = lightDirectionNew;
+    
+    
+    // viewing ray propagation
     const float3 viewingRayPositionOld = viewingRayPositionBufferRead.Load(read_idx).xyz;
     const float3 viewingRayDirectionOld = viewingRayDirectionBufferRead.Load(read_idx).xyz;
+    const float4 colorOld = colorBufferRead.Load(read_idx);
+    const float4 colorNew = colorOld;
+    
+    const float3 mediumOld = mediumBufferRead.Load(read_idx).xyz;
+    const float3 mediumNew = mediumOld;
+    mediumBufferWrite[write_idx].xyz = mediumNew;
     
     //Advance viewing ray in world space
     const float3 viewingRayPositionNew = viewingRayPositionOld + viewingRayDirectionOld * sliceWidth;
@@ -58,6 +74,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     const float particleColorContrib = particleColIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
     const float mediumContrib = mediumIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
     
-    colorBufferWrite[write_idx] = colorBufferRead.Load(read_idx) + opacityContrib; //* sliceWidth;
+    colorBufferWrite[write_idx] = colorNew + opacityContrib *100; //* sliceWidth;
+    colorBufferWrite[write_idx].w = 1;
     
 }

@@ -95,13 +95,19 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
 
 
         ComPtr<ID3DBlob> blob = nullptr;
-        BRWL_VERIFY(SUCCEEDED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &blob, NULL)), BRWL_CHAR_LITERAL("Failed to serialize root signature."));
+        if (!BRWL_VERIFY(SUCCEEDED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &blob, NULL)), BRWL_CHAR_LITERAL("Failed to serialize root signature.")))
+        {
+            destroy();
+            return;
+        }
 
         if (!BRWL_VERIFY(SUCCEEDED(device->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&rootSignature))), BRWL_CHAR_LITERAL("Failed to create root signature")))
         {
             destroy();
             return;
         }
+
+        rootSignature->SetName(L"Propagation Root Signature");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc;
         memset(&psoDesc, 0, sizeof(psoDesc));
@@ -131,7 +137,7 @@ PropagationShader::~PropagationShader()
 }
 
 void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data, ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture,
-    ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::NativeHandles& outColorBufferDescriptorHandle)
+    ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle)
 {
     SCOPED_GPU_EVENT(cmd, 0, 255, 0, "Propagation Compute Shader");
     BRWL_EXCEPTION(computeBuffers, nullptr);
@@ -150,11 +156,11 @@ void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationSh
     // Set preintegration tables
     for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
     {
-        cmd->SetComputeRootDescriptorTable(3 + i, pitCollection->array[i].liveTexture->descriptorHandle->getGpu());
+        cmd->SetComputeRootDescriptorTable(3 + i, pitCollection->array[i].liveTexture->descriptorHandle->getResident().residentGpu);
     }
 
     // set volume texture
-    cmd->SetComputeRootDescriptorTable(3 + ENUM_CLASS_TO_NUM(PitTex::MAX), volumeTexture->descriptorHandle->getGpu());
+    cmd->SetComputeRootDescriptorTable(3 + ENUM_CLASS_TO_NUM(PitTex::MAX), volumeTexture->descriptorHandle->getResident().residentGpu);
 
     // Only propagate without the buffered outer region. This only works for directional lights where the the out-of-bounds
     // default values are constant.
@@ -178,8 +184,8 @@ void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationSh
     } while (++i < data.numSlices);
 
     computeBuffers->swap(cmd);
-    outColorBufferResource = computeBuffers->getSrvResource(3); // return the color buffer
-    outColorBufferDescriptorHandle = computeBuffers->getSourceSrv(3);
+    outColorBufferResource = computeBuffers->getSrvResource(2); // return the color buffer
+    outColorBufferDescriptorHandle = computeBuffers->getSourceSrv(2);
 
 }
 

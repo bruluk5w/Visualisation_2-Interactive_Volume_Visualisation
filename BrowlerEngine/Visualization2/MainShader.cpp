@@ -232,6 +232,8 @@ bool MainShader::create(Renderer* renderer)
             return false;
         }
 
+        mainRootSignature->SetName(L"Main Root Signature");
+
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
         memset(&psoDesc, 0, sizeof(psoDesc));
         psoDesc.NodeMask = 0;
@@ -332,6 +334,8 @@ bool MainShader::create(Renderer* renderer)
             destroy();
             return false;
         }
+
+        guidesRootSignature->SetName(L"Guides Root Signature");
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
         memset(&psoDesc, 0, sizeof(psoDesc));
@@ -485,7 +489,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     const float planeOffsetFar = -data.volumeDimensions->getClosestPlaneFromDirection(-camPos);
     const float planeStackThickness = planeOffsetNear - planeOffsetFar;
     BRWL_CHECK(planeStackThickness > 0, nullptr);
-    const float numSlices = planeStackThickness; // 1 plane per voxel is a very good resolution
+    const float numSlices = planeStackThickness * data.numSlicesPerVoxel; // 1 plane per voxel is a very good resolution
     // position offset from prevous to next plane
     const float sliceWidth = planeStackThickness / (numSlices  * data.voxelsPerCm);
     const Vec3 deltaSlice = normalized(-camPos) * sliceWidth;
@@ -548,10 +552,9 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.refractionPit.liveTexture->texture.Get());
 
         ID3D12Resource* colorBuffer;
-        PAL::DescriptorHandle::NativeHandles colorBufferDescriptorHandle;
+        PAL::DescriptorHandle::ResidentHandles colorBufferDescriptorHandle;
         propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexture, colorBuffer, colorBufferDescriptorHandle);
         
-        transitionResourceFromComputeToPixelShader(cmd, colorBuffer);
         // scissor
         const D3D12_RECT r = { 0, 0, width, height }; // whole frame buffer
         cmd->RSSetScissorRects(1, &r);
@@ -571,6 +574,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
             imposterVsConstants.uvRangeScale.y = actualRes.y / computeBuffers->getHeight();
         }
 
+        transitionResourceFromComputeToPixelShader(cmd, colorBuffer);
         imposterShader->setupDraw(cmd, imposterVsConstants, colorBufferDescriptorHandle);
 
         cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
@@ -616,10 +620,10 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         // Set all textures
         for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
         {
-            cmd->SetGraphicsRootDescriptorTable(2 + i, data.pitCollection->array[i].liveTexture->descriptorHandle->getGpu());
+            cmd->SetGraphicsRootDescriptorTable(2 + i, data.pitCollection->array[i].liveTexture->descriptorHandle->getResident().residentGpu);
         }
 
-        cmd->SetGraphicsRootDescriptorTable(2 + ENUM_CLASS_TO_NUM(PitTex::MAX), data.volumeTexture->descriptorHandle->getGpu());
+        cmd->SetGraphicsRootDescriptorTable(2 + ENUM_CLASS_TO_NUM(PitTex::MAX), data.volumeTexture->descriptorHandle->getResident().residentGpu);
 
         cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
     }
@@ -651,6 +655,7 @@ void MainShader::destroy()
     computeBuffers->destroy();
     propagationShader = nullptr;
     initializationShader = nullptr;
+    imposterShader = nullptr;
     assetBounds.destroy();
     viewingPlane.destroy();
     guidesPipelineState = nullptr;
