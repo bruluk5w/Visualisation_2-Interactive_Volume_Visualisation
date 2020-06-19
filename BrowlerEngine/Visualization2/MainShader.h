@@ -62,6 +62,7 @@ public:
     void destroy();
 
     struct DrawData {
+        static const unsigned int gatherTextureSize = 1024;
         const BBox* volumeDimensions;
         const TextureResource* volumeTexture;
         const PitCollection* pitCollection;

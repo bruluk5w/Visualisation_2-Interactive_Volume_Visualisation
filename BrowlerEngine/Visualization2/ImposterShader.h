@@ -17,23 +17,16 @@ public:
 #pragma pack(push, 1)
     struct VsConstants
     {
-        static const unsigned int num32BitValues = 36;
-        Mat4 modelMatrix;
-        Mat4 viewProjection;
+        static const unsigned int num32BitValues = 20;
+        Mat4 modelviewProjection;
         Vec2 uvOffset;
         Vec2 uvRangeScale;
-    };
-
-    struct PsConstants
-    {
-        static const unsigned int bufferWidth = 10; // has to be the same as in InitializationShader.h and the respective .hlsl files
-        static const unsigned int num32BitValues = 4;
     };
 #pragma pack(pop)
 
     // Sets the state for drawing the plane with the result texture.
     // We only set states, drawing is handled by MainShader since it holds the vertex buffer. 
-    void setupDraw(ID3D12GraphicsCommandList* cmd, const VsConstants& vsConstants, const PsConstants psConstants, const PAL::DescriptorHandle::NativeHandles& outColorBufferDescriptorHandle);
+    void setupDraw(ID3D12GraphicsCommandList* cmd, const VsConstants& vsConstants, const PAL::DescriptorHandle::NativeHandles& outColorBufferDescriptorHandle);
 
 private:
     ComPtr<ID3D12RootSignature> rootSignature;

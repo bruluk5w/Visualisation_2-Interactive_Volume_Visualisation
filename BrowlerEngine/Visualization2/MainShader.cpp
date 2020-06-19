@@ -50,6 +50,15 @@ namespace
         barrier.Transition.Subresource = 0;
         cmd->ResourceBarrier(1, &barrier);
     }
+
+    // Input Layout is the same for all shaders
+    static const D3D12_INPUT_ELEMENT_DESC inputElements[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,   0, (UINT)offsetof(BRWL::VertexData, position), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (UINT)offsetof(BRWL::VertexData, uv),  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+    };
+
+    static const D3D12_INPUT_LAYOUT_DESC inputLayout = { inputElements, BRWL::countof(inputElements) };
+
 }
 
 
@@ -148,12 +157,6 @@ bool MainShader::create(Renderer* renderer)
 
     ID3D12Device* device = renderer->device.Get();
 
-    // Input Layout is the same for all shaders
-    static D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,   0, (UINT)offsetof(VertexData, position), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (UINT)offsetof(VertexData, uv),  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-    };
-
 #pragma region Main PSO
     {
         D3D12_ROOT_PARAMETER param[7];
@@ -241,7 +244,7 @@ bool MainShader::create(Renderer* renderer)
         psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
         psoDesc.VS = { OrthographicXRay_vs_vs, sizeof(OrthographicXRay_vs_vs) };
         psoDesc.PS = { OrthographicXRay_ps_ps, sizeof(OrthographicXRay_ps_ps) };
-        psoDesc.InputLayout = { inputLayout, (unsigned int)countof(inputLayout) };
+        psoDesc.InputLayout = inputLayout;
 
 
         // Create the blending setup
@@ -342,7 +345,7 @@ bool MainShader::create(Renderer* renderer)
         psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
         psoDesc.VS = { Guides_vs_vs, sizeof(Guides_vs_vs) };
         psoDesc.PS = { Guides_ps_ps, sizeof(Guides_ps_ps) };
-        psoDesc.InputLayout = { inputLayout, (unsigned int)countof(inputLayout) };
+        psoDesc.InputLayout = inputLayout;
 
 
         // Create the blending setup
@@ -418,7 +421,7 @@ bool MainShader::create(Renderer* renderer)
     }
 
     // Create compute buffers
-    if (!computeBuffers->create(device, &renderer->getSrvHeap(), 1024, 1024))
+    if (!computeBuffers->create(device, &renderer->getSrvHeap(), DrawData::gatherTextureSize, DrawData::gatherTextureSize))
     {
         destroy();
         return false;
@@ -428,7 +431,7 @@ bool MainShader::create(Renderer* renderer)
 
     initializationShader = std::make_unique<InitializationShader>(device);
     propagationShader = std::make_unique <PropagationShader>(device);
-    imposterShader = std::make_unique <ImposterShader>(device);
+    imposterShader = std::make_unique <ImposterShader>(device, inputLayout);
 
     initialized = true;
     return initialized;
@@ -452,6 +455,15 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     const Vec3 camPos = cam->getGlobalPosition();
     const Mat4& viewProjection = cam->getViewProjectionMatrix();
 
+    // Setup viewport
+    D3D12_VIEWPORT wholeScreenVp;
+    memset(&wholeScreenVp, 0, sizeof(wholeScreenVp));
+    wholeScreenVp.MinDepth = cam->getNearPlane();
+    wholeScreenVp.MaxDepth = cam->getFarPlane();
+    wholeScreenVp.Width = (float)width;
+    wholeScreenVp.Height = (float)height;
+    wholeScreenVp.TopLeftX = wholeScreenVp.TopLeftY = 0.0f;
+    cmd->RSSetViewports(1, &wholeScreenVp);
 
     const float volumeScale = 1.f / data.voxelsPerCm;
 
@@ -540,29 +552,26 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexture, colorBuffer, colorBufferDescriptorHandle);
         
         transitionResourceFromComputeToPixelShader(cmd, colorBuffer);
+        // scissor
+        const D3D12_RECT r = { 0, 0, width, height }; // whole frame buffer
+        cmd->RSSetScissorRects(1, &r);
 
         bindVertexBuffer(cmd, viewingPlane);
         ImposterShader::VsConstants imposterVsConstants;
         memset(&imposterVsConstants, 0, sizeof(imposterVsConstants));
         {
-            imposterVsConstants.modelMatrix = viewingPlaneModelMatrix;
-            imposterVsConstants.viewProjection = viewProjection;
+            imposterVsConstants.modelviewProjection = viewingPlaneModelMatrix * viewProjection;
             // we have a scale and offset because of the buffer around the area where actual results are propagated
-            imposterVsConstants.uvOffset.x = PropagationShader::DrawData::bufferWidth / computeBuffers->getWidth();
-            imposterVsConstants.uvOffset.y = PropagationShader::DrawData::bufferWidth / computeBuffers->getHeight();
+            imposterVsConstants.uvOffset.x = (float)PropagationShader::DrawData::bufferWidth / (float)computeBuffers->getWidth();
+            imposterVsConstants.uvOffset.y = (float)PropagationShader::DrawData::bufferWidth / (float)computeBuffers->getHeight();
             const Vec2 actualRes(
-                Utils::min<float>(viewingPlaneDimensionsUnscaled.x, computeBuffers->getWidth() - 2.f * PropagationShader::DrawData::bufferWidth),
-                Utils::min<float>(viewingPlaneDimensionsUnscaled.y, computeBuffers->getHeight() - 2.f * PropagationShader::DrawData::bufferWidth));
-            imposterVsConstants.uvRangeScale.x = computeBuffers->getWidth() / actualRes.x;
-            imposterVsConstants.uvRangeScale.y = computeBuffers->getHeight() / actualRes.y;
-        }
-        ImposterShader::PsConstants imposterPsConstants;
-        memset(&imposterPsConstants, 0, sizeof(imposterPsConstants));
-        {
-            // Todo: remove
+                Utils::min<float>(viewingPlaneDimensionsUnscaled.x, (float)computeBuffers->getWidth() - 2.f * (float)PropagationShader::DrawData::bufferWidth),
+                Utils::min<float>(viewingPlaneDimensionsUnscaled.y, (float)computeBuffers->getHeight() - 2.f * (float)PropagationShader::DrawData::bufferWidth));
+            imposterVsConstants.uvRangeScale.x = actualRes.x / computeBuffers->getWidth();
+            imposterVsConstants.uvRangeScale.y = actualRes.y / computeBuffers->getHeight();
         }
 
-        imposterShader->setupDraw(cmd, imposterVsConstants, imposterPsConstants, colorBufferDescriptorHandle);
+        imposterShader->setupDraw(cmd, imposterVsConstants, colorBufferDescriptorHandle);
 
         cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
 
@@ -575,16 +584,6 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         transitionResourceFromPixelToComputeShader(cmd, colorBuffer);
     }
 
-    // Setup viewport for rest
-    D3D12_VIEWPORT wholeScreenVp;
-    memset(&wholeScreenVp, 0, sizeof(wholeScreenVp));
-    wholeScreenVp.MinDepth = cam->getNearPlane();
-    wholeScreenVp.MaxDepth = cam->getFarPlane();
-    wholeScreenVp.Width = (float)width;
-    wholeScreenVp.Height = (float)height;
-    wholeScreenVp.TopLeftX = wholeScreenVp.TopLeftY = 0.0f;
-    cmd->RSSetViewports(1, &wholeScreenVp);
-
     // scissor
     const D3D12_RECT r = { 0, 0, width, height }; // whole frame buffer
     cmd->RSSetScissorRects(1, &r);
@@ -596,6 +595,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         cmd->SetPipelineState(mainPipelineState.Get());
         cmd->SetGraphicsRootSignature(mainRootSignature.Get());
 
+        bindVertexBuffer(cmd, viewingPlane);
 
         VsConstants vsConstants;
         memset(&vsConstants, 0, sizeof(vsConstants));

@@ -15,13 +15,18 @@ BRWL_NS
 Visualization2Updatable::Visualization2Updatable() :
 	IUpdatable(),
 	camera(nullptr),
-	constrainCam(false)
+	constrainCam(true)
 { }
 
 bool Visualization2Updatable::init()
 {
 	int width = engine->window->width();
 	int height = engine->window->height();
+
+	camera = std::make_unique<RENDERER::Camera>(width, height, 45.f * DEG_2_RAD_F, 0.1f, 500.f, BRWL_CHAR_LITERAL("Main Camera"));
+	camera->position() = { 0.f, 0.0f, -3.f };
+	engine->hierarchy->addToRoot(camera.get());
+	engine->renderer->setCamera(camera.get());
 	
 	auto* coreBus = static_cast<EventBusSwitch<Event>*>(engine->eventSystem.get());
 	windowResizeEvtHdl = coreBus->registerListener(Event::WINDOW_RESIZE, [this](Event, void* param) {
@@ -34,25 +39,10 @@ bool Visualization2Updatable::init()
 	});
 
 	setCamFreeCamMovementEvtHdl = coreBus->registerListener(Event::SET_FREE_CAM_MOVEMENT, [this](Event, void* param) {
-		constrainCam = !castParam<Event::SET_FREE_CAM_MOVEMENT>(param)->value;
-		if (constrainCam)
-		{
-			camera->rotation() = Quaternion::fromTo(VEC3_FWD, -camera->cPosition());
-			constrainedRadius = length(camera->cPosition());
-			Vec3 dir = normalized(camera->cPosition());
-			constrainedRotation.x = sin(dir.y); 
-			constrainedRotation.y = atan2(dir.x, dir.z) - PI_F;
-			//constrainedRotation.x = Utils::clamp(constrainedRotation.x, 0.5f * PI_F - 0.0001f, -0.5f * PI_F + 0.0001f);
-			camera->rotation().fromEuler(constrainedRotation.x, constrainedRotation.y, 0);
-		}
-
+		onConstrainCam(!castParam<Event::SET_FREE_CAM_MOVEMENT>(param)->value);
 		return false;
 	});
-
-	camera = std::make_unique<RENDERER::Camera>(width, height, 45.f * DEG_2_RAD_F, 0.1f, 500.f, BRWL_CHAR_LITERAL("Main Camera"));
-	camera->position() = { 0.f, 0.0f, -3.f };
-	engine->hierarchy->addToRoot(camera.get());
-	engine->renderer->setCamera(camera.get());
+	onConstrainCam(constrainCam);
 
 	return true;
 }
@@ -151,5 +141,19 @@ void Visualization2Updatable::destroy()
 	}
 }
 
+void Visualization2Updatable::onConstrainCam(bool enable)
+{
+	constrainCam = enable;
+	if (constrainCam)
+	{
+		camera->rotation() = Quaternion::fromTo(VEC3_FWD, -camera->cPosition());
+		constrainedRadius = length(camera->cPosition());
+		Vec3 dir = normalized(camera->cPosition());
+		constrainedRotation.x = sin(dir.y);
+		constrainedRotation.y = atan2(dir.x, dir.z) - PI_F;
+		//constrainedRotation.x = Utils::clamp(constrainedRotation.x, 0.5f * PI_F - 0.0001f, -0.5f * PI_F + 0.0001f);
+		camera->rotation().fromEuler(constrainedRotation.x, constrainedRotation.y, 0);
+	}
+}
 
 BRWL_NS_END

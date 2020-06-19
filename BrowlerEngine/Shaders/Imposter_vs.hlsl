@@ -1,8 +1,9 @@
 
 struct Constants
 {
-    matrix modelMatrix;
-    matrix viewProjection;
+    matrix modelviewProjection;
+    float2 uvOffset;
+    float2 uvRangeScale;
 };
 
 ConstantBuffer<Constants> constants : register(b0);
@@ -16,15 +17,13 @@ struct VS_INPUT
 struct PS_INPUT
 {
     float4 Position : SV_Position;
-    float4 uv : TEXCOORD0;
+    float2 uv : TEXCOORD;
 };
 
 PS_INPUT main(VS_INPUT input)
 {
     PS_INPUT output;
-    float4 worldSpacePos = mul(constants.modelMatrix, float4(input.Position, 1.f));
-    output.uvw = worldSpacePos * constants.voxelsPerCm;
-    output.Position = mul(constants.viewProjection, worldSpacePos);
-
+    output.uv = input.uv * constants.uvRangeScale ;
+    output.Position = mul(constants.modelviewProjection, float4(input.Position, 1.f));
     return output;
 }

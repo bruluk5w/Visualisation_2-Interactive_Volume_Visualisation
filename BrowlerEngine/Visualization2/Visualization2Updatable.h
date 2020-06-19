@@ -27,6 +27,8 @@ public:
 
 	size_t windowResizeEvtHdl = 0;
 	size_t setCamFreeCamMovementEvtHdl = 0;
+protected:
+	void onConstrainCam(bool enable);
 };
 
 

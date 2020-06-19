@@ -114,7 +114,7 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = 1;
         srvDesc.Texture2D.PlaneSlice = 0;
-        device->CreateShaderResourceView(srvBuffers[i].Get(), &srvDesc, (*srvDescriptorRange)[i].cpu);
+        device->CreateShaderResourceView(srvBuffers[i].Get(), &srvDesc, srvDescriptorRange->getNonResident(i).cpu);
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc;
         memset(&uavDesc, 0, sizeof(uavDesc));
@@ -122,7 +122,7 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         uavDesc.Texture2D.MipSlice = 0;
         uavDesc.Texture2D.PlaneSlice = 0;
-        device->CreateUnorderedAccessView(uavBuffers[i].Get(), nullptr, &uavDesc, (*uavDescriptorRange)[i].cpu);
+        device->CreateUnorderedAccessView(uavBuffers[i].Get(), nullptr, &uavDesc, uavDescriptorRange->getNonResident(i).cpu);
     }
 
     created = true;
@@ -183,13 +183,13 @@ void ComputeBuffers::swap(ID3D12GraphicsCommandList* cmd)
 PAL::DescriptorHandle::NativeHandles ComputeBuffers::getSourceSrv(unsigned int idx)
 {
     BRWL_CHECK(idx < numBuffers, nullptr);
-    return (*srvDescriptorRange)[idx + (pingPong ? 0 : numBuffers)];
+    return srvDescriptorRange->getResident(idx + (pingPong ? 0 : numBuffers));
 }
 
 PAL::DescriptorHandle::NativeHandles ComputeBuffers::getTargetUav(unsigned int idx)
 {
     BRWL_CHECK(idx < numBuffers, nullptr);
-    return (*uavDescriptorRange)[idx + (!pingPong ? 0 : numBuffers)];
+    return uavDescriptorRange->getResident(idx + (!pingPong ? 0 : numBuffers));
 }
 
 ID3D12Resource* ComputeBuffers::getSrvResource(unsigned int idx, bool before)

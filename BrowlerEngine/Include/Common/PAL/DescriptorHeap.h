@@ -37,7 +37,8 @@ namespace PAL
         DescriptorHandle();
         DescriptorHandle(DescriptorHandle&&) = default;
         DescriptorHandle& operator = (DescriptorHandle&&) = default;
-        NativeHandles operator[](int idx);
+        NativeHandles getResident(int idx);
+        NativeHandles getNonResident(int idx);
         bool isResident() { return resident && !remove; }
         void release();
 

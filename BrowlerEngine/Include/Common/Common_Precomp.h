@@ -41,7 +41,7 @@ namespace PAL {
 #define ENABLE_GRAPHICS_DEBUG_FEATURES 1
 #endif
 
-#define FORCE_ENABLE_PIX 0
+#define FORCE_ENABLE_PIX 1
 
 #if ENABLE_GRAPHICS_DEBUG_FEATURES
 #include <dxgidebug.h>

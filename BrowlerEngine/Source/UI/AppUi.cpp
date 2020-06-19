@@ -34,10 +34,10 @@ UIResult::UIResult() :
         30, // fontSize
         300, // voxelsPerCm
         false, // vsync
-        true, // freeCamMovement
+        false, // freeCamMovement
         true, // drawAssetBoundaries
         true, // drawViewingVolumeBoundaries
-        true, // drawOrthographicXRay
+        false, // drawOrthographicXRay
     },
     transferFunctions{},
     light{

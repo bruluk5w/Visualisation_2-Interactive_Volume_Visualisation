@@ -52,13 +52,26 @@ namespace PAL
 		remove(false)
 	{ }
 
-	DescriptorHandle::NativeHandles DescriptorHandle::operator[](int idx)
+	DescriptorHandle::NativeHandles DescriptorHandle::getResident(int idx)
+	{
+		BRWL_EXCEPTION(count > 0 && owningHeap != nullptr, BRWL_CHAR_LITERAL("Accessing invalid descriptor"));
+		BRWL_EXCEPTION(idx >= 0 && idx < count, BRWL_CHAR_LITERAL("Invalid descriptor access."));
+		NativeHandles handles = nativeHandles;
+		handles.residentCpu.ptr += owningHeap->descriptorSize * idx;
+		handles.residentGpu.ptr += owningHeap->descriptorSize * idx;
+		return handles;
+	}
+
+	DescriptorHandle::NativeHandles DescriptorHandle::getNonResident(int idx)
 	{
 		BRWL_EXCEPTION(count > 0 && owningHeap != nullptr, BRWL_CHAR_LITERAL("Accessing invalid descriptor"));
 		BRWL_EXCEPTION(idx >= 0 && idx < count, BRWL_CHAR_LITERAL("Invalid descriptor access."));
 		NativeHandles handles = nativeHandles;
 		handles.cpu.ptr += owningHeap->descriptorSize * idx;
 		handles.gpu.ptr += owningHeap->descriptorSize * idx;
+		// TODO: IMPROVE THIS! THIS IS UGLY!
+		// if we have been accessed on the cpu side, then we expect the data to maybe have changed
+		owningHeap->dirtyArray[this - owningHeap->handles.data()] = true;
 		return handles;
 	}
 

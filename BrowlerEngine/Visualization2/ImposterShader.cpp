@@ -1,7 +1,7 @@
 #include "ImposterShader.h"
 
-#include "ImposterShader_vs_vs.h"
-#include "ImposterShader_ps_ps.h"
+#include "Imposter_vs_vs.h"
+#include "Imposter_ps_ps.h"
 
 #include "DxHelpers.h"
 #include "Renderer/Renderer.h"
@@ -20,19 +20,13 @@ ImposterShader::ImposterShader(ID3D12Device* device, const D3D12_INPUT_LAYOUT_DE
     // building pipeline state object and rootsignature
 
     {
-        D3D12_ROOT_PARAMETER param[3];
+        D3D12_ROOT_PARAMETER param[2];
         memset(&param, 0, sizeof(param));
         param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
         param[0].Constants.Num32BitValues = VsConstants::num32BitValues;
         param[0].Constants.ShaderRegister = 0;
         param[0].Constants.RegisterSpace = 0;
-        param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-        param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        param[1].Constants.Num32BitValues = PsConstants::num32BitValues;
-        param[1].Constants.ShaderRegister = 1;
-        param[1].Constants.RegisterSpace = 0;
-        param[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
         // color texture
         D3D12_DESCRIPTOR_RANGE srvRange;
@@ -42,10 +36,10 @@ ImposterShader::ImposterShader(ID3D12Device* device, const D3D12_INPUT_LAYOUT_DE
         srvRange.RegisterSpace = 0;
         srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-        param[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        param[2].DescriptorTable.NumDescriptorRanges = 1;
-        param[2].DescriptorTable.pDescriptorRanges = &srvRange;
-        param[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        param[1].DescriptorTable.NumDescriptorRanges = 1;
+        param[1].DescriptorTable.pDescriptorRanges = &srvRange;
+        param[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
         // color tex sampler
         D3D12_STATIC_SAMPLER_DESC staticSampler;
@@ -58,7 +52,7 @@ ImposterShader::ImposterShader(ID3D12Device* device, const D3D12_INPUT_LAYOUT_DE
         rootSignatureDesc.NumStaticSamplers = 1;
         rootSignatureDesc.pStaticSamplers = &staticSampler;
         rootSignatureDesc.Flags =
-            D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
+            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
             D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
             D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
             D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
@@ -105,7 +99,7 @@ ImposterShader::ImposterShader(ID3D12Device* device, const D3D12_INPUT_LAYOUT_DE
         // Create the rasterizer state
         {
             D3D12_RASTERIZER_DESC& desc = psoDesc.RasterizerState;
-            desc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+            desc.FillMode = D3D12_FILL_MODE_SOLID;
             desc.CullMode = D3D12_CULL_MODE_NONE;
             desc.FrontCounterClockwise = FALSE;
             desc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
@@ -149,7 +143,7 @@ ImposterShader::~ImposterShader()
     destroy();
 }
 
-void ImposterShader::setupDraw(ID3D12GraphicsCommandList* cmd, const ImposterShader::VsConstants& vsConstants, const ImposterShader::PsConstants psConstants, const PAL::DescriptorHandle::NativeHandles& outColorBufferDescriptorHandle)
+void ImposterShader::setupDraw(ID3D12GraphicsCommandList* cmd, const ImposterShader::VsConstants& vsConstants, const PAL::DescriptorHandle::NativeHandles& outColorBufferDescriptorHandle)
 {
     SCOPED_GPU_EVENT(cmd, 0, 255, 0, "Imposter Shader");
 
@@ -157,11 +151,10 @@ void ImposterShader::setupDraw(ID3D12GraphicsCommandList* cmd, const ImposterSha
     cmd->SetGraphicsRootSignature(rootSignature.Get());
 
     // constants
-    cmd->SetComputeRoot32BitConstants(0, VsConstants::num32BitValues, &vsConstants, 0);
-    cmd->SetComputeRoot32BitConstants(0, PsConstants::num32BitValues, &psConstants, 0);
+    cmd->SetGraphicsRoot32BitConstants(0, VsConstants::num32BitValues, &vsConstants, 0);
 
     // set color texture
-    cmd->SetComputeRootDescriptorTable(0, outColorBufferDescriptorHandle.residentGpu);
+    cmd->SetGraphicsRootDescriptorTable(1, outColorBufferDescriptorHandle.residentGpu);
 }
 
 BRWL_RENDERER_NS_END

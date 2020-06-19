@@ -58,6 +58,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
     const float particleColorContrib = particleColIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
     const float mediumContrib = mediumIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
     
-    colorBufferWrite[write_idx] = colorBufferRead.Load(read_idx) + opacityContrib * sliceWidth;
+    colorBufferWrite[write_idx] = colorBufferRead.Load(read_idx) + opacityContrib; //* sliceWidth;
     
 }
