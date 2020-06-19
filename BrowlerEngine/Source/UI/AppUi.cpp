@@ -34,8 +34,10 @@ UIResult::UIResult() :
         30, // fontSize
         300, // voxelsPerCm
         false, // vsync
+        true, // freeCamMovement
         true, // drawAssetBoundaries
         true, // drawViewingVolumeBoundaries
+        true, // drawOrthographicXRay
     },
     transferFunctions{},
     light{
@@ -165,10 +167,12 @@ void renderAppUI(UIResult& result, const UIResult& values)
             Text("Font Size:"); SameLine();
             SliderFloat("", &result.settings.fontSize, 5, 40);
         SLIDER_FIX_END();
-        Text("Voxels per Centimeter:"); SameLine(); ::ImGui::InputFloat("", &result.settings.voxelsPerCm, 1.f, 5.f);
+        Text("Voxels per Centimeter:"); SameLine(); ::ImGui::InputFloat("", &result.settings.voxelsPerCm, 1.f, 5.f, "%.0f");
         Checkbox("VSync", &result.settings.vsync);
+        Checkbox("Free Camera Movement", &result.settings.freeCamMovement);
         Checkbox("Draw Dataset Boundaries", &result.settings.drawAssetBoundaries);
         Checkbox("Draw Viewing Volume Boundaries", &result.settings.drawViewingVolumeBoundaries);
+        Checkbox("Draw Orthographic X Ray (uses opacity transer function)", &result.settings.drawOrthographicXRay);
         
         End();
     }

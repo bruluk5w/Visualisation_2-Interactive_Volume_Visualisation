@@ -1,6 +1,6 @@
 #include "DxHelpers.h"
 
-void makeStaticSamplerDescription(D3D12_STATIC_SAMPLER_DESC& staticSampler, unsigned int shaderRegister)
+void makeStaticSamplerDescription(D3D12_STATIC_SAMPLER_DESC& staticSampler, unsigned int shaderRegister, D3D12_SHADER_VISIBILITY visibility)
 {
     memset(&staticSampler, 0, sizeof(staticSampler));
     staticSampler.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
@@ -15,7 +15,7 @@ void makeStaticSamplerDescription(D3D12_STATIC_SAMPLER_DESC& staticSampler, unsi
     staticSampler.MaxLOD = 0.f;
     staticSampler.ShaderRegister = shaderRegister;
     staticSampler.RegisterSpace = 0;
-    staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    staticSampler.ShaderVisibility = visibility;
 }
 
 void makeSingeSrvDescriptorRange(D3D12_DESCRIPTOR_RANGE& range, unsigned int baseRegister)

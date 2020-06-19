@@ -11,6 +11,7 @@ InitializationShader::InitializationShader(ID3D12Device* device) :
     rootSignature(nullptr),
     pipelineState(nullptr)
 {
+    destroy();
 
     D3D12_DESCRIPTOR_RANGE uavDescRange;
     memset(&uavDescRange, 0, sizeof(uavDescRange));
@@ -95,8 +96,8 @@ void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderCons
     cmd->SetComputeRootSignature(rootSignature.Get());
     cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
     cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetUav(0).residentGpu);
-    float actualResX = Utils::min<float>(constants.textureResolution.x, computeBuffers->getWidth());
-    float actualResY = Utils::min<float>(constants.textureResolution.y, computeBuffers->getHeight());
+    float actualResX = Utils::min<float>(2 * ShaderConstants::bufferWidth + constants.textureResolution.x, computeBuffers->getWidth());
+    float actualResY = Utils::min<float>(2 * ShaderConstants::bufferWidth + constants.textureResolution.y, computeBuffers->getHeight());
     cmd->Dispatch(
         (unsigned int)std::ceil(actualResX / (float)ShaderConstants::threadGroupSizeX),
         (unsigned int)std::ceil(actualResY / (float)ShaderConstants::threadGroupSizeY),

@@ -9,6 +9,7 @@ enum class Event {
 	WINDOW_RESIZE,
 	WINDOW_MOVE,
 	FRAME_IDX_CHANGE,
+	SET_FREE_CAM_MOVEMENT,
 	//KEY_F1,
 	//KEY_F2,
 	//KEY_F3,
@@ -57,10 +58,16 @@ struct FrameIdxChange
 	size_t newFrameIdx;
 };
 
+struct BoolParam
+{
+	bool value;
+};
+
 EVENT_PARAMETER_MAP_START
 	MAP_EVENT_PARAMETER(Event, WINDOW_MOVE, WindowMoveParam)
 	MAP_EVENT_PARAMETER(Event, WINDOW_RESIZE, WindowSizeParam)
 	MAP_EVENT_PARAMETER(Event, FRAME_IDX_CHANGE, FrameIdxChange)
+	MAP_EVENT_PARAMETER(Event, SET_FREE_CAM_MOVEMENT, BoolParam)
 EVENT_PARAMETER_MAP_END
 
 

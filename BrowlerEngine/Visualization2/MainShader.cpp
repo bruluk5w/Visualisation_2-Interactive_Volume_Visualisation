@@ -23,6 +23,33 @@
 #include "PropagationShader.h"
 #include "DxHelpers.h"
 
+namespace
+{
+    void transitionResourceFromPixelToComputeShader(ID3D12GraphicsCommandList* cmd, ID3D12Resource* resource)
+    {
+        D3D12_RESOURCE_BARRIER barrier;
+        memset(&barrier, 0, sizeof(barrier));
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = resource;
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        barrier.Transition.Subresource = 0;
+        cmd->ResourceBarrier(1, &barrier);
+    }
+
+    void transitionResourceFromComputeToPixelShader(ID3D12GraphicsCommandList* cmd, ID3D12Resource* resource)
+    {
+        D3D12_RESOURCE_BARRIER barrier;
+        memset(&barrier, 0, sizeof(barrier));
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = resource;
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        barrier.Transition.Subresource = 0;
+        cmd->ResourceBarrier(1, &barrier);
+    }
+}
+
 
 BRWL_RENDERER_NS
 
@@ -462,7 +489,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     }
 
     bool hasComputeBuffers = computeBuffers->isResident();
-    if (hasComputeBuffers)
+    if (hasComputeBuffers && !data.drawOrthographicXRay)
     {
         // Dispatch ping-pong compute work 
         InitializationShader::ShaderConstants initParams;
@@ -485,15 +512,28 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         initializationShader->draw(cmd, initParams, computeBuffers.get());
         PropagationShader::DrawData propParams;
         {
-            propParams.textureResolution = viewingPlaneDimensions;
+            propParams.textureResolution = viewingPlaneDimensionsUnscaled;
             propParams.numSlices = numSlices;
             propParams.sliceWidth = sliceWidth;
+            propParams.voxelsPerCm = data.voxelsPerCm;
+            propParams.volumeTexelDimensions = data.volumeDimensions->dim();
         }
         computeBuffers->swap(cmd);
+
+
+        transitionResourceFromPixelToComputeShader(cmd, data.volumeTexture->texture.Get());
+        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.mediumColorPit.liveTexture->texture.Get());
+        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.opacityPit.liveTexture->texture.Get());
+        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.particleColorPit.liveTexture->texture.Get());
+        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.refractionPit.liveTexture->texture.Get());
+
         propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexture);
-        // during rendering:
-        // - activate opposite alias
-        // - place resource barrier to ensure previous compute dispatch has written all data
+
+        transitionResourceFromComputeToPixelShader(cmd, data.volumeTexture->texture.Get());
+        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.mediumColorPit.liveTexture->texture.Get());
+        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.opacityPit.liveTexture->texture.Get());
+        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.particleColorPit.liveTexture->texture.Get());
+        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.refractionPit.liveTexture->texture.Get());
     }
 
     // Setup viewport
@@ -523,8 +563,8 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     const D3D12_RECT r = { 0, 0, width, height }; // whole frame buffer
     cmd->RSSetScissorRects(1, &r);
     
-    // draw viewing plane
-    if (true)
+    // todo:draw viewing plane
+    if (data.drawOrthographicXRay)
     {
         bindVertexBuffer(cmd, viewingPlane);
         cmd->SetPipelineState(mainPipelineState.Get());

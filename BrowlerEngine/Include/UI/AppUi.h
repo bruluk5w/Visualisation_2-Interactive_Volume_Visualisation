@@ -26,8 +26,10 @@ struct UIResult
 
 		float voxelsPerCm;
 		bool vsync;
+		bool freeCamMovement;
 		bool drawAssetBoundaries;
 		bool drawViewingVolumeBoundaries;
+		bool drawOrthographicXRay;
 	} settings;
 
 	struct TransferFunction

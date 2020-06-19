@@ -65,8 +65,8 @@ Quaternion Quaternion::fromTo(Vec3 from, Vec3 to)
 //Quaternion Quaternion::lookAt(Vec3 from, Vec3 to)
 //{
 //	// Make an orthogonal basis
-//	const Vec3 vecFwd = ::BRWL::normalize(to - from);
-//	const Vec3 vecRight = ::BRWL::normalize(cross(VEC3_FWD, vecFwd));
+//	const Vec3 vecFwd = ::BRWL::normalized(to - from);
+//	const Vec3 vecRight = ::BRWL::normalized(cross(VEC3_FWD, vecFwd));
 //	const Vec3 vecUp = cross(vecRight, vecFwd);
 //
 //	// Take the trace of the matrix defined by the basis
@@ -92,6 +92,8 @@ Quaternion Quaternion::fromTo(Vec3 from, Vec3 to)
 //	const float s = 0.5f / std::sqrtf(1.0f + vecFwd.z - vecRight.x - vecUp.y);
 //	return Quaternion((vecFwd.x + vecRight.z) * s, (vecFwd.y + vecUp.z) * s, 0.25f / s, (vecRight.y - vecUp.x) * s);
 //}
+
+
 
 void Quaternion::toAxisAngle(const Quaternion& q, Vec3& outAxis, float& outAngle) {
 	// from www.j3d.org/matrix_faq/matrfaq_latest.html

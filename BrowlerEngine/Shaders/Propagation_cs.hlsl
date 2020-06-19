@@ -1,6 +1,7 @@
 cbuffer constants : register(b0)
 {
     float sliceWidth;
+    float worldSpaceToNormalizedVolume;
 };
 
 SamplerState preintegrationSampler : register(s0);
@@ -28,16 +29,35 @@ Texture2D<float> mediumIntegTex : register(t9);
 Texture3D<float> volumeTexture : register(t10);
 
 
+
 [numthreads(16, 16, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
-    const float3 read_idx = float3(DTid.xy, 0);
-    const uint2 write_idx = DTid.xy;
+    static const uint bufferWidth = 10; // in pixel
     
-    float3 viewingRayPosition = viewingRayPositionBufferRead.Load(read_idx).xyz;
-    float3 viewingRayDirection = viewingRayDirectionBufferRead.Load(read_idx).xyz;
+    const float3 read_idx = float3(DTid.xy + bufferWidth, 0);
+    const uint2 write_idx = DTid.xy + bufferWidth;
     
-    //advance viewing ray in world space
-    viewingRayPositionBufferWrite[write_idx].xyz = viewingRayPosition + viewingRayDirection * sliceWidth;
-    viewingRayDirectionBufferWrite[write_idx].xyz = viewingRayDirection; // has to be normalized
+    const float3 viewingRayPositionOld = viewingRayPositionBufferRead.Load(read_idx).xyz;
+    const float3 viewingRayDirectionOld = viewingRayDirectionBufferRead.Load(read_idx).xyz;
+    
+    //Advance viewing ray in world space
+    const float3 viewingRayPositionNew = viewingRayPositionOld + viewingRayDirectionOld * sliceWidth;
+    const float3 viewingRayDirectionNew = viewingRayDirectionOld; // todo
+    
+    viewingRayPositionBufferWrite[write_idx].xyz = viewingRayPositionNew;
+    viewingRayDirectionBufferWrite[write_idx].xyz = viewingRayDirectionNew; // has to be normalized
+    
+    // Sampling the volume
+    // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/4 of the normalized range is utilized.
+    const float rawScalarSampleOld = volumeTexture.SampleLevel(volumeSampler, (viewingRayPositionOld * worldSpaceToNormalizedVolume) + 0.5f, 0) * 4;
+    const float rawScalarSampleNew = volumeTexture.SampleLevel(volumeSampler, (viewingRayPositionNew * worldSpaceToNormalizedVolume) + 0.5f, 0) * 4;
+    const float refractionContrib = refractionIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
+    const float opacityContrib = opacityIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
+    // todo: change to rgb:
+    const float particleColorContrib = particleColIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
+    const float mediumContrib = mediumIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
+    
+    colorBufferWrite[write_idx] = colorBufferRead.Load(read_idx) + opacityContrib * sliceWidth;
+    
 }

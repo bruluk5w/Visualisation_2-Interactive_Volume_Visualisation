@@ -22,6 +22,8 @@ RWTexture2D<float4> mediumBuffer : register(u3);
 RWTexture2D<float4> viewingRayPositionBuffer : register(u4);
 RWTexture2D<float4> viewingRayDirectionBuffer : register(u5);
 
+static float bufferWidth = 10.f; // in pixel
+
 [numthreads(8, 8, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
@@ -32,7 +34,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     mediumBuffer[DTid.xy].xyzw = float4(0.f, 0.f, 0.f, 0.f); // starting with no color and fully transparent
     
     const float2 halfPixel = textureSizeWorldSpace / textureResolution * 0.5f;
-    const float2 offset = halfPixel + float2(DTid.xy) * textureSizeWorldSpace.x / textureResolution;
+    const float2 offset = halfPixel + (float2(DTid.xy) - bufferWidth) * textureSizeWorldSpace.x / textureResolution;
 
     const float3 pixelWorldSpace = topLeft + 
         offset.x * horizontalPlaneDirection +

@@ -8,6 +8,7 @@
 #include "Renderer/PAL/imgui_impl_dx12.h"
 #include "Renderer/PAL/d3dx12.h"
 #include "Common/PAl/DescriptorHeap.h"
+#include "Core/Events.h"
 
 BRWL_RENDERER_NS
 
@@ -43,6 +44,19 @@ bool Visualization2Renderer::init(Renderer* r)
 {
     BRWL_CHECK(!initialized, BRWL_CHAR_LITERAL("Invalid state."));
     
+    D3D12_FEATURE_DATA_D3D12_OPTIONS FeatureData;
+    ZeroMemory(&FeatureData, sizeof(FeatureData));
+    if (!BRWL_VERIFY(SUCCEEDED(r->device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &FeatureData, sizeof(FeatureData))), BRWL_CHAR_LITERAL("Failed to get device freature data.")))
+    {
+        return false;        
+    }
+
+    if (!BRWL_VERIFY(FeatureData.TypedUAVLoadAdditionalFormats, BRWL_CHAR_LITERAL("Uav loas of type R32G32B32A32_FLOAT not supported. Sorry, try another GPU :(.")))
+    {
+        return false;
+    }
+
+
     LoadFonts(uiResults[uiResultIdx].settings.fontSize);
     if (!dataSet.isValid())
     {
@@ -109,7 +123,7 @@ bool Visualization2Renderer::init(Renderer* r)
 
 void Visualization2Renderer::preRender(Renderer* renderer)
 {
-    if (!initialized) return;
+    if (initialized) return;
 
     const UIResult& r = uiResults[uiResultIdx]; // results
     UIResult& v = uiResults[uiResultIdx ? 0 : 1]; // values
@@ -117,6 +131,11 @@ void Visualization2Renderer::preRender(Renderer* renderer)
         LoadFonts(r.settings.fontSize);
         v.settings.fontSize = r.settings.fontSize;
     }
+
+    BoolParam param{ r.settings.freeCamMovement };
+    engine->eventSystem->postEvent<::BRWL::Event::SET_FREE_CAM_MOVEMENT>(&param);
+
+    initialized = true;
 }
 
 
@@ -151,8 +170,7 @@ void Visualization2Renderer::render(Renderer* renderer)
             std::swap(pitImage.stagedTexture, pitImage.liveTexture);
             // release old texture
             pitImage.stagedTexture->destroy();
-            // Indicate new resource to be used by the pixel shader on the main command queue.
-            // We only do this once after the upload. In the next frames the resource will use implicit state promotion between common and pixel shader resource.
+            // Indicate new resource to be used by a compute shader.
             renderer->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pitImage.liveTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
         }
     }
@@ -278,11 +296,19 @@ void Visualization2Renderer::render(Renderer* renderer)
         v.settings.vsync = r.settings.vsync;
     }
 
+    if (v.settings.freeCamMovement != r.settings.freeCamMovement)
+    {
+        BoolParam param{ r.settings.freeCamMovement };
+        engine->eventSystem->postEvent<::BRWL::Event::SET_FREE_CAM_MOVEMENT>(&param);
+        v.settings.freeCamMovement = r.settings.freeCamMovement;
+    }
+
     // no action needed
     v.settings.voxelsPerCm = r.settings.voxelsPerCm;
     v.settings.font = r.settings.font;
     v.settings.drawAssetBoundaries = r.settings.drawAssetBoundaries;
     v.settings.drawViewingVolumeBoundaries = r.settings.drawViewingVolumeBoundaries;
+    v.settings.drawOrthographicXRay = r.settings.drawOrthographicXRay;
     v.light = r.light;
     mainShader.render();
 }
@@ -335,20 +361,21 @@ void Visualization2Renderer::draw(Renderer* r)
         volumeTexture.state = TextureResource::State::RESIDENT;
         volumeTexture.uploadHeap = nullptr;  // free resources
 
-        // indicate new resource to be used by the pixel shader on the main command queue
+        // indicate new resource to be used by a compute shader
         r->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
     }
 
     // If we have all resources then we draw else we wait another frame
     if (pitCollection.isResident())
     {
-        const MainShader::DrawData drawData {
+        const MainShader::DrawData drawData{
             &dataSet.getBoundingBox(),
             &volumeTexture,
             &pitCollection,
             uiResults[0].settings.voxelsPerCm,
             uiResults[0].settings.drawAssetBoundaries,
             uiResults[0].settings.drawViewingVolumeBoundaries,
+            uiResults[0].settings.drawOrthographicXRay,
             {
                 MainShader::DrawData::Light::Type::DIRECTIONAL,
                 uiResults[0].light.coords,

@@ -17,9 +17,10 @@ public:
 #pragma pack(push, 1)
     struct ShaderConstants
     {
+        static const unsigned int bufferWidth = 10; // has to be the same as in InitializationShader.h and the respective .hlsl files
         static const unsigned int threadGroupSizeX = 8;
         static const unsigned int threadGroupSizeY = 8;
-        static const unsigned int num32BitValues = 19;
+        static const unsigned int num32BitValues = 28;
 
         Vec2 textureSizeWorldSpace;
         Vec2 textureResolution;

@@ -21,8 +21,12 @@ public:
 
 	std::unique_ptr<RENDERER::Camera> camera;
 
+	bool constrainCam;
+	Vec2 constrainedRotation;
+	float constrainedRadius;
+
 	size_t windowResizeEvtHdl = 0;
-	//std::unique_ptr<Transform> cameraPawn;
+	size_t setCamFreeCamMovementEvtHdl = 0;
 };
 
 

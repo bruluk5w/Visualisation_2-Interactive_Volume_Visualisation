@@ -15,7 +15,7 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
     rootSignature(nullptr),
     pipelineState(nullptr)
 {
-
+    destroy();
     // building pipeline state object and rootsignature
 
     {
@@ -39,7 +39,7 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
         D3D12_ROOT_PARAMETER param[8];
         memset(&param, 0, sizeof(param));
         param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        param[0].Constants.Num32BitValues = 1;
+        param[0].Constants.Num32BitValues = 4;
         param[0].Constants.ShaderRegister = 0;
         param[0].Constants.RegisterSpace = 0;
         param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -77,8 +77,8 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
 
         // volume and preintergration sampler are static samplers since they never change
         D3D12_STATIC_SAMPLER_DESC staticSamplers[2];
-        makeStaticSamplerDescription(staticSamplers[0], 0);
-        makeStaticSamplerDescription(staticSamplers[1], 1);
+        makeStaticSamplerDescription(staticSamplers[0], 0, D3D12_SHADER_VISIBILITY_ALL);
+        makeStaticSamplerDescription(staticSamplers[1], 1, D3D12_SHADER_VISIBILITY_ALL);
 
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
         memset(&rootSignatureDesc, 0, sizeof(rootSignatureDesc));
@@ -144,6 +144,8 @@ void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationSh
 
     // constants
     cmd->SetComputeRoot32BitConstants(0, 1, &data.sliceWidth, 0);
+    const Vec3 worldSpaceToNormalizedVolume(data.voxelsPerCm / data.volumeTexelDimensions.x, data.voxelsPerCm / data.volumeTexelDimensions.y, data.voxelsPerCm / data.volumeTexelDimensions.z);
+    cmd->SetComputeRoot32BitConstants(0, 3, &worldSpaceToNormalizedVolume, 1); // the multiplier in x, y and z-direction to get into the uvw-space of the volume (offset by 0.5)
 
     // Set preintegration tables
     for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
@@ -154,9 +156,11 @@ void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationSh
     // set volume texture
     cmd->SetComputeRootDescriptorTable(3 + ENUM_CLASS_TO_NUM(PitTex::MAX), volumeTexture->descriptorHandle->getGpu());
 
-    float actualResX = Utils::min<float>(data.textureResolution.x, computeBuffers->getWidth());
-    float actualResY = Utils::min<float>(data.textureResolution.y, computeBuffers->getHeight());
-
+    // Only propagate without the buffered outer region. This only works for directional lights where the the out-of-bounds
+    // default values are constant.
+    // point lights with falloff would need different values for the skirt on each new slice.
+    float actualResX = Utils::min<float>(data.textureResolution.x, computeBuffers->getWidth() - 2 * DrawData::bufferWidth);
+    float actualResY = Utils::min<float>(data.textureResolution.y, computeBuffers->getHeight() - 2 * DrawData::bufferWidth);
 
     int i = 0;
     do {

@@ -67,6 +67,7 @@ public:
         const float voxelsPerCm;
         bool drawAssetBounds;
         bool drawViewingVolume;
+        bool drawOrthographicXRay;
         struct Light
         {
             enum class Type : uint8_t

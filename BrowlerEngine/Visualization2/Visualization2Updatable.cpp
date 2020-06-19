@@ -14,7 +14,8 @@ BRWL_NS
 
 Visualization2Updatable::Visualization2Updatable() :
 	IUpdatable(),
-	camera(nullptr)
+	camera(nullptr),
+	constrainCam(false)
 { }
 
 bool Visualization2Updatable::init()
@@ -32,6 +33,22 @@ bool Visualization2Updatable::init()
 		return false;
 	});
 
+	setCamFreeCamMovementEvtHdl = coreBus->registerListener(Event::SET_FREE_CAM_MOVEMENT, [this](Event, void* param) {
+		constrainCam = !castParam<Event::SET_FREE_CAM_MOVEMENT>(param)->value;
+		if (constrainCam)
+		{
+			camera->rotation() = Quaternion::fromTo(VEC3_FWD, -camera->cPosition());
+			constrainedRadius = length(camera->cPosition());
+			Vec3 dir = normalized(camera->cPosition());
+			constrainedRotation.x = sin(dir.y); 
+			constrainedRotation.y = atan2(dir.x, dir.z) - PI_F;
+			//constrainedRotation.x = Utils::clamp(constrainedRotation.x, 0.5f * PI_F - 0.0001f, -0.5f * PI_F + 0.0001f);
+			camera->rotation().fromEuler(constrainedRotation.x, constrainedRotation.y, 0);
+		}
+
+		return false;
+	});
+
 	camera = std::make_unique<RENDERER::Camera>(width, height, 45.f * DEG_2_RAD_F, 0.1f, 500.f, BRWL_CHAR_LITERAL("Main Camera"));
 	camera->position() = { 0.f, 0.0f, -3.f };
 	engine->hierarchy->addToRoot(camera.get());
@@ -42,48 +59,73 @@ bool Visualization2Updatable::init()
 
 void Visualization2Updatable::update(double dt)
 {
-	Vec3 strave{ 0.f, 0.f, 0.f };
+	Vec3 direction{ 0.f, 0.f, 0.f };
 
 	if (engine->input->isKeyPressed(Key::W)) {
-		strave.z += 1;
+		direction.z += 1;
 	}
 
 	if (engine->input->isKeyPressed(Key::S)) {
-		strave.z -= 1;
+		direction.z -= 1;
 	}
 
 	if (engine->input->isKeyPressed(Key::D)) {
-		strave.x += 1;
+		direction.x += 1;
 	}
 
 	if (engine->input->isKeyPressed(Key::A)) {
-		strave.x -= 1;
+		direction.x -= 1;
 	}
 
 	if (engine->input->isKeyPressed(Key::E)) {
-		strave.y += 1;
+		direction.y += 1;
 	}
 
 	if (engine->input->isKeyPressed(Key::Q)) {
-		strave.y -= 1;
-	}
-
-	if (strave.x || strave.y || strave.z) {
-		const float speed = engine->input->isKeyPressed(Key::SHIFT) ? 3.5f : 1.5f;
-		camera->position() += camera->rotation() * normalized(strave) * speed * dt;
+		direction.y -= 1;
 	}
 
 	float dx = (float)engine->input->getMouseDeltaX();
 	float dy = (float)engine->input->getMouseDeltaY();
-	if (engine->input->isButtonPressed(Button::MOUSE_1) && (dx != 0 || dy != 0))
-	{
-		Vec3 euler = camera->rotation().toEuler();
-		euler.y += dx / 300.0f;
-		euler.x += dy / 300.0f;
 
-		// clamp ath 90 degrees x rotation
-		euler.x = euler.x > 0.5f * PI_F ? 0.5f * PI_F : euler.x < -0.5f * PI_F ? -0.5f * PI_F : euler.x;
-		camera->rotation().fromEuler(euler.x, euler.y, euler.z);
+	const bool hasMouseAction = engine->input->isButtonPressed(Button::MOUSE_1) && (dx != 0 || dy != 0);
+	const bool hasKeyAction = direction.x || direction.y || direction.z;
+	if (hasMouseAction || hasKeyAction)
+	{
+		const float speed = engine->input->isKeyPressed(Key::SHIFT) ? 4.5f : 1.5f;
+		if (constrainCam)
+		{
+			constrainedRadius = Utils::max(constrainedRadius + direction.y * speed * (float)dt, 0.01f);
+		
+			const float rotationMultiplier = 1.f / 15.f;
+			float rotY = dt * (-direction.x * 0.7f  + (hasMouseAction ? dx * rotationMultiplier : 0.f)) * speed;
+			float rotX = dt * (direction.z * 0.7f + (hasMouseAction ? dy * rotationMultiplier : 0.f)) * speed;
+
+			constrainedRotation.x += rotX;
+			constrainedRotation.x = Utils::clamp(constrainedRotation.x, 0.5f * PI_F - 0.0001f, -0.5f * PI_F + 0.0001f);
+			constrainedRotation.y += rotY;
+			camera->rotation().fromEuler(constrainedRotation.x, constrainedRotation.y, 0);
+
+			camera->position() = camera->rotation() * -VEC3_FWD * constrainedRadius;
+		}
+		else {
+
+			if (hasMouseAction)
+			{
+				const float rotationMultiplier = 1.f / 300.f;
+				Vec3 euler = camera->rotation().toEuler();
+				euler.y += dx * rotationMultiplier;
+				euler.x += dy * rotationMultiplier;
+
+				// clamp ath 90 degrees x rotation
+				euler.x = euler.x > 0.5f * PI_F ? 0.5f * PI_F : euler.x < -0.5f * PI_F ? -0.5f * PI_F : euler.x;
+				camera->rotation().fromEuler(euler.x, euler.y, euler.z);
+			}
+
+			if (hasKeyAction) {
+				camera->position() += camera->rotation() * normalized(direction) * speed * dt;
+			}
+		}
 	}
 }
 
@@ -93,7 +135,7 @@ void Visualization2Updatable::destroy()
 	{
 		auto* coreBus = static_cast<EventBusSwitch<Event>*>(engine->eventSystem.get());
 		coreBus->unregisterListener(Event::WINDOW_RESIZE, windowResizeEvtHdl);
-		windowResizeEvtHdl = 0;
+		coreBus->unregisterListener(Event::SET_FREE_CAM_MOVEMENT, setCamFreeCamMovementEvtHdl);
 	}
 
 	if (camera)

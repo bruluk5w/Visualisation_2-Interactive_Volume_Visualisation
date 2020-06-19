@@ -19,10 +19,12 @@ public:
 #pragma pack(push, 1)
     struct DrawData
     {
+        static const unsigned int bufferWidth = 10; // has to be the same as in InitializationShader.h and the respective .hlsl files
         static const unsigned int threadGroupSizeX = 16;
         static const unsigned int threadGroupSizeY = 16;
-        static const unsigned int num32BitValues = 2;
         Vec2 textureResolution;
+        Vec3 volumeTexelDimensions;
+        float voxelsPerCm;
         float numSlices;
         float sliceWidth;
     };
