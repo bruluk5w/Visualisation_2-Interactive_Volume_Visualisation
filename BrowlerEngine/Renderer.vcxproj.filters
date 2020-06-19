@@ -128,6 +128,12 @@
     <DXCShader Include="Shaders\Propagation_cs.hlsl">
       <Filter>Shaders</Filter>
     </DXCShader>
+    <DXCShader Include="Shaders\Imposter_vs.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
+    <DXCShader Include="Shaders\Imposter_ps.hlsl">
+      <Filter>Shaders</Filter>
+    </DXCShader>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
