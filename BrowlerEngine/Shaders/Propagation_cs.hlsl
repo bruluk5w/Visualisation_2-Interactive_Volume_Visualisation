@@ -28,7 +28,32 @@ Texture2D<float> opacityIntegTex : register(t8);
 Texture2D<float> mediumIntegTex : register(t9);
 Texture3D<float> volumeTexture : register(t10);
 
+static const float PI = 3.14159265f;
 
+// inputs are assumed to be normalized
+// fromIdxOfRefrac and toIdxOfRefrac assumed > 0 
+float4 cookTorrance(float3 normal, float3 view, float3 light, float fromIdxOfRefrac, float toIdxOfRefrac, float roughness)
+{
+    float3 halfVector = normalize(light + view);
+    float angleOfIncidence = dot(normal, light); // cos of the angle between normal and view
+    float angleOfReflection = dot(normal, view); // cos of the angle between normal and light
+    float normalDotHalf = dot(normal, halfVector);
+    float viewDotHalf = dot(view, halfVector);
+    // Compute the geometric term 
+    float G1 = (2.0f * normalDotHalf * angleOfIncidence) / viewDotHalf;
+    float G2 = (2.0f * normalDotHalf * angleOfReflection) / viewDotHalf;
+    //float  geometricAttenuation = min( 1.0f, max( 0.0f, min( G1, G2 ) ) );    
+    float geometricAttenuation = min(1.0f, min(G1, G2));
+    // Schlick's approximation of the fresnel term
+    float r0 = (fromIdxOfRefrac - toIdxOfRefrac) / (fromIdxOfRefrac + toIdxOfRefrac); ///reflection coefficient for light incoming parallel to normal
+    float fresnel = r0 + (1.f - r0) * pow(1.f - angleOfIncidence, 5.0f); // todo: mybe faster with 5 multiplications
+    // Roughness calculated with Beckmann distribution
+    float roughnessSq = roughness * roughness;
+    float normalDotHalfSq = normalDotHalf * normalDotHalf;
+    float distributionFactor = exp(-(1.f - normalDotHalfSq) / (roughnessSq * normalDotHalfSq)) / (PI * roughnessSq * normalDotHalfSq * normalDotHalfSq);
+    // final cook torrance spceular term 
+    return (distributionFactor * fresnel * geometricAttenuation) / (PI * angleOfReflection * angleOfIncidence);
+}
 
 [numthreads(8, 8, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
@@ -39,10 +64,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
     const uint2 write_idx = DTid.xy + bufferWidth;
     // light propagation
     const float3 lightOld = lightBufferRead.Load(read_idx).xyz;
+    const float3 lightDirectionOld = lightDirectionBufferRead.Load(read_idx).xyz;
+    // intersect with previous light plane
     const float3 lightNew = lightOld;
     lightBufferWrite[write_idx].xyz = lightNew;
     
-    const float3 lightDirectionOld = lightDirectionBufferRead.Load(read_idx).xyz;
     const float3 lightDirectionNew = lightDirectionOld;
     lightDirectionBufferWrite[write_idx].xyz = lightDirectionNew;
     

@@ -308,11 +308,11 @@ void Visualization2Renderer::render(Renderer* renderer)
         v.settings.voxelsPerCm = r.settings.voxelsPerCm;
     }
     if (v.settings.numSlicesPerVoxel != r.settings.numSlicesPerVoxel) {
-        hasViewChanged == true;
+        hasViewChanged = true;
         v.settings.numSlicesPerVoxel = r.settings.numSlicesPerVoxel;
     }
     if (v.settings.drawOrthographicXRay != r.settings.drawOrthographicXRay) {
-        hasViewChanged == true;
+        hasViewChanged = true;
         v.settings.drawOrthographicXRay = r.settings.drawOrthographicXRay;
     }
     if (v.light != r.light) {
