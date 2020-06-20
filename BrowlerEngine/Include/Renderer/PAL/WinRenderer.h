@@ -81,8 +81,6 @@ namespace PAL
 
 		// Inherited via BaseRenderer
 		virtual void OnFramebufferResize() override;
-
-		DescriptorHandle* fontTextureDescriptorHandle;
 	};
 }
 

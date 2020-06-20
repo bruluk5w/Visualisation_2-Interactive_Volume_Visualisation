@@ -39,11 +39,11 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
 
     // for now we use the same format for all buffers 
     for (int i = 1; i < 6; ++i) {
-        textureDecriptions[i << 1] = textureDecriptions[0];
+        textureDecriptions[i] = textureDecriptions[0];
     }
     // copy to 2nd layer
     for (int i = 0; i < 6; ++i) {
-        textureDecriptions[i << 1 | 1] = textureDecriptions[i << 1];
+        textureDecriptions[6 + i] = textureDecriptions[i];
     }
 
     // how much memory should we allocate?

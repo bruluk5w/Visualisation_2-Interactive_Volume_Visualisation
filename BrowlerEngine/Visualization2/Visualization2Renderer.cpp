@@ -29,7 +29,9 @@ Visualization2Renderer::Visualization2Renderer() :
     volumeTextureFenceValue(0),
     mainShader(),
     initialized(false),
-    skipFrame(false)
+    skipFrame(false),
+    hasViewChanged(true),
+    hasCameraMovedListenerHandle(0)
 {
     // trigger building the preintegration tables
     for (int i = 0; i < countof(((UIResult::TransferFunctionCollection*)0)->array); ++i)
@@ -117,7 +119,9 @@ bool Visualization2Renderer::init(Renderer* r)
         return false;
     }
 
-    initialized = true;
+    hasCameraMovedListenerHandle = r->eventSystem->registerListener(Event::CAM_HAS_MOVED, [this](Event, void*) {hasViewChanged = true; return true; });
+
+    hasViewChanged = initialized = true;
 
     return initialized;
 }
@@ -168,10 +172,11 @@ void Visualization2Renderer::render(Renderer* renderer)
             pitImage.stagedTexture->destroy();
             // Indicate new resource to be used by a compute shader.
             renderer->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pitImage.liveTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+            hasViewChanged = true;
         }
     }
 
-    // Swap objects fro communication with front-end
+    // Swap objects for communication with front-end
     uiResultIdx = uiResultIdx ? 0 : 1;
     UIResult& r = uiResults[uiResultIdx]; // results
     UIResult& v = uiResults[uiResultIdx ? 0 : 1]; // values
@@ -182,6 +187,9 @@ void Visualization2Renderer::render(Renderer* renderer)
         const PitImage& pitImage = pitCollection.array[i];
         v.transferFunctions.array[i].textureID = pitImage.liveTexture->state != TextureResource::State::RESIDENT ? nullptr : (ImTextureID)pitImage.liveTexture->descriptorHandle->getResident().residentGpu.ptr;
     }
+
+    v.remainingSlices = mainShader.getNumRemainingSlices();
+    r.settings.vsync = renderer->getVSync();
 
     // execute UI and retrieve results
     ImGui::PushFont(fonts[ENUM_CLASS_TO_NUM(r.settings.font)]);
@@ -207,7 +215,8 @@ void Visualization2Renderer::render(Renderer* renderer)
                 blocked[i] = true;
                 // if the staged resource is currently upoading then the fence value has do be lower than the one which we remembered
                 // but only do a weak check since it could theoretically finish in this very moment
-                BRWL_CHECK(pitImage.fence->GetCompletedValue() < pitImage.uploadFenceValue, BRWL_CHAR_LITERAL("Invalid fence/staged resource state."));
+                uint64_t completedValue = pitImage.fence->GetCompletedValue();
+                BRWL_CHECK(completedValue <= pitImage.uploadFenceValue, BRWL_CHAR_LITERAL("Invalid fence/staged resource state."));
                 uint64_t x = pitImage.fence->GetCompletedValue();
                 if (!BRWL_VERIFY(pitImage.stagedTexture->state != TextureResource::State::FAILED, BRWL_CHAR_LITERAL("Invalid state for staged pitTexture.")))
                 {
@@ -253,7 +262,6 @@ void Visualization2Renderer::render(Renderer* renderer)
         }
     }
 
-
     // Recompute
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
@@ -273,11 +281,6 @@ void Visualization2Renderer::render(Renderer* renderer)
             makePreintegrationTable(pitImage.cpuImage, tFuncResult.transferFunction, tFuncResult.getArrayLength());
 
             // upload in draw()
-            // pitImage.stagedTexture->srvDescriptorRange = renderer->srvHeap.allocateHandle(
-//#ifdef _DEBUG
-//            BRWL_CHAR_LITERAL("StagedPitTexture")
-//#endif
-//            );
             pitImage.stagedTexture->state = TextureResource::State::REQUESTING_UPLOAD;
 
             // set front-end request satisfied
@@ -297,16 +300,29 @@ void Visualization2Renderer::render(Renderer* renderer)
         BoolParam param{ r.settings.freeCamMovement };
         engine->eventSystem->postEvent<::BRWL::Event::SET_FREE_CAM_MOVEMENT>(&param);
         v.settings.freeCamMovement = r.settings.freeCamMovement;
+        hasViewChanged = true;
     }
 
-    // no action needed
-    v.settings.voxelsPerCm = r.settings.voxelsPerCm;
-    v.settings.numSlicesPerVoxel = r.settings.numSlicesPerVoxel;
+    if (v.settings.voxelsPerCm != r.settings.voxelsPerCm) {
+        hasViewChanged = true;
+        v.settings.voxelsPerCm = r.settings.voxelsPerCm;
+    }
+    if (v.settings.numSlicesPerVoxel != r.settings.numSlicesPerVoxel) {
+        hasViewChanged == true;
+        v.settings.numSlicesPerVoxel = r.settings.numSlicesPerVoxel;
+    }
+    if (v.settings.drawOrthographicXRay != r.settings.drawOrthographicXRay) {
+        hasViewChanged == true;
+        v.settings.drawOrthographicXRay = r.settings.drawOrthographicXRay;
+    }
+    if (v.light != r.light) {
+        hasViewChanged = true;
+        v.light = r.light;
+    }
+    
     v.settings.font = r.settings.font;
     v.settings.drawAssetBoundaries = r.settings.drawAssetBoundaries;
     v.settings.drawViewingVolumeBoundaries = r.settings.drawViewingVolumeBoundaries;
-    v.settings.drawOrthographicXRay = r.settings.drawOrthographicXRay;
-    v.light = r.light;
     mainShader.render();
 }
 
@@ -360,6 +376,7 @@ void Visualization2Renderer::draw(Renderer* r)
 
         // indicate new resource to be used by a compute shader
         r->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+        hasViewChanged = true;
     }
 
     // If we have all resources then we draw else we wait another frame
@@ -374,13 +391,14 @@ void Visualization2Renderer::draw(Renderer* r)
             uiResults[0].settings.drawAssetBoundaries,
             uiResults[0].settings.drawViewingVolumeBoundaries,
             uiResults[0].settings.drawOrthographicXRay,
+            hasViewChanged,
             {
                 MainShader::DrawData::Light::Type::DIRECTIONAL,
                 uiResults[0].light.coords,
                 uiResults[0].light.color
             }
         };
-
+        hasViewChanged = false;
         mainShader.draw(r->device.Get(), r->commandList.Get(), drawData);
     }
 
@@ -428,6 +446,9 @@ void Visualization2Renderer::draw(Renderer* r)
 
 void Visualization2Renderer::destroy(Renderer* r)
 {
+    if (r->eventSystem) {
+        r->eventSystem->unregisterListener(Event::CAM_HAS_MOVED, hasCameraMovedListenerHandle);
+    }
 
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {

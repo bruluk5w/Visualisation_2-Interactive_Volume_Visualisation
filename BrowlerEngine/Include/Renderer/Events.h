@@ -10,6 +10,7 @@ enum class Event {
 	WINDOW_MOVE,
 	FRAMEBUFFER_RESIZE,
 	FRAME_IDX_CHANGE,
+	CAM_HAS_MOVED,
 	MAX,
 	MIN = 0
 };

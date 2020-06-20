@@ -7,13 +7,17 @@
 #include "TextureResource.h"
 #include "PitCollection.h"
 
+#include "Core/BrowlerEngine.h"
+#include "Core/Timer.h"
+
 
 BRWL_RENDERER_NS
 
 
 PropagationShader::PropagationShader(ID3D12Device* device) :
     rootSignature(nullptr),
-    pipelineState(nullptr)
+    pipelineState(nullptr),
+    slicesPerInvocation(10)
 {
     destroy();
     // building pipeline state object and rootsignature
@@ -136,57 +140,76 @@ PropagationShader::~PropagationShader()
     destroy();
 }
 
-void PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data, ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture,
+unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data, ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture,
     ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle)
 {
     SCOPED_GPU_EVENT(cmd, 0, 255, 0, "Propagation Compute Shader");
     BRWL_EXCEPTION(computeBuffers, nullptr);
     BRWL_EXCEPTION(computeBuffers->isResident(), nullptr);
 
-    
+    unsigned int remainingSlices = data.remainingSlices;
 
-    cmd->SetPipelineState(pipelineState.Get());
-    cmd->SetComputeRootSignature(rootSignature.Get());
-
-    // constants
-    cmd->SetComputeRoot32BitConstants(0, 1, &data.sliceWidth, 0);
-    const Vec3 worldSpaceToNormalizedVolume(data.voxelsPerCm / data.volumeTexelDimensions.x, data.voxelsPerCm / data.volumeTexelDimensions.y, data.voxelsPerCm / data.volumeTexelDimensions.z);
-    cmd->SetComputeRoot32BitConstants(0, 3, &worldSpaceToNormalizedVolume, 1); // the multiplier in x, y and z-direction to get into the uvw-space of the volume (offset by 0.5)
-
-    // Set preintegration tables
-    for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
+    if (remainingSlices > 0)
     {
-        cmd->SetComputeRootDescriptorTable(3 + i, pitCollection->array[i].liveTexture->descriptorHandle->getResident().residentGpu);
+        const float targetDt = 1.0f / 60.f;
+        const float currentDt = engine->time->getDeltaTime();
+        if (currentDt < targetDt - 0.02f*targetDt) {
+            ++slicesPerInvocation;
+        }
+        else if (currentDt > targetDt + 0.02f * targetDt) {
+            slicesPerInvocation = Utils::max(slicesPerInvocation - 10, 10);
+        }
+
+        cmd->SetPipelineState(pipelineState.Get());
+        cmd->SetComputeRootSignature(rootSignature.Get());
+
+        // constants
+        cmd->SetComputeRoot32BitConstants(0, 1, &data.sliceWidth, 0);
+        const Vec3 worldSpaceToNormalizedVolume(data.voxelsPerCm / data.volumeTexelDimensions.x, data.voxelsPerCm / data.volumeTexelDimensions.y, data.voxelsPerCm / data.volumeTexelDimensions.z);
+        cmd->SetComputeRoot32BitConstants(0, 3, &worldSpaceToNormalizedVolume, 1); // the multiplier in x, y and z-direction to get into the uvw-space of the volume (offset by 0.5)
+
+        // Set preintegration tables
+        for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
+        {
+            cmd->SetComputeRootDescriptorTable(3 + i, pitCollection->array[i].liveTexture->descriptorHandle->getResident().residentGpu);
+        }
+
+        // set volume texture
+        cmd->SetComputeRootDescriptorTable(3 + ENUM_CLASS_TO_NUM(PitTex::MAX), volumeTexture->descriptorHandle->getResident().residentGpu);
+
+        // Only propagate without the buffered outer region. This only works for directional lights where the the out-of-bounds
+        // default values are constant.
+        // point lights with falloff would need different values for the skirt on each new slice.
+        float actualResX = Utils::min<float>(data.textureResolution.x, computeBuffers->getWidth() - 2 * DrawData::bufferWidth);
+        float actualResY = Utils::min<float>(data.textureResolution.y, computeBuffers->getHeight() - 2 * DrawData::bufferWidth);
+        unsigned int budgetCounter = 0;
+        do {
+            computeBuffers->swap(cmd);
+            // cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
+            cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetUav(0).residentGpu);
+            cmd->SetComputeRootDescriptorTable(2, computeBuffers->getSourceSrv(0).residentGpu);
+
+            cmd->Dispatch(
+                (unsigned int)std::ceil(actualResX / (float)DrawData::threadGroupSizeX),
+                (unsigned int)std::ceil(actualResY / (float)DrawData::threadGroupSizeY),
+                1
+            );
+            ++budgetCounter;
+            --remainingSlices;
+        } while (budgetCounter < slicesPerInvocation && remainingSlices > 0);
+
+        // swap one last time to make the last written texture a normal SRV
+        if (data.remainingSlices <= 0)
+        {
+            computeBuffers->swap(cmd);
+        }
     }
 
-    // set volume texture
-    cmd->SetComputeRootDescriptorTable(3 + ENUM_CLASS_TO_NUM(PitTex::MAX), volumeTexture->descriptorHandle->getResident().residentGpu);
-
-    // Only propagate without the buffered outer region. This only works for directional lights where the the out-of-bounds
-    // default values are constant.
-    // point lights with falloff would need different values for the skirt on each new slice.
-    float actualResX = Utils::min<float>(data.textureResolution.x, computeBuffers->getWidth() - 2 * DrawData::bufferWidth);
-    float actualResY = Utils::min<float>(data.textureResolution.y, computeBuffers->getHeight() - 2 * DrawData::bufferWidth);
-
-    int i = 0;
-    do {
-        computeBuffers->swap(cmd);
-        // cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
-        cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetUav(0).residentGpu);
-        cmd->SetComputeRootDescriptorTable(2, computeBuffers->getSourceSrv(0).residentGpu);
-
-        cmd->Dispatch(
-            (unsigned int)std::ceil(actualResX / (float)DrawData::threadGroupSizeX),
-            (unsigned int)std::ceil(actualResY / (float)DrawData::threadGroupSizeY),
-            1
-        );
-
-    } while (++i < data.numSlices);
-
-    computeBuffers->swap(cmd);
-    outColorBufferResource = computeBuffers->getSrvResource(2); // return the color buffer
+    // return the last color buffer, no matter how far we are
+    outColorBufferResource = computeBuffers->getSrvResource(2); 
     outColorBufferDescriptorHandle = computeBuffers->getSourceSrv(2);
-
+  
+    return remainingSlices;
 }
 
 BRWL_RENDERER_NS_END

@@ -25,17 +25,19 @@ public:
         Vec2 textureResolution;
         Vec3 volumeTexelDimensions;
         float voxelsPerCm;
-        float numSlices;
+        float remainingSlices;
         float sliceWidth;
     };
 #pragma pack(pop)
-    // propagates light and viewing rays throught the volume and returns the last color buffer
-    void draw(ID3D12GraphicsCommandList* cmd, const DrawData& data, ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture,
+    // propagates light and viewing rays through the volume and returns the amount of slices which was not yet able to process, returns also the last written 
+    // color buffer via outColorBufferResource and outColorBufferDescriptorHandle
+    unsigned int draw(ID3D12GraphicsCommandList* cmd, const DrawData& data, ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture,
         ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle);
 
 private:
     ComPtr<ID3D12RootSignature> rootSignature;
     ComPtr<ID3D12PipelineState> pipelineState;
+    int slicesPerInvocation;
 };
 
 BRWL_RENDERER_NS_END

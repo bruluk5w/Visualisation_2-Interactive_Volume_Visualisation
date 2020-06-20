@@ -91,7 +91,11 @@ struct UIResult
 	{
 		Vec3 coords;
 		Vec4 color;
+		bool operator==(const Light& o) { return coords == o.coords && color == o.color; }
+		bool operator!=(const Light& o) { return !(*this == o); }
 	} light;
+
+	unsigned int remainingSlices;
 };
 
 void renderAppUI(UIResult& result, const UIResult& values);

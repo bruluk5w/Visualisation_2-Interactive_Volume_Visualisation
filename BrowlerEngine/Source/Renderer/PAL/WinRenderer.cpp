@@ -82,7 +82,7 @@ namespace PAL
 
     WinRenderer::WinRenderer(EventBusSwitch<Event>* eventSystem, PlatformGlobals* globals) :
         BaseRenderer(eventSystem, globals),
-        vSync(false),
+        vSync(true),
         dxgiFactory(nullptr),
         dxgiAdapter(nullptr),
         device(nullptr),
@@ -94,7 +94,7 @@ namespace PAL
         commandList(nullptr),
         frameFence(nullptr),
         frameFenceEvent(NULL),
-        frameFenceLastValue(0),
+        frameFenceLastValue(0)
     {
 #if ENABLE_GRAPHICS_DEBUG_FEATURES
         ComPtr<ID3D12Debug> debugController0;

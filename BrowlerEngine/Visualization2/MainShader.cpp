@@ -141,7 +141,8 @@ MainShader::MainShader() :
     initializationShader(nullptr),
     propagationShader(nullptr),
     computeBuffers(nullptr),
-    imposterShader(nullptr)
+    imposterShader(nullptr),
+    remainingSlices(0)
 {
     computeBuffers = std::make_unique<ComputeBuffers>();
 }
@@ -149,6 +150,7 @@ MainShader::MainShader() :
 MainShader::~MainShader()
 {
     computeBuffers = nullptr;
+    remainingSlices = 0;
 }
 
 bool MainShader::create(Renderer* renderer)
@@ -442,10 +444,7 @@ bool MainShader::create(Renderer* renderer)
 }
 
 void MainShader::render()
-{
-    if (!initialized) return;
-    //if (vertexBuffer == nullptr)
-}
+{ }
 
 void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, const MainShader::DrawData& data)
 {
@@ -514,36 +513,51 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     bool hasComputeBuffers = computeBuffers->isResident();
     if (hasComputeBuffers && !data.drawOrthographicXRay)
     {
-        // Dispatch ping-pong compute work 
-        InitializationShader::ShaderConstants initParams;
+        if (data.hasViewChanged)
         {
-            const Vec3 viewingPlaneCenter = extractPosition(viewingPlaneModelMatrix);
-            const Vec3 right = normalized(toVec3(VEC4_RIGHT * viewingPlaneModelMatrix));
-            const Vec3 down = normalized(toVec3(-VEC4_UP * viewingPlaneModelMatrix));
-            const Vec2 halfDimension = (0.5f * viewingPlaneDimensions);
+            remainingSlices = numSlices;
 
-            initParams.textureSizeWorldSpace = viewingPlaneDimensions;
-            initParams.textureResolution = viewingPlaneDimensionsUnscaled;
-            initParams.horizontalPlaneDirection = right;
-            initParams.verticalPlaneDirection = down;
-            initParams.topLeft = viewingPlaneCenter - halfDimension.x * right - halfDimension.y * down; // in world space
-            initParams.eye = camPos;
-            initParams.lightDirection = Quaternion::fromTo(VEC3_FWD, -camPos) * data.light.coords; // relative to eye-origin vector, so that the light source stays in the same hemisphere when we move around then origin
-            initParams.lightColor = data.light.color;
+            // Dispatch ping-pong compute work 
+            InitializationShader::ShaderConstants initParams;
+            memset(&initParams, 0, sizeof(initParams));
+            {
+                const Vec3 viewingPlaneCenter = extractPosition(viewingPlaneModelMatrix);
+                const Vec3 right = normalized(toVec3(VEC4_RIGHT * viewingPlaneModelMatrix));
+                const Vec3 down = normalized(toVec3(-VEC4_UP * viewingPlaneModelMatrix));
+                const Vec2 halfDimension = (0.5f * viewingPlaneDimensions);
+                // todo: move this into function
+                const Vec2 croppedRegion(
+                    (float)computeBuffers->getWidth() - 2.f * (float)PropagationShader::DrawData::bufferWidth,
+                    (float)computeBuffers->getHeight() - 2.f * (float)PropagationShader::DrawData::bufferWidth);
+                const Vec2 actualRes(
+                    Utils::min<float>(viewingPlaneDimensionsUnscaled.x, croppedRegion.x),
+                    Utils::min<float>(viewingPlaneDimensionsUnscaled.y, croppedRegion.y));
+
+                initParams.textureSizeWorldSpace = viewingPlaneDimensions;
+                initParams.textureResolution = actualRes;
+                initParams.horizontalPlaneDirection = right;
+                initParams.verticalPlaneDirection = down;
+                initParams.topLeft = viewingPlaneCenter - halfDimension.x * right - halfDimension.y * down; // in world space
+                initParams.eye = camPos;
+                initParams.lightDirection = Quaternion::fromTo(VEC3_FWD, -camPos) * data.light.coords; // relative to eye-origin vector, so that the light source stays in the same hemisphere when we move around then origin
+                initParams.lightColor = data.light.color;
+            }
+        
+            initializationShader->draw(cmd, initParams, computeBuffers.get());
         }
 
-        initializationShader->draw(cmd, initParams, computeBuffers.get());
 
         PropagationShader::DrawData propParams;
+        memset(&propParams, 0, sizeof(propParams));
         {
             propParams.textureResolution = viewingPlaneDimensionsUnscaled;
-            propParams.numSlices = numSlices;
+            propParams.remainingSlices = remainingSlices;
             propParams.sliceWidth = sliceWidth;
             propParams.voxelsPerCm = data.voxelsPerCm;
             propParams.volumeTexelDimensions = data.volumeDimensions->dim();
         }
 
-        computeBuffers->swap(cmd);
+        //computeBuffers->swap(cmd);
 
         transitionResourceFromPixelToComputeShader(cmd, data.volumeTexture->texture.Get());
         transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.mediumColorPit.liveTexture->texture.Get());
@@ -553,8 +567,11 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
 
         ID3D12Resource* colorBuffer;
         PAL::DescriptorHandle::ResidentHandles colorBufferDescriptorHandle;
-        propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexture, colorBuffer, colorBufferDescriptorHandle);
-        
+        remainingSlices = propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexture, colorBuffer, colorBufferDescriptorHandle);
+
+
+        // draw result, no matter how far we are
+
         // scissor
         const D3D12_RECT r = { 0, 0, width, height }; // whole frame buffer
         cmd->RSSetScissorRects(1, &r);
@@ -567,11 +584,14 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
             // we have a scale and offset because of the buffer around the area where actual results are propagated
             imposterVsConstants.uvOffset.x = (float)PropagationShader::DrawData::bufferWidth / (float)computeBuffers->getWidth();
             imposterVsConstants.uvOffset.y = (float)PropagationShader::DrawData::bufferWidth / (float)computeBuffers->getHeight();
+            const Vec2 croppedRegion (
+                (float)computeBuffers->getWidth() - 2.f * (float)PropagationShader::DrawData::bufferWidth,
+                (float)computeBuffers->getHeight() - 2.f * (float)PropagationShader::DrawData::bufferWidth);
             const Vec2 actualRes(
-                Utils::min<float>(viewingPlaneDimensionsUnscaled.x, (float)computeBuffers->getWidth() - 2.f * (float)PropagationShader::DrawData::bufferWidth),
-                Utils::min<float>(viewingPlaneDimensionsUnscaled.y, (float)computeBuffers->getHeight() - 2.f * (float)PropagationShader::DrawData::bufferWidth));
-            imposterVsConstants.uvRangeScale.x = actualRes.x / computeBuffers->getWidth();
-            imposterVsConstants.uvRangeScale.y = actualRes.y / computeBuffers->getHeight();
+                Utils::min<float>(viewingPlaneDimensionsUnscaled.x, croppedRegion.x),
+                Utils::min<float>(viewingPlaneDimensionsUnscaled.y, croppedRegion.y));
+            imposterVsConstants.uvRangeScale.x = actualRes.x / (float)computeBuffers->getWidth();
+            imposterVsConstants.uvRangeScale.y = actualRes.y / (float)computeBuffers->getHeight();
         }
 
         transitionResourceFromComputeToPixelShader(cmd, colorBuffer);
@@ -592,10 +612,8 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     const D3D12_RECT r = { 0, 0, width, height }; // whole frame buffer
     cmd->RSSetScissorRects(1, &r);
     
-    // todo:draw viewing plane
     if (data.drawOrthographicXRay)
     {
-       
         cmd->SetPipelineState(mainPipelineState.Get());
         cmd->SetGraphicsRootSignature(mainRootSignature.Get());
 

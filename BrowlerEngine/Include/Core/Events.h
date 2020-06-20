@@ -10,6 +10,7 @@ enum class Event {
 	WINDOW_MOVE,
 	FRAME_IDX_CHANGE,
 	SET_FREE_CAM_MOVEMENT,
+	CAM_HAS_MOVED,
 	//KEY_F1,
 	//KEY_F2,
 	//KEY_F3,

@@ -128,12 +128,12 @@ using namespace ImGui;
 #define ENUM_SELECT(label, current_val, result_val, scope, enum_name, name_array) \
 { \
     int item_current = ENUM_CLASS_TO_NUM(current_val); \
-    ::ImGui::Text(label); SameLine(); \
+    ::ImGui::Text(label); \
     ::ImGui::Combo("", &item_current, scope::name_array, IM_ARRAYSIZE(scope::name_array)); \
     result_val = (scope::enum_name)Utils::clamp<std::underlying_type_t<scope::enum_name>>(item_current, ENUM_CLASS_TO_NUM(scope::enum_name::MIN), ENUM_CLASS_TO_NUM(scope::enum_name::MAX)); \
 }
 
-#define SLIDER_FIX(id) ImGui::BeginChild(#id, ImVec2(ImGui::GetWindowWidth(), ImGui::GetTextLineHeightWithSpacing()), false);
+#define SLIDER_FIX(id, numLines) ImGui::BeginChild(#id, ImVec2(ImGui::GetWindowWidth(), ImGui::GetTextLineHeightWithSpacing() * numLines), false);
 #define SLIDER_FIX_END() EndChild();
 
 void drawHints();
@@ -148,7 +148,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
 
     ImGui::BeginMainMenuBar();
     Text("%.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y); SameLine();
-    Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    Text("Avg. %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     Dummy(ImVec2(40, 0));
     thread_local bool showSettings = false;
     thread_local bool showLightSettings = false;
@@ -156,22 +156,27 @@ void renderAppUI(UIResult& result, const UIResult& values)
     showTransferFunctions ^= Button("Transfer Functions");
     showSettings ^= Button("Settings");
     showLightSettings ^= Button("Light");
+    Text("Remaining Slices: %u", values.remainingSlices);
     ImGui::EndMainMenuBar();
 
     if (showSettings)
     {
         Begin("Settings", &showSettings);
-        ENUM_SELECT("GUI Font: ", values.settings.font, result.settings.font, UIResult::Settings, Font, fontNames);
-
         // work around for slider bug where slider is activated when clicking on the combo box above
-        SLIDER_FIX(0)
-            Text("Font Size:"); SameLine(); SliderFloat("", &result.settings.fontSize, 5, 40);
+        SLIDER_FIX(9, 2)
+            ENUM_SELECT("GUI Font: ", values.settings.font, result.settings.font, UIResult::Settings, Font, fontNames);
+        SLIDER_FIX_END()
+        SLIDER_FIX(0, 2)
+            Text("Font Size:");
+            SliderFloat("", &result.settings.fontSize, 5, 40);
             result.settings.fontSize = Utils::clamp(result.settings.fontSize, 5.f, 40.f);
         SLIDER_FIX_END();
-        Text("Voxels per Centimeter:"); SameLine(); ::ImGui::InputFloat("", &result.settings.voxelsPerCm, 1.f, 5.f, "%.0f");
+        Text("Voxels per Centimeter:");
+        ::ImGui::InputFloat("", &result.settings.voxelsPerCm, 1.f, 5.f, "%.0f");
         result.settings.voxelsPerCm = Utils::clamp(result.settings.voxelsPerCm, 1.f, 1000.f);
-        SLIDER_FIX(1)
-            Text("Number of slices per voxel:"); SameLine(); ::ImGui::InputFloat("", &result.settings.numSlicesPerVoxel, 0.01f, 1.f, "%.0f");
+        SLIDER_FIX(1, 2)
+            Text("Number of slices per voxel:");
+            ::ImGui::InputFloat("", &result.settings.numSlicesPerVoxel, 0.01f, 1.f, "%0.2f");
             result.settings.numSlicesPerVoxel = Utils::clamp(result.settings.numSlicesPerVoxel, 0.01f, 1.f);
         SLIDER_FIX_END();
         Checkbox("VSync", &result.settings.vsync);
@@ -179,7 +184,6 @@ void renderAppUI(UIResult& result, const UIResult& values)
         Checkbox("Draw Dataset Boundaries", &result.settings.drawAssetBoundaries);
         Checkbox("Draw Viewing Volume Boundaries", &result.settings.drawViewingVolumeBoundaries);
         Checkbox("Draw Orthographic X Ray (uses opacity transer function)", &result.settings.drawOrthographicXRay);
-        
         End();
     }
 
@@ -216,13 +220,15 @@ void renderAppUI(UIResult& result, const UIResult& values)
             float plotHeihgtBefore = plotHeight;
             // Draw first plot with multiple sources
             Text("Plot Size: ");
-            SLIDER_FIX(1);
-            Text("Width: "); SameLine(0, 10); int cursorX = GetCursorPosX(); SliderFloat("", &plotWidth, 1, 3, "");
-            if (!lockAspect) { SameLine(); if (Button("Reset")) plotWidth = 1; }
+            SLIDER_FIX(2, 2);
+                Text("Width: ");
+                int cursorX = GetCursorPosX(); SliderFloat("", &plotWidth, 1, 3, "");
+                if (!lockAspect) { SameLine(); if (Button("Reset")) plotWidth = 1; }
             SLIDER_FIX_END();
-            SLIDER_FIX(2);
-            Text("Height: "); SameLine(cursorX); SliderFloat("", &plotHeight, 1, 3, "");
-            if (!lockAspect) { SameLine(); if (Button("Reset")) plotHeight = 1; }
+            SLIDER_FIX(3, 2);
+                Text("Height: ");
+                SliderFloat("", &plotHeight, 1, 3, "");
+                if (!lockAspect) { SameLine(); if (Button("Reset")) plotHeight = 1; }
             SLIDER_FIX_END();
             fitWindow = Button(" Fit Window");
             if (lockAspect) {
@@ -236,20 +242,17 @@ void renderAppUI(UIResult& result, const UIResult& values)
             thread_local bool showCoordinatesTooltip = true;
             Checkbox(" Show Tooltip in Graph", &showCoordinatesTooltip);
             thread_local float ctrlPtointScale = 1;
-            SLIDER_FIX(3);
-            Text("Control Point Size: "), SameLine(); SliderFloat("", &ctrlPtointScale, 0.2f, 3.f);
+            SLIDER_FIX(4, 2);
+                Text("Control Point Size: ");
+                SliderFloat("", &ctrlPtointScale, 0.2f, 3.f);
             SLIDER_FIX_END();
-
-            // Tab Bar
-            //thread_local bool opened[ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::MAX)] = { true, true, true, true };
 
             // Passing a bool* to BeginTabItem() is similar to passing one to Begin():
             // the underlying bool will be set to false when the tab is closed.
             if (ImGui::BeginTabBar("Transfer Functions",
                 ImGuiTabBarFlags_FittingPolicyResizeDown |
-                //ImGuiTabBarFlags_Reorderable | 
+                ImGuiTabBarFlags_Reorderable | 
                 ImGuiTabBarFlags_AutoSelectNewTabs
-                //ImGuiTabBarFlags_TabListPopupButton
             ))
             {
                 for (int i = 0; i < ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::MAX); i++)

@@ -75,6 +75,7 @@ struct WinWindowImpl
     }
 
     LRESULT handleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
+        if (!engine) return 0;
 #ifdef BRWL_USE_DEAR_IM_GUI
         if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
             return true;
@@ -126,7 +127,7 @@ struct WinWindowImpl
             }
             return 0;
         case WM_KILLFOCUS:
-            if (engine->input) engine->input->unfocus();
+            if (engine && engine->input) engine->input->unfocus();
             return 0;
         case WM_SETFOCUS:
             if (engine->input) engine->input->focus();

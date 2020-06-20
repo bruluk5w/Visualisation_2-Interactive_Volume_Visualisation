@@ -223,6 +223,25 @@ namespace DirectX
 		return v;
 	}
 
+	inline bool operator==(const ::BRWL::Vec3& a, const ::BRWL::Vec3& b)
+	{
+		return XMVector3EqualR(XMVectorSet(a.x, a.y, a.z, 0.f), XMVectorSet(b.x, b.y, b.z, 0.f));
+	}
+
+	inline bool operator!=(const ::BRWL::Vec3& a, const ::BRWL::Vec3& b)
+	{
+		return !(a == b);
+	}
+
+	inline bool operator==(const ::BRWL::Vec4& a, const ::BRWL::Vec4& b)
+	{
+		return XMVector3EqualR(XMVectorSet(a.x, a.y, a.z, a.w), XMVectorSet(b.x, b.y, b.z, b.w));
+	}
+
+	inline bool operator!=(const ::BRWL::Vec4& a, const ::BRWL::Vec4& b)
+	{
+		return !(a == b);
+	}
 }
 
 #endif

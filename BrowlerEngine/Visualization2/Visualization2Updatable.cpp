@@ -118,6 +118,10 @@ void Visualization2Updatable::update(double dt)
 				camera->position() += camera->rotation() * normalized(direction) * speed * dt;
 			}
 		}
+
+		auto* coreBus = static_cast<EventBusSwitch<Event>*>(engine->eventSystem.get());
+		
+		coreBus->postEvent<::BRWL::Event::CAM_HAS_MOVED>(nullptr);
 	}
 }
 

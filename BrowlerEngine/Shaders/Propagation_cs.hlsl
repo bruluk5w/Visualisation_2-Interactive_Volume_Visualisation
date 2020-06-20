@@ -1,7 +1,7 @@
 cbuffer constants : register(b0)
 {
     float sliceWidth;
-    float worldSpaceToNormalizedVolume;
+    float3 worldSpaceToNormalizedVolume;
 };
 
 SamplerState preintegrationSampler : register(s0);
@@ -35,7 +35,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 {
     static const uint bufferWidth = 10; // in pixel
     
-    const float3 read_idx = float3(DTid.xy + bufferWidth, 0);
+    const int3 read_idx = int3(DTid.xy + bufferWidth, 0);
     const uint2 write_idx = DTid.xy + bufferWidth;
     // light propagation
     const float3 lightOld = lightBufferRead.Load(read_idx).xyz;
@@ -74,7 +74,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     const float particleColorContrib = particleColIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
     const float mediumContrib = mediumIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
     
-    colorBufferWrite[write_idx] = colorNew + opacityContrib *100; //* sliceWidth;
+    colorBufferWrite[write_idx] = colorNew + rawScalarSampleNew;
     colorBufferWrite[write_idx].w = 1;
     
 }

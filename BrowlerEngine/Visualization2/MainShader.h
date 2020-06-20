@@ -71,6 +71,7 @@ public:
         bool drawAssetBounds;
         bool drawViewingVolume;
         bool drawOrthographicXRay;
+        bool hasViewChanged;
         struct Light
         {
             enum class Type : uint8_t
@@ -83,7 +84,7 @@ public:
     };
 
     void draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, const DrawData& data);
-
+    unsigned int getNumRemainingSlices() const { return remainingSlices; }
 private:
     void bindVertexBuffer(ID3D12GraphicsCommandList* cmd, const TriangleList& list);
 
@@ -99,6 +100,8 @@ private:
     std::unique_ptr<PropagationShader> propagationShader;
     std::unique_ptr<ComputeBuffers> computeBuffers;
     std::unique_ptr<ImposterShader> imposterShader;
+
+    unsigned int remainingSlices;
 
     bool initialized;
 };

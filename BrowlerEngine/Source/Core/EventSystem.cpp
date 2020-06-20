@@ -23,7 +23,15 @@ template<> template<> bool Translator<Event>::translateMessage<Event::FRAME_IDX_
 
 template<> template<> bool Translator<Event>::translateMessage<Event::SET_FREE_CAM_MOVEMENT>(void* param)
 {
+	// no need to push to other modules
 	return false;
 }
+
+template<> template<> bool Translator<Event>::translateMessage<Event::CAM_HAS_MOVED>(void* param)
+{
+	// Renderer wants to know when the user moved the camera in order to trigger an update to the rendering
+	return static_cast<EventBusSwitch<RENDERER::Event>*>(engine->eventSystem.get())->postEventLocal<RENDERER::Event::CAM_HAS_MOVED>(param);
+}
+
 
 BRWL_NS_END

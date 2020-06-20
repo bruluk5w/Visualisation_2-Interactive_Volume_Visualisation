@@ -56,6 +56,8 @@ protected:
 
 	bool initialized;
 	bool skipFrame;
+	bool hasViewChanged;
+	size_t hasCameraMovedListenerHandle;
 };
 
 BRWL_RENDERER_NS_END
