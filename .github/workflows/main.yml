@@ -24,7 +24,7 @@ jobs:
       run: |
         git config --global user.name 'Bot'
         git config --global user.email 'bruluk5w@users.noreply.github.com'
-        git commit -am "File Headers"
+        git diff-index --quiet HEAD || git commit -am "File Headers"
         git push
 
 
