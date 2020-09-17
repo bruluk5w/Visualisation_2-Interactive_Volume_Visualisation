@@ -7,8 +7,8 @@ struct Quaternion;
 struct BBox
 {
 	BBox() :
-		min(-0.5f, -0.5f, -0.5f),
-		max(-0.5f, -0.5f, -0.5f)
+		min(0.f, 0.f, 0.f),
+		max(0.f, 0.f, 0.f)
 	{ }
 
 	BBox(const Vec3& min, const Vec3& max) :
@@ -20,10 +20,17 @@ struct BBox
 	constexpr float dimY() const { return max.y - min.y; }
 	constexpr float dimZ() const { return max.z - min.z; }
 	constexpr Vec3 dim() const { return { dimX(), dimY(), dimZ() }; }
-	// returns the axis aligned bounding box relative to a coordinate system rotated by the given rotation matrix
-	// the matrix is expcted to only rotate points
+	/*!
+	 * Returns the axis aligned bounding box relative to a coordinate system rotated by the given rotation matrix.
+	 * The matrix is expcted to only rotate points.
+	 */
 	BBox getOBB (const Mat4& orientation) const;
-	// return distance form center of the closest plane touching the bounding box at a certain direction
+	/*
+	 * Returns the distance between the center of the bounding box and the nearest plane normal to a given direction which
+	 * touches the bounding box. Like moving a plane normal to a given direction towards the bounding box as far as possible
+	 * until it touches the box and measuring the smallest distance between the plane and the bbox center.
+	 */
+
 	float getClosestPlaneFromDirection(const Vec3& direction) const;
 
 	Vec3 min, max;

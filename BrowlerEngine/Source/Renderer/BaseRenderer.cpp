@@ -1,6 +1,7 @@
 #include "BaseRenderer.h"
 #include "RendererParameters.h"
 #include "Common/Logger.h"
+#include "TextureManager.h"
 #include "AppRenderer.h"
 
 #include "PAL/WinRenderer.h"
@@ -16,6 +17,7 @@ BaseRenderer::BaseRenderer(EventBusSwitch<Event>* eventSystem, PlatformGlobals* 
 	logger(nullptr),
 	globals(globals),
 	params(nullptr),
+	textureManager(nullptr),
 	appRenderer(nullptr),
 	currentFramebufferWidth(0),
 	currentFramebufferHeight(0)
@@ -42,6 +44,7 @@ bool BaseRenderer::init(const RendererParameters params)
 	if (!initialized)
 	{
 		this->params = std::make_unique<RendererParameters>(params);
+		this->textureManager = std::make_unique<TextureManager>();
 		windowResizeEventHandle = eventSystem->registerListener(Event::WINDOW_RESIZE, [this](Event, void* param) -> bool
 			{
 				logger->info(BRWL_CHAR_LITERAL("Resizing Framebuffer"));
@@ -114,6 +117,10 @@ void BaseRenderer::destroy(bool force /*= false*/)
 		{
 			appRenderer->rendererDestroy(static_cast<Renderer*>(this));
 		}
+
+		this->textureManager = nullptr;
+		this->params = nullptr;
+
 		initialized = false;
 	}
 }

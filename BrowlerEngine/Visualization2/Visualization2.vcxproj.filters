@@ -42,19 +42,7 @@
     <ClInclude Include="Visualization2Renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DataSet.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Image.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TextureResource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Preintegration.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PitImage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MainShader.h">
@@ -99,15 +87,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Visualization2Renderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DataSet.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Image.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PitImage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Preintegration.cpp">

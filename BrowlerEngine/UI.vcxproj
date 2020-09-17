@@ -212,12 +212,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>set target_folder="$(TargetDir)Assets"
-if not exist %target_folder% (
-    md %target_folder%
-)
-
-robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -244,12 +240,8 @@ robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURG
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>set target_folder="$(TargetDir)Assets"
-if not exist %target_folder% (
-    md %target_folder%
-)
-
-robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|Win32'">
@@ -276,12 +268,8 @@ robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURG
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>set target_folder="$(TargetDir)Assets"
-if not exist %target_folder% (
-    md %target_folder%
-)
-
-robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -304,12 +292,8 @@ robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURG
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>set target_folder="$(TargetDir)Assets"
-if not exist %target_folder% (
-    md %target_folder%
-)
-
-robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -336,12 +320,8 @@ robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURG
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>set target_folder="$(TargetDir)Assets"
-if not exist %target_folder% (
-    md %target_folder%
-)
-
-robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">
@@ -368,12 +348,8 @@ robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURG
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>set target_folder="$(TargetDir)Assets"
-if not exist %target_folder% (
-    md %target_folder%
-)
-
-robocopy "$(SolutionDir)Assets\Fonts" "$(TargetDir)Assets\Fonts" /r:5 /w:5 /PURGE /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

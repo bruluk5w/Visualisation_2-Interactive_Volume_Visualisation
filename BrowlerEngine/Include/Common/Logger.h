@@ -1,7 +1,5 @@
 #pragma once // (c) 2020 Lukas Brunner
 
-#include <mutex>
-
 namespace std {
 	template <class _Elem, class _Traits> class basic_ostream;
 	using ostream = basic_ostream<char, char_traits<char>>;

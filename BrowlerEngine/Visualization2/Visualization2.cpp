@@ -171,3 +171,15 @@ int CVisualization2App::ExitInstance()
 {
 	return CWinApp::ExitInstance();
 }
+
+void CVisualization2App::OpenFile(const BRWL_CHAR* file)
+{
+	metaEngine->isInitialized();
+	BRWL::MetaEngine::EngineHandle handle = metaEngine->getDefaultEngineHandle();
+	BRWL::Engine* engine = metaEngine->getEngine(handle);
+	BRWL_EXCEPTION(engine->renderer != nullptr, BRWL_CHAR_LITERAL("Renderer not set up."));
+	BRWL::RENDERER::Visualization2Renderer* renderer = dynamic_cast<BRWL::RENDERER::Visualization2Renderer*>(engine->renderer->getAppRenderer());
+	if (renderer != nullptr) {
+		renderer->setFilePath(file);
+	}
+}

@@ -25,6 +25,7 @@ namespace PAL {
 #include <memory>
 #include <string>
 #include <cmath>
+#include <mutex>
 
 #ifdef BRWL_PLATFORM_WINDOWS
 

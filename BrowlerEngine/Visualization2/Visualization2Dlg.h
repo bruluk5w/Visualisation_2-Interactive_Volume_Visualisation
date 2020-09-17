@@ -40,4 +40,6 @@ protected:
 	// The edit control which displays the application log
 	CLogEdit logEdit;
 	std::unique_ptr<LogHandler> logHandler;
+public:
+	afx_msg void OnFileOpen();
 };

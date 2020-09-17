@@ -34,7 +34,7 @@ Engine* MetaEngine::getEngine(EngineHandle handle)
 }
 
 MetaEngine::MetaEngine(PlatformGlobals* globals) :
-	isInitialized(false),
+	initialized(false),
 	metaEngineLock(),
 	defaultEngineHandle(maxEngine),
 	engines{ nullptr },
@@ -57,7 +57,7 @@ void MetaEngine::initialize()
 {
 	std::lock_guard<decltype(metaEngineLock)> guard(metaEngineLock);
 
-	isInitialized = true;
+	initialized = true;
 
 	// create one default engine
 	if (*engines == nullptr) {
@@ -100,7 +100,7 @@ void MetaEngine::shutDown() {
 
 void MetaEngine::update()
 {
-	BRWL_EXCEPTION(isInitialized, BRWL_CHAR_LITERAL("\"initialize\" has to be called before \"update\"!"));
+	BRWL_EXCEPTION(initialized, BRWL_CHAR_LITERAL("\"initialize\" has to be called before \"update\"!"));
 	std::lock_guard<decltype(metaEngineLock)> guard(metaEngineLock);
 	// here run the main loops of the single engines in parallel threads 
 	for (unsigned int i = 0; i < countof(engines) && engines[i] != nullptr; ++i)
@@ -193,7 +193,7 @@ void MetaEngine::detachedRun(EngineData* engineData)
 
 bool MetaEngine::createEngine(EngineHandle& handle, const char* settingsFile/* = nullptr*/)
 {
-	BRWL_EXCEPTION(isInitialized, BRWL_CHAR_LITERAL("\"initialize\" has to be called before \"createEngine\"!"));
+	BRWL_EXCEPTION(initialized, BRWL_CHAR_LITERAL("\"initialize\" has to be called before \"createEngine\"!"));
 	std::lock_guard<decltype(metaEngineLock)> guard(metaEngineLock);
 	std::unique_ptr<EngineData>* nextEnginePtr = std::find(engines, engines + countof(engines), nullptr);
 	if (!BRWL_VERIFY(nextEnginePtr < engines + countof(engines), BRWL_CHAR_LITERAL("Max number of engines exceeded!")))

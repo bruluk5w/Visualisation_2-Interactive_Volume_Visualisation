@@ -9,7 +9,7 @@ struct TextureResource
 {
 	enum class State : uint8_t
 	{
-		UNKNOWN = 0,
+		NONE = 0,
 		REQUESTING_UPLOAD,
 		LOADING,
 		RESIDENT,
@@ -18,10 +18,7 @@ struct TextureResource
 		MIN = 0
 	};
 
-	PAL::DescriptorHandle* descriptorHandle = nullptr;
-	ComPtr<ID3D12Resource> texture = nullptr;
-	ComPtr<ID3D12Resource> uploadHeap = nullptr;
-	State state = State::UNKNOWN;
+	bool isResident() const { return state == State::RESIDENT; }
 
 	void destroy()
 	{
@@ -29,8 +26,15 @@ struct TextureResource
 		descriptorHandle = nullptr;
 		texture = nullptr;
 		uploadHeap = nullptr;
-		state = State::UNKNOWN;
+		state = State::NONE;
 	}
+
+	PAL::DescriptorHandle* descriptorHandle = nullptr;
+	ComPtr<ID3D12Resource> texture = nullptr;
+	ComPtr<ID3D12Resource> uploadHeap = nullptr;
+	State state = State::NONE;
+
+
 };
 
 BRWL_RENDERER_NS_END

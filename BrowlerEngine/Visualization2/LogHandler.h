@@ -2,7 +2,6 @@
 #include "Common/Logger.h"
 #include <vector>
 #include <algorithm>
-#include <mutex>
 
 class LogHandler : public BRWL::ILogHandler {
 public:

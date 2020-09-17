@@ -1,7 +1,6 @@
 #pragma once // (c) 2020 Lukas Brunner
 
 #include <vector>
-#include <mutex>
 #include <deque>
 
 BRWL_RENDERER_NS
@@ -23,8 +22,8 @@ namespace PAL
     public:
         // different types help to distinguish whether we have a cpu only or a gpu valid handle
         struct ResidentHandles {
-            D3D12_CPU_DESCRIPTOR_HANDLE residentCpu; // gpu visible descriptor - used for rendering
-            D3D12_GPU_DESCRIPTOR_HANDLE residentGpu; // gpu visible descriptor - used for rendering
+            D3D12_CPU_DESCRIPTOR_HANDLE residentCpu; //!< gpu visible descriptor - used for rendering
+            D3D12_GPU_DESCRIPTOR_HANDLE residentGpu; //!< gpu visible descriptor - used for rendering
         };
         struct NonResidentHandles {
             D3D12_CPU_DESCRIPTOR_HANDLE cpu; // cpu side descriptor - used for view creation - later copied to the gpu visible heap

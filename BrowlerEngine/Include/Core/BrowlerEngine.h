@@ -7,7 +7,6 @@
 #include "WindowFwd.h"
 #include "Renderer/RendererFwd.h"
 #include "IUpdatable.h"
-#include <mutex>
 #include <vector>
 
 BRWL_NS
@@ -39,6 +38,7 @@ public:
 	~MetaEngine();
 
 	void initialize();
+	bool isInitialized() const { return initialized; }
 	// Run a single step of each engine in which is not in DETACHED mode
 	void update();
 private:
@@ -59,7 +59,7 @@ protected:
 	bool checkHandle(EngineHandle handle, const BRWL_CHAR*& errorMsg);
 
 private:
-	bool isInitialized;
+	bool initialized;
 	std::recursive_mutex metaEngineLock;
 	EngineHandle defaultEngineHandle;
 	

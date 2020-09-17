@@ -36,6 +36,7 @@ public:
 // Added stuff:
 public:
 	BRWL::MetaEngine* GetMetaEngine() const { BRWL_EXCEPTION(metaEngine != nullptr, BRWL_CHAR_LITERAL("MetaEngine is nullptr!")); return metaEngine.get(); }
+	void OpenFile(const BRWL_CHAR* file);
 
 protected:
 	std::unique_ptr<BRWL::MetaEngine> metaEngine;

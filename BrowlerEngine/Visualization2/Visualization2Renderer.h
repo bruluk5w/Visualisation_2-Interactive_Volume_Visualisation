@@ -2,8 +2,7 @@
 
 #include "Renderer/AppRenderer.h"
 #include "UI/AppUi.h"
-#include "TextureResource.h"
-#include "DataSet.h"
+#include "Renderer/DataSet.h"
 #include "PitCollection.h"
 #include "Renderer/RendererFwd.h"
 
@@ -23,6 +22,7 @@ class Visualization2Renderer : public AppRenderer
 {
 public:
 	Visualization2Renderer();
+	void setFilePath(const BRWL_CHAR* file) { std::scoped_lock(assetPathMutex); assetPath = file; }
 
 protected:
 	virtual bool init(Renderer* renderer) override;
@@ -33,6 +33,13 @@ protected:
 	virtual void destroy(Renderer* renderer) override;
 
 	void LoadFonts(float fontSize);
+	/**
+	 * (Re)load the asset cpu-side data from disk.
+	 * 
+	 * \param r The Renderer to use
+	 * \return 
+	 */
+	bool ReloadVolumeAsset(BRWL::Renderer::Renderer* r);
 
 	uint8_t uiResultIdx;
 	UIResult uiResults[2];
@@ -43,8 +50,9 @@ protected:
 	ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
 
 	// The main data set
+	std::mutex assetPathMutex;
+	BRWL_STR assetPath; // set from different thread
 	DataSet dataSet;
-	TextureResource volumeTexture;
 	uint64_t volumeTextureFenceValue;
 
 	PitCollection pitCollection;

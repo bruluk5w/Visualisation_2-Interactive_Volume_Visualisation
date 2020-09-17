@@ -21,12 +21,10 @@ Visualization2Renderer::Visualization2Renderer() :
     uploadCommandQueue(nullptr),
     uploadCommandAllocator(nullptr),
     uploadCommandList(nullptr),
-    dataSet(BRWL_CHAR_LITERAL("Default Data Sets (Beetle)")),
+    dataSet(),
     pitCollection(),
-    volumeTexture(),
-    volumeTextureUploadFence(nullptr),
-    uploadFenceEvent(NULL),
-    volumeTextureFenceValue(0),
+    assetPathMutex(),
+    assetPath(BRWL_CHAR_LITERAL("./Assets/DataSets/stagbeetle832x832x494.dat")),
     mainShader(),
     initialized(false),
     skipFrame(false),
@@ -41,6 +39,7 @@ Visualization2Renderer::Visualization2Renderer() :
         tFunc.bitDepth = is8bit ? UIResult::TransferFunction::BitDepth::BIT_DEPTH_10_BIT : UIResult::TransferFunction::BitDepth::BIT_DEPTH_8_BIT;
     }
 }
+
 
 bool Visualization2Renderer::init(Renderer* r)
 {
@@ -61,58 +60,13 @@ bool Visualization2Renderer::init(Renderer* r)
 
     LoadFonts(uiResults[uiResultIdx].settings.fontSize);
 
-    if (!dataSet.isValid())
-    {
-        engine->logger->info(BRWL_CHAR_LITERAL("Loading the beatle asset from disk."));
-        dataSet.loadFromFile(BRWL_CHAR_LITERAL("./Assets/DataSets/stagbeetle832x832x494.dat"));
-        if (BRWL_VERIFY(dataSet.isValid(), BRWL_CHAR_LITERAL("Failed to load default asset.")))
-        {
-            volumeTexture.state = TextureResource::State::REQUESTING_UPLOAD;
-        }
-    }
 
-    if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&volumeTextureUploadFence))), BRWL_CHAR_LITERAL("Failed to create volume texture fence.")))
+    if (!BRWL_VERIFY(ReloadVolumeAsset(r), BRWL_CHAR_LITERAL("Failed to load volume.")))
     {
         return false;
     }
     
     pitCollection.init(r->device.Get());
-
-    uploadFenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-    if (!BRWL_VERIFY(uploadFenceEvent != NULL, BRWL_CHAR_LITERAL("Failed to create frame fence event.")))
-    {
-        return false;
-    }
-
-    {
-        D3D12_COMMAND_QUEUE_DESC desc = {};
-        desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
-        desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-        desc.NodeMask = 1;
-        if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateCommandQueue(&desc, IID_PPV_ARGS(&uploadCommandQueue))), BRWL_CHAR_LITERAL("Failed to create upload command queue.")))
-        {
-            return false;
-        }
-
-        uploadCommandQueue->SetName(L"Upload Command Queue");
-    }
-
-    if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&uploadCommandAllocator))), BRWL_CHAR_LITERAL("Failed to create direct command allocator.")))
-    {
-        return false;
-    }
-
-    if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, uploadCommandAllocator.Get(), NULL, IID_PPV_ARGS(&uploadCommandList))), BRWL_CHAR_LITERAL("Failed to create upload command list.")))
-    {
-        return false;
-    }
-
-    if (!BRWL_VERIFY(SUCCEEDED(uploadCommandList->Close()), BRWL_CHAR_LITERAL("Failed to close upload command list.")))
-    {
-        return false;
-    }
-
-    uploadCommandList->SetName(L"Upload Command List");
 
     if (!BRWL_VERIFY(mainShader.create(r), BRWL_CHAR_LITERAL("Failed to create main shader.")))
     {
@@ -124,6 +78,42 @@ bool Visualization2Renderer::init(Renderer* r)
     hasViewChanged = initialized = true;
 
     return initialized;
+}
+
+bool Visualization2Renderer::ReloadVolumeAsset(BRWL::Renderer::Renderer* r)
+{
+    bool needsRefresh = this->dataSet.isValid();
+    BRWL_STR file;
+    {
+        std::scoped_lock(assetPathMutex);
+        file = assetPath.c_str();
+    }
+
+    needsRefresh |= BRWL_STRCMP(file.c_str(), dataSet.getSourcePath()) != 0;
+
+    if (needsRefresh)
+    {
+        {
+            Logger::ScopedMultiLog ml(engine->logger.get(), Logger::LogLevel::INFO);
+            engine->logger->info(BRWL_CHAR_LITERAL("Loading asset from disk: "), &ml);
+            engine->logger->info(file.c_str(), &ml);
+        }
+
+        dataSet.loadFromFile(file);
+        if (!BRWL_VERIFY(dataSet.isValid(), BRWL_CHAR_LITERAL("Failed to load default asset.")))
+        {
+            return false;
+        }
+
+        volumeTexture.state = TextureResource::State::REQUESTING_UPLOAD;
+
+        if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&volumeTextureUploadFence))), BRWL_CHAR_LITERAL("Failed to create volume texture fence.")))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void Visualization2Renderer::preRender(Renderer* renderer)
@@ -153,7 +143,11 @@ void Visualization2Renderer::render(Renderer* renderer)
     }
 #endif
 
-
+    bool success = ReloadVolumeAsset(renderer);
+    if (!success) {
+        renderer->logger->error(BRWL_CHAR_LITERAL("Failed to load volume data!"));
+    }
+    
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
         PitImage& pitImage = pitCollection.array[i];
@@ -344,43 +338,8 @@ void Visualization2Renderer::draw(Renderer* r)
         return;
     }
 
-    // we always need the volume texture so ensure we have it first.
-    // this stalls the pipeline until the copy is complete but maybe we don't care 
-    // because this is the data we want to visualize and if we don't have it we see nothing anyways
-    if (volumeTexture.state == TextureResource::State::REQUESTING_UPLOAD)
-    {
-        BRWL_EXCEPTION(dataSet.isValid(), BRWL_CHAR_LITERAL("Invalid state of data set."));
-        uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr);
-        
-        // Since the volume texture is not double buffered, we have to wait unil all frames still rendering from the volume texture have finished
-        r->waitForLastSubmittedFrame();
-
-        volumeTexture.descriptorHandle = r->srvHeap.allocateOne(BRWL_CHAR_LITERAL("VolumeTexture"));
-        volumeTexture.state = TextureResource::State::REQUESTING_UPLOAD;
-        if (!BRWL_VERIFY(LoadVolumeTexture(r->device.Get(), uploadCommandList.Get(), &dataSet, volumeTexture), BRWL_CHAR_LITERAL("Failed to load the volume texture to the GPU.")))
-        {   // we expect the function to clean up everything necessary
-            return;
-        };
-
-        DR(uploadCommandList->Close());
-        ID3D12CommandList* const ppCommandLists[] = { uploadCommandList.Get() };
-        uploadCommandQueue->ExecuteCommandLists(1, ppCommandLists);
-
-        // wait synchronously for the upload to complete
-        ++volumeTextureFenceValue;
-        DR(uploadCommandQueue->Signal(volumeTextureUploadFence.Get(), volumeTextureFenceValue));
-        DR(volumeTextureUploadFence->SetEventOnCompletion(volumeTextureFenceValue, uploadFenceEvent));
-        WaitForSingleObject(uploadFenceEvent, INFINITE);
-        volumeTexture.state = TextureResource::State::RESIDENT;
-        volumeTexture.uploadHeap = nullptr;  // free resources
-
-        // indicate new resource to be used by a compute shader
-        r->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-        hasViewChanged = true;
-    }
-
     // If we have all resources then we draw else we wait another frame
-    if (pitCollection.isResident())
+    if (pitCollection.isResident() && volumeTexture.state == TextureResource::State::RESIDENT)
     {
         const MainShader::DrawData drawData{
             &dataSet.getBoundingBox(),
@@ -532,7 +491,7 @@ bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
         return false;
     }
 
-    texture.texture->SetName(dataSet->getName());
+    texture.texture->SetName(dataSet->getSourcePath());
 
     uint64_t requiredSize = GetRequiredIntermediateSize(texture.texture.Get(), 0, 1);
     BRWL_CHAR buf[100];

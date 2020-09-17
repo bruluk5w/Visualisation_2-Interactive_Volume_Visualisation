@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -362,10 +362,15 @@ if not exist %compiled_folder% (
       </SubType>
     </ClInclude>
     <ClInclude Include="Include\Renderer\BaseRenderer.h" />
+    <ClInclude Include="Include\Renderer\BaseTexture.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Include\Renderer\Camera.h">
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="Include\Renderer\DataSet.h" />
     <ClInclude Include="Include\Renderer\Events.h">
       <SubType>
       </SubType>
@@ -391,6 +396,12 @@ if not exist %compiled_folder% (
     </ClInclude>
     <ClInclude Include="Include\Renderer\Renderer_Precomp.h" />
     <ClInclude Include="Include\Renderer\targetver.h" />
+    <ClInclude Include="Include\Renderer\Texture.h" />
+    <ClInclude Include="Include\Renderer\TextureManager.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="Include\Renderer\TextureResource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Renderer\AppRenderer.cpp">
@@ -401,10 +412,15 @@ if not exist %compiled_folder% (
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="Source\Renderer\BaseTexture.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="Source\Renderer\Camera.cpp">
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="Source\Renderer\DataSet.cpp" />
     <ClCompile Include="Source\Renderer\PAL\imgui_impl_dx12.cpp" />
     <ClCompile Include="Source\Renderer\PAL\imgui_impl_win32.cpp" />
     <ClCompile Include="Source\Renderer\PAL\RtvDescriptorHeap.cpp" />
@@ -417,6 +433,10 @@ if not exist %compiled_folder% (
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Source\Renderer\PAL\WinRenderer.cpp" />
+    <ClCompile Include="Source\Renderer\TextureManager.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Common.vcxproj">

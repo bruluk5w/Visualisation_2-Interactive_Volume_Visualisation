@@ -32,9 +32,8 @@ void main( uint3 DTid : SV_DispatchThreadID )
     colorBuffer[DTid.xy].xyzw = float4(0.f, 0.f, 0.f, 0.f); // starting with no color and fully transparent
     // ?? is this correct?
     mediumBuffer[DTid.xy].xyzw = float4(0.f, 0.f, 0.f, 0.f); // starting with no color and fully transparent
-    
-    const float2 halfPixel = textureSizeWorldSpace / textureResolution * 0.5f;
-    const float2 offset = halfPixel + (float2(DTid.xy) - bufferWidth) * textureSizeWorldSpace / textureResolution;
+    const float2 pixelSize = textureSizeWorldSpace / textureResolution;
+    const float2 offset = (float2(DTid.xy) - bufferWidth +0.5f) * pixelSize;
 
     const float3 pixelWorldSpace = topLeft + 
         offset.x * horizontalPlaneDirection +

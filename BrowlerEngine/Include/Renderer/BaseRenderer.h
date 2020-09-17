@@ -18,6 +18,7 @@ BRWL_RENDERER_NS
 
 class AppRenderer;
 class Camera;
+class TextureManager
 
 class BaseRenderer
 {
@@ -40,6 +41,9 @@ public:
 		if (appRenderer) appRenderer = nullptr;
 		appRenderer = std::make_shared<AppRendererT>(std::forward<Types>(args)...);
 	}
+
+	AppRenderer* getAppRenderer() { return appRenderer.get(); }
+
 	void setCamera(Camera* newCamera);
 	Camera* getCamera() const { return camera; }
 	void getFrameBufferSize(unsigned int& width, unsigned int& height) { width = currentFramebufferWidth; height = currentFramebufferHeight; }
@@ -55,6 +59,7 @@ protected:
 	std::shared_ptr<Logger>			logger;
 	PlatformGlobals*				globals;
 	std::unique_ptr<RendererParameters> params;
+	std::unique_ptr<TextureManager>	textureManager;
 	std::shared_ptr<AppRenderer>	appRenderer;
 	Camera*							camera;
 	unsigned int					currentFramebufferWidth;

@@ -76,6 +76,7 @@ BEGIN_MESSAGE_MAP(CVisualization2Dlg, CDialogEx)
 	ON_COMMAND(ID_HELP_ABOUT, &CVisualization2Dlg::OnMainMenuBarHelpAbout)
 	ON_COMMAND(ID_FILE_EXIT, &CVisualization2Dlg::OnMainMenuBarFileExit)
 	ON_MESSAGE(WM_USER_POST_LOG_MSG, &CVisualization2Dlg::OnLogMessage)
+	ON_COMMAND(ID_FILE_OPEN, &CVisualization2Dlg::OnFileOpen)
 END_MESSAGE_MAP()
 
 
@@ -210,4 +211,18 @@ LRESULT CVisualization2Dlg::OnLogMessage(WPARAM, LPARAM lParam)
 	}
 	
 	return 0; // doesn't matter actually
+}
+
+
+void CVisualization2Dlg::OnFileOpen()
+{
+	const TCHAR szFilter[] = _T("Raw Data (*.dat)|*.dat|All Files (*.*)|*.*||");
+	CFileDialog dlg(TRUE, _T("csv"), NULL, OFN_FILEMUSTEXIST, szFilter, this);
+	dlg.m_ofn.lpstrInitialDir = BRWL_CHAR_LITERAL("./Assets/DataSets");
+
+	if (dlg.DoModal() == IDOK)
+	{
+		CString sFilePath = dlg.GetPathName();
+		app.OpenFile(sFilePath.GetBuffer());
+	}
 }
