@@ -18,9 +18,6 @@ Visualization2Renderer::Visualization2Renderer() :
     uiResultIdx(0),
     uiResults{ {},{} },
     fonts{ 0 },
-    uploadCommandQueue(nullptr),
-    uploadCommandAllocator(nullptr),
-    uploadCommandList(nullptr),
     dataSet(),
     pitCollection(),
     assetPathMutex(),
@@ -147,7 +144,9 @@ void Visualization2Renderer::render(Renderer* renderer)
     if (!success) {
         renderer->logger->error(BRWL_CHAR_LITERAL("Failed to load volume data!"));
     }
-    
+    //-------------------
+    // swap pit images
+    //--------------------
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
         PitImage& pitImage = pitCollection.array[i];
@@ -170,6 +169,10 @@ void Visualization2Renderer::render(Renderer* renderer)
         }
     }
 
+    //---------------------
+    // UI
+    //----------------------
+
     // Swap objects for communication with front-end
     uiResultIdx = uiResultIdx ? 0 : 1;
     UIResult& r = uiResults[uiResultIdx]; // results
@@ -190,6 +193,11 @@ void Visualization2Renderer::render(Renderer* renderer)
     renderAppUI(r, v);
     ImGui::PopFont();
 
+    //-------------------
+    // recompute PIT images
+    // (wait for ongoing upload to finish +) request upload
+    //-------------------
+
     // Check if textures should be recomputed
     bool mustRecompute[countof(*((decltype(pitCollection.array)*)nullptr))] = { false };
     bool blocked[countof(mustRecompute)] = { false };
@@ -204,7 +212,7 @@ void Visualization2Renderer::render(Renderer* renderer)
         {
             mustRecompute[i] = true;
             // If staged texture is not free, wait for upload to complete
-            if (pitImage.stagedTexture->state != TextureResource::State::UNKNOWN)
+            if (pitImage.stagedTexture->state != TextureResource::State::NONE)
             {
                 blocked[i] = true;
                 // if the staged resource is currently upoading then the fence value has do be lower than the one which we remembered
@@ -235,8 +243,6 @@ void Visualization2Renderer::render(Renderer* renderer)
             ++numWaitHandles;
         }
     }
-
-    // TODO: meanwhile we could already recompute the non-blocked tables
 
     // wait and clean up event state 
     if (numWaitHandles)

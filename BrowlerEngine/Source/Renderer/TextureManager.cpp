@@ -1,5 +1,7 @@
 #include "TextureManager.h"
 
+#include "BaseTexture.h"
+
 BRWL_RENDERER_NS
 
 
@@ -31,7 +33,7 @@ void TextureManager::remove(BaseTexture* tex)
 
 bool TextureManager::update()
 {
-    // we always need the volume texture so ensure we have it first.
+   // we always need the volume texture so ensure we have it first.
    // this stalls the pipeline until the copy is complete but maybe we don't care 
    // because this is the data we want to visualize and if we don't have it we see nothing anyways
     if (volumeTexture.state == TextureResource::State::REQUESTING_UPLOAD)
@@ -64,6 +66,16 @@ bool TextureManager::update()
         r->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
         hasViewChanged = true;
     }
+    {
+        std::scoped_lock(registryAccess);
+        for (BaseTexture* const tex : registry)
+        {
+            if (!tex) continue;
+
+            
+        }
+    }
+
 }
 
 

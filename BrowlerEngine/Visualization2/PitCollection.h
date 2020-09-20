@@ -1,20 +1,21 @@
 #pragma once // (c) 2020 Lukas Brunner
 
-#include "PitImage.h"
+#include "Renderer/Texture.h"
 
 BRWL_RENDERER_NS
 
 // A collection of texture resources for preintegration tables
 union PitCollection
 {
-	PitCollection();
+	typedef RENDERER::TextureF32 PitImage;
+	PitCollection(RENDERER::TextureManager* mgr);
 	~PitCollection();
 	bool init(ID3D12Device* device);
 	bool isResident();
 	void destroy();
 
 	// All our reintegration tables
-	PitImage array[4];
+	Texture<float> array[4];
 	
 	// aliases to distinguish in the rest of the code
 	struct Aliases {

@@ -8,11 +8,14 @@ class BaseTexture;
 
 class TextureManager {
 public:
-	TextureManager() :
+	TextureManager(ID3D12Device* device) :
+		device(device),
 		uploadCommandQueue(nullptr),
 		uploadCommandAllocator(nullptr),
 		uploadCommandList(nullptr)
 	{ }
+
+	ID3D12Device* getDevice() const { return device; }
 
 private:
 	friend class BaseTexture;
@@ -30,6 +33,7 @@ private:
 	std::mutex registryAccess;
 	std::vector<BaseTexture*> registry;
 
+	ID3D12Device* device;
 	ComPtr<ID3D12CommandQueue> uploadCommandQueue;
 	ComPtr<ID3D12CommandAllocator> uploadCommandAllocator;
 	ComPtr<ID3D12GraphicsCommandList> uploadCommandList;

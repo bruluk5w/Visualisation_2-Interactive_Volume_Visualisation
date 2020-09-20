@@ -2,6 +2,7 @@
 
 #include "Common/PAL/DescriptorHeap.h"
 
+
 BRWL_RENDERER_NS
 
 // A basic texture meant to be uploaded and sampled from
@@ -34,7 +35,6 @@ struct TextureResource
 	ComPtr<ID3D12Resource> uploadHeap = nullptr;
 	State state = State::NONE;
 
-
 };
 
-BRWL_RENDERER_NS_END
+ BRWL_RENDERER_NS_END

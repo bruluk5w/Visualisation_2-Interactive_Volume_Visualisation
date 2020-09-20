@@ -24,13 +24,14 @@ public:
 	 * \param name The name of the texture. This is will also be set as a name to the respective resource in the graphics API.
 	 * \param mgr The TextureManager which will manage this texture. The texture automatically registers itself with the the TextureManager.
 	 */
-	Texture(const BRWL_CHAR* name, TextureManager* mgr) : BaseTexture(name, mgr);
-
+	Texture(const BRWL_CHAR* name, TextureManager* mgr) : BaseTexture(name, mgr)
+	{ };
+	
 	/*!
 	 * Returns a pointer to the start of the internal buffer.
 	 * May only be called if that buffer exists.
 	 */
-	const uint8_t* getData() const { checkValid(); return data.get(); }
+	const sampleT* getData() const { checkValid(); return data.get(); }
 
 	//! Inherited via BaseTexture
 	virtual int getSampleByteSize() const override
