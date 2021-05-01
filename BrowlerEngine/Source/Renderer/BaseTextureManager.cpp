@@ -20,7 +20,7 @@ void BaseTextureManager::destroy(TextureHandle& handle)
 
 BaseTexture* BaseTextureManager::get(const TextureHandle& handle, id_type* idx/*=nullptr*/) const
 {
-    checkTextureId(handle.id);
+    checkHandle(handle);
     std::scoped_lock l(registry.registryLock);
     id_type index = getIndex(handle.id);
     if (idx) *idx = index;
@@ -32,7 +32,7 @@ BaseTexture* BaseTextureManager::get(const TextureHandle& handle, id_type* idx/*
 void BaseTextureManager::destroyAll()
 {
     std::scoped_lock l(registry.registryLock);
-    for (const BaseTexture* tex : registry.store)
+    for (BaseTexture* tex : registry.store)
     {
         if (tex != nullptr)
         {
@@ -95,6 +95,12 @@ BaseTexture* BaseTextureManager::remove(id_type id)
     registry.store[idx] = nullptr;
     
     return tex;
+}
+
+void BaseTextureManager::checkHandle(const TextureHandle& handle) const
+{
+    BRWL_EXCEPTION(handle.mgr == this, BRWL_CHAR_LITERAL("Texture manager method  called with a texture which this manager does not own."));
+    checkTextureId(handle.id);
 }
 
 void BaseTextureManager::checkTextureId(const BaseTextureManager::id_type id)

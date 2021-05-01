@@ -4,12 +4,14 @@
 
 
 #include "TextureResource.h"
+#include "BaseTexture.h"
 
 BRWL_RENDERER_NS
 
 
 namespace PAL
 {
+
 
 	// A double buffered GPU texure resource
 	struct GpuTexture
@@ -35,8 +37,10 @@ namespace PAL
 		void destroy();
 
 		bool isResident() const;
+		bool isReadyForUpload() const;
 		void requestUpload();
-		bool isReadyForUpload();
+		bool isUploading() const;
+		void waitForUploads();
 
 		ComPtr<ID3D12Fence> fence;
 		uint64_t uploadFenceValue;

@@ -8,8 +8,8 @@
 BRWL_RENDERER_NS
 
 
-template<typename T>
-void DataSet<T>::loadFromFile(const BRWL_CHAR* relativePath)
+template<SampleFormat S>
+void DataSet<S>::loadFromFile(const BRWL_CHAR* relativePath)
 {
 	this->valid = false;
 	size_t size = 0;
@@ -38,14 +38,12 @@ void DataSet<T>::loadFromFile(const BRWL_CHAR* relativePath)
 		sourcePath = nullptr;
 		return;
 	}
+	uint16_t sizeX, sizeY, sizeZ;
+	file.read((char*)&sizeX, sizeof(sizeX));
+	file.read((char*)&sizeY, sizeof(sizeY));
+	file.read((char*)&sizeZ, sizeof(sizeZ));
+	this->create(sizeX, sizeY, sizeZ, TextureDimension::TEXTURE_3D, TextureCreationParams::NONE);
 
-	file.read((char*)&this->sizeX, sizeof(this->sizeX));
-	file.read((char*)&this->sizeY, sizeof(this->sizeY));
-	file.read((char*)&this->sizeZ, sizeof(this->sizeZ));
-	this->strideX = sizeof(Texture<T>::sampleT);
-	this->strideY = this->sizeX * this->strideX;
-	this->strideZ = this->strideY * this->sizeY;
-	this->bufferSize = this->strideZ * this->sizeZ;
 
 	if (!BRWL_VERIFY(this->size - sizeof(this->sizeX) - sizeof(this->sizeY) - sizeof(this->sizeZ) >= this->bufferSize, BRWL_CHAR_LITERAL("File too short for data content.")))
 	{

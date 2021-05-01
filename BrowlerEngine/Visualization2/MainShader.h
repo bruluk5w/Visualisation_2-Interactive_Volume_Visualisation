@@ -63,8 +63,7 @@ public:
 
     struct DrawData {
         static const unsigned int gatherTextureSize = 1024;
-        const BBox* volumeDimensions;
-        const TextureResource* volumeTexture;
+        const TextureHandle* volumeTexturehandle;
         const PitCollection* pitCollection;
         const float voxelsPerCm;
         const float numSlicesPerVoxel;

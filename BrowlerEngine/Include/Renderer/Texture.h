@@ -5,16 +5,46 @@
 BRWL_RENDERER_NS
 
 
+template<SampleFormat S> struct SampleFormatTrait {
+	// some type trait prevents the static assertion from being triggered
+	static_assert(S && false, "No sample type defined for sample type enum.");
+};
+
+template<> struct SampleFormatTrait<SampleFormat::F32> {
+	using type = float;
+};
+
+template<> struct SampleFormatTrait<SampleFormat::F64> {
+	using type = double;
+};
+
+template<> struct SampleFormatTrait<SampleFormat::S16> {
+	using type = int16_t;
+};
+
+template<> struct SampleFormatTrait<SampleFormat::U16> {
+	using type = uint16_t;
+};
+
+template<> struct SampleFormatTrait<SampleFormat::S32> {
+	using type = int32_t;
+};
+
+template<> struct SampleFormatTrait<SampleFormat::U32> {
+	using type = uint32_t;
+};
+
 //!  The main texture class
 /*!
  * This class allows specialization on the pixel format of a texture.
  * The template parameter states the type of one sample and may be a struct (possibly including bitfields) for multiple channels.
  */
-template<typename T>
+template<SampleFormat S>
 class Texture : public BaseTexture
 {
 	friend class BaseTextureManager;
 
+protected:
 	/*!
 	 * Textures are only created by a texture manager. This is will also be set as a name to the respective resource in the graphics API.
 	 * \param name The name of the texture. This is will also be set as a name to the respective resource in the graphics API.
@@ -27,7 +57,7 @@ public:
 	/*!
 	 * The type of one sample/pixel. For multiple channels this is supposed to be a struct.
 	 */
-	using sampleT = T;
+	using sampleT = typename SampleFormatTrait<S>::type;
 
 	/*!
 	 * Returns a pointer to the start of the internal buffer.
@@ -40,14 +70,19 @@ public:
 	{
 		return sizeof(sampleT);
 	}
+
+	virtual SampleFormat getSampleFormat() const override
+	{
+		return S;
+	}
 };
 
-typedef Texture<float> TextureF32;
-typedef Texture<double> TextureF64;
-typedef Texture<int16_t> TextureS16;
-typedef Texture<uint16_t> TextureU16;
-typedef Texture<int32_t> TextureS32;
-typedef Texture<uint32_t> TextureU32;
+typedef Texture<SampleFormat::F32> TextureF32;
+typedef Texture<SampleFormat::F64> TextureF64;
+typedef Texture<SampleFormat::S16> TextureS16;
+typedef Texture<SampleFormat::U16> TextureU16;
+typedef Texture<SampleFormat::S32> TextureS32;
+typedef Texture<SampleFormat::U32> TextureU32;
 
 
 BRWL_RENDERER_NS_END

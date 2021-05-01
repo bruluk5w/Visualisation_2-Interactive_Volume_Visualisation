@@ -37,7 +37,7 @@ protected:
 	 * (Re)load the asset cpu-side data from disk.
 	 * 
 	 * \param r The Renderer to use
-	 * \return 
+	 * \returns True if the reload succeeded, false if not.
 	 */
 	bool ReloadVolumeAsset(BRWL::Renderer::Renderer* r);
 
@@ -52,13 +52,9 @@ protected:
 	// The main data set
 	std::mutex assetPathMutex;
 	BRWL_STR assetPath; // set from different thread
-	DataSetS16 dataSet;
-	uint64_t volumeTextureFenceValue;
 
+	TextureHandle dataSetHandle;
 	PitCollection pitCollection;
-
-	ComPtr<ID3D12Fence> volumeTextureUploadFence;
-	HANDLE uploadFenceEvent;
 
 	MainShader mainShader;
 

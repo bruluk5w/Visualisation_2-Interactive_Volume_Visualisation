@@ -83,4 +83,6 @@ protected:
 	mutable ScopedMultiLog* activeMultiLog;
 	ILogHandler* outStream;
 };
+
+
 BRWL_NS_END

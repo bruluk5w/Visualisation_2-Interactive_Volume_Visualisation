@@ -1,5 +1,7 @@
 #include "PAL/GpuTexture.h"
 
+#include "PAL/WinRenderer.h"
+
 #ifdef BRWL_PLATFORM_WINDOWS
 
 BRWL_RENDERER_NS
@@ -67,6 +69,10 @@ namespace PAL
 		return liveTexture && liveTexture->isResident();
 	}
 
+	bool GpuTexture::isReadyForUpload() const
+	{
+		return stagedTexture->state == TextureResource::State::NONE;
+	}
 
 	void GpuTexture::requestUpload()
 	{
@@ -74,10 +80,22 @@ namespace PAL
 		stagedTexture->state = TextureResource::State::REQUESTING_UPLOAD;
 	}
 
-
-	bool GpuTexture::isReadyForUpload()
+	bool GpuTexture::isUploading() const
 	{
-		return stagedTexture->state == TextureResource::State::NONE;
+		return fence && uploadFenceValue < fence->GetCompletedValue();
+	}
+
+	void GpuTexture::waitForUploads()
+	{
+		if (isUploading())
+		{
+			ID3D12Device* device = nullptr;
+			fence->GetDevice(IID_ID3D12Device, reinterpret_cast<void**>(&device));
+			HandleDeviceRemoved(
+				fence->SetEventOnCompletion(uploadFenceValue, uploadEvent), device);
+			WaitForSingleObject(uploadEvent, INFINITE);
+			ResetEvent(uploadEvent);
+		}
 	}
 
 }

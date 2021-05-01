@@ -46,7 +46,7 @@ BRWL_RENDERER_NS
 namespace PAL
 {
 
-    void HandleDeviceRemoved(HRESULT result, ID3D12Device* device, ::BRWL::Logger& logger)
+    void HandleDeviceRemoved(HRESULT result, ID3D12Device* device, ::BRWL::Logger* logger)
     {
         if (BRWL_VERIFY(SUCCEEDED(result), nullptr))
             return;
@@ -66,10 +66,12 @@ namespace PAL
             const BRWL_CHAR* msg = nullptr;
             if (result == DXGI_ERROR_DEVICE_REMOVED) msg = BRWL_CHAR_LITERAL("DEVICE REMOVED!");
             if (result == DXGI_ERROR_DEVICE_RESET) msg = BRWL_CHAR_LITERAL("DEVICE RESET!");
+            
+            if (logger)
             {
-                ::BRWL::Logger::ScopedMultiLog m(&logger, ::BRWL::Logger::LogLevel::ERROR);
-                logger.error(msg, &m);
-                logger.error(GetDeviceRemovedReasonString(device->GetDeviceRemovedReason()), &m);
+                ::BRWL::Logger::ScopedMultiLog m(logger, ::BRWL::Logger::LogLevel::ERROR);
+                logger->error(msg, &m);
+                logger->error(GetDeviceRemovedReasonString(device->GetDeviceRemovedReason()), &m);
             }
         }
     }
@@ -131,7 +133,7 @@ namespace PAL
 #endif
     }
 
-#define DR(expression) HandleDeviceRemoved(expression, device.Get(), *logger)
+#define DR(expression) HandleDeviceRemoved(expression, device.Get(), logger.get())
 
     void WinRenderer::nextFrame()
     {
@@ -160,15 +162,21 @@ namespace PAL
 
     void WinRenderer::draw()
     {
+        ++frameIndex;
+        // todo: move this  into methods frame completed method in base renderer
+        struct CompleteFrame {
+            CompleteFrame(DescriptorHeap* srvHeap) : srvHeap(srvHeap) { }
+            ~CompleteFrame() { srvHeap->notifyOldFrameCompleted(); }
+            DescriptorHeap* srvHeap;
+        } completeFrame (&srvHeap);
+
         if (!currentFramebufferHeight || !currentFramebufferWidth)
         {
-            ++frameIndex;
             logger->info(BRWL_CHAR_LITERAL("Nothing to draw, framebuffer too small."));
             return;
         }
 
         SCOPED_CPU_EVENT(50, 50, 50, "DRAW CPU");
-        // Draw
 
         UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();
 
@@ -230,6 +238,7 @@ namespace PAL
             DR(swapChain->Present(0, 0));
         
         }
+
         ++frameIndex;
         ++frameFenceLastValue;
         DR(commandQueue->Signal(frameFence.Get(), frameFenceLastValue));
@@ -243,9 +252,9 @@ namespace PAL
             createDevice(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
             // Output information is cached on the DXGI Factory. If it is stale we need to create a new factory.
         }
-#undef DR
-        srvHeap.notifyOldFrameCompleted();
     }
+
+#undef DR
 
     void WinRenderer::destroy(bool force /*= false*/)
     {
@@ -715,6 +724,7 @@ namespace PAL
         ImGui_ImplDX12_InvalidateDeviceObjects();
         resizeSwapChain(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
         ImGui_ImplDX12_CreateDeviceObjects();
+
         preRender();
         render();
         draw();
@@ -722,7 +732,7 @@ namespace PAL
 
     std::unique_ptr<BaseTextureManager> WinRenderer::makeTextureManager()
     {
-        return std::make_unique<TextureManager>(device.Get(), &srvHeap);
+        return std::make_unique<TextureManager>(device.Get(), &srvHeap, this);
     }
 
 } // namespace PAL

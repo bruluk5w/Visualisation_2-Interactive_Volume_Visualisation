@@ -47,27 +47,6 @@ bool BaseRenderer::init(const RendererParameters params)
 	}
 }
 
-void BaseRenderer::preRender()
-{
-	if (appRenderer)
-	{
-		appRenderer->rendererInit(static_cast<Renderer*>(this));
-		appRenderer->preRender(static_cast<Renderer*>(this));
-	}
-}
-
-void BaseRenderer::render()
-{
-	if (!currentFramebufferHeight || !currentFramebufferWidth)
-	{
-		logger->debug(BRWL_CHAR_LITERAL("Nothing to render, framebuffer too small."));
-		return;
-	}
-	nextFrame();
-	appRender();
-}
-
-
 bool BaseRenderer::internalInit(const RendererParameters params)
 {
 	if (BRWL_VERIFY(!initialized, nullptr))
@@ -97,6 +76,29 @@ bool BaseRenderer::internalInit(const RendererParameters params)
 	}
 
 	return initialized;
+}
+
+void BaseRenderer::preRender()
+{
+	if (appRenderer)
+	{
+		appRenderer->rendererInit(static_cast<Renderer*>(this));
+		appRenderer->preRender(static_cast<Renderer*>(this));
+	}
+}
+
+void BaseRenderer::render()
+{
+	if (!currentFramebufferHeight || !currentFramebufferWidth)
+	{
+		logger->debug(BRWL_CHAR_LITERAL("Nothing to render, framebuffer too small."));
+		return;
+	}
+
+	nextFrame();
+	// swap textures that are resident now
+	textureManager->promoteStagedTextures();
+	appRender();
 }
 
 void BaseRenderer::appRender()

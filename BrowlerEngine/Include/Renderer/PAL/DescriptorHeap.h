@@ -109,6 +109,10 @@ namespace PAL
         int lastHandle; // relative to cpu heap
         int lastFree; // relative to cpu heap
         bool created;
+
+#ifdef _DEBUG
+        bool frameActive; // tracks the active frame to check that the heap is only manipulated during an active frame
+#endif
     };
 
 

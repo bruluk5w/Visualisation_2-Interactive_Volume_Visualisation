@@ -14,7 +14,6 @@
 #include "Renderer/Camera.h"
 #include "Core/Input.h"
 
-#include "TextureResource.h"
 #include "PitCollection.h"
 #include "Common/BoundingBox.h"
 #include "Common/Logger.h"
@@ -23,7 +22,7 @@
 #include "PropagationShader.h"
 #include "DxHelpers.h"
 #include "ImposterShader.h"
-#include "Common/PAL/DescriptorHeap.h"
+#include "Renderer/DataSet.h"
 
 namespace
 {
@@ -472,7 +471,9 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
 
     // positioning of the viewing plane
     const Mat4 viewingVolumeOrientation = inverse(makeLookAtTransform(VEC3_ZERO, -camPos));
-    const BBox viewingVolumeUnscaled = data.volumeDimensions->getOBB(viewingVolumeOrientation);
+    const DataSetS16* dataSet = dynamic_cast<const DataSetS16*>(&*(*data.volumeTexturehandle));
+    const BBox& bbox = dataSet->getBoundingBox();
+    const BBox viewingVolumeUnscaled = bbox.getOBB(viewingVolumeOrientation);
     const Vec3 viewingVolumeDimensions = viewingVolumeUnscaled.dim() * volumeScale;
 
     const Mat4 viewingPlaneModelMatrix =
@@ -483,9 +484,9 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
     const Vec2 viewingPlaneDimensionsUnscaled(viewingVolumeUnscaled.dimX(), viewingVolumeUnscaled.dimY());
 
     // the nearest plane in texture space
-    const float planeOffsetNear = data.volumeDimensions->getClosestPlaneFromDirection(camPos);
+    const float planeOffsetNear = bbox.getClosestPlaneFromDirection(camPos);
     // the farthes plane in texture space
-    const float planeOffsetFar = -data.volumeDimensions->getClosestPlaneFromDirection(-camPos);
+    const float planeOffsetFar = -bbox.getClosestPlaneFromDirection(-camPos);
     const float planeStackThickness = planeOffsetNear - planeOffsetFar;
     BRWL_CHECK(planeStackThickness > 0, nullptr);
     const float numSlices = planeStackThickness * data.numSlicesPerVoxel; // 1 plane per voxel is a very good resolution
@@ -554,12 +555,12 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
             propParams.remainingSlices = remainingSlices;
             propParams.sliceWidth = sliceWidth;
             propParams.voxelsPerCm = data.voxelsPerCm;
-            propParams.volumeTexelDimensions = data.volumeDimensions->dim();
+            propParams.volumeTexelDimensions = bbox.dim();
         }
 
         //computeBuffers->swap(cmd);
 
-        transitionResourceFromPixelToComputeShader(cmd, data.volumeTexture->texture.Get());
+        transitionResourceFromPixelToComputeShader(cmd, data.volumeTexturehandle- texture.Get());
         transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.mediumColorPit.liveTexture->texture.Get());
         transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.opacityPit.liveTexture->texture.Get());
         transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.particleColorPit.liveTexture->texture.Get());

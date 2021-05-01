@@ -10,11 +10,12 @@ BRWL_RENDERER_NS
 /*!
  * The DataSet class is a Texture augmented with abilities to load data from files on disk.
  */
-template<typename T>
-class DataSet : public Texture<T>
+template<SampleFormat S>
+class DataSet : public Texture<S>
 {
 public:
-	DataSet(const BRWL_CHAR* name) : Texture<T>(name),
+	template<SampleFormat S>
+	DataSet(const BRWL_CHAR* name) : Texture<S>(name),
 		sourcePath(),
 		bbox({}, {})
 	{ }
@@ -45,7 +46,7 @@ protected:
 	::BRWL::BBox bbox;
 };
 
-typedef DataSet<int16_t> DataSetS16;
+typedef DataSet<SampleFormat::S16> DataSetS16;
 
 
 

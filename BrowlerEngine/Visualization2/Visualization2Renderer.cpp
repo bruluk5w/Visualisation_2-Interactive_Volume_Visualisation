@@ -6,7 +6,6 @@
 #include "Preintegration.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/PAL/imgui_impl_dx12.h"
-#include "Common/PAl/DescriptorHeap.h"
 #include "Core/Events.h"
 
 BRWL_RENDERER_NS
@@ -17,7 +16,7 @@ Visualization2Renderer::Visualization2Renderer() :
     uiResultIdx(0),
     uiResults{ {},{} },
     fonts{ 0 },
-    dataSet(),
+    dataSetHandle(TextureHandle::Invalid),
     pitCollection(),
     assetPathMutex(),
     assetPath(BRWL_CHAR_LITERAL("./Assets/DataSets/stagbeetle832x832x494.dat")),
@@ -43,33 +42,31 @@ bool Visualization2Renderer::init(Renderer* r)
     
     D3D12_FEATURE_DATA_D3D12_OPTIONS FeatureData;
     ZeroMemory(&FeatureData, sizeof(FeatureData));
-    if (!BRWL_VERIFY(SUCCEEDED(r->device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &FeatureData, sizeof(FeatureData))), BRWL_CHAR_LITERAL("Failed to get device freature data.")))
+    if (!BRWL_VERIFY(SUCCEEDED(r->getDevice()->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &FeatureData, sizeof(FeatureData))), BRWL_CHAR_LITERAL("Failed to get device freature data.")))
     {
         return false;        
     }
 
-    if (!BRWL_VERIFY(FeatureData.TypedUAVLoadAdditionalFormats, BRWL_CHAR_LITERAL("Uav loas of type R32G32B32A32_FLOAT not supported. Sorry, try another GPU :(.")))
+    if (!BRWL_VERIFY(FeatureData.TypedUAVLoadAdditionalFormats, BRWL_CHAR_LITERAL("Uav load of type R32G32B32A32_FLOAT not supported. Sorry, try another GPU :(.")))
     {
         return false;
     }
 
-
     LoadFonts(uiResults[uiResultIdx].settings.fontSize);
-
 
     if (!BRWL_VERIFY(ReloadVolumeAsset(r), BRWL_CHAR_LITERAL("Failed to load volume.")))
     {
         return false;
     }
     
-    pitCollection.init(r->device.Get());
+    pitCollection.create(r->getTextureManager());
 
     if (!BRWL_VERIFY(mainShader.create(r), BRWL_CHAR_LITERAL("Failed to create main shader.")))
     {
         return false;
     }
 
-    hasCameraMovedListenerHandle = r->eventSystem->registerListener(Event::CAM_HAS_MOVED, [this](Event, void*) {hasViewChanged = true; return true; });
+    hasCameraMovedListenerHandle = r->getEventSystem()->registerListener(Event::CAM_HAS_MOVED, [this](Event, void*) { hasViewChanged = true; return true; });
 
     hasViewChanged = initialized = true;
 
@@ -78,14 +75,15 @@ bool Visualization2Renderer::init(Renderer* r)
 
 bool Visualization2Renderer::ReloadVolumeAsset(BRWL::Renderer::Renderer* r)
 {
-    bool needsRefresh = this->dataSet.isValid();
+    DataSetS16* dataSet = dynamic_cast<DataSetS16*>(&*dataSetHandle);
+    bool needsRefresh = dataSet->isValid();
     BRWL_STR file;
     {
         std::scoped_lock(assetPathMutex);
         file = assetPath.c_str();
     }
 
-    needsRefresh |= BRWL_STRCMP(file.c_str(), dataSet.getSourcePath()) != 0;
+    needsRefresh |= BRWL_STRCMP(file.c_str(), dataSet->getSourcePath()) != 0;
 
     if (needsRefresh)
     {
@@ -95,15 +93,13 @@ bool Visualization2Renderer::ReloadVolumeAsset(BRWL::Renderer::Renderer* r)
             engine->logger->info(file.c_str(), &ml);
         }
 
-        dataSet.loadFromFile(file);
-        if (!BRWL_VERIFY(dataSet.isValid(), BRWL_CHAR_LITERAL("Failed to load default asset.")))
+        dataSet->loadFromFile(file.c_str());
+        if (!BRWL_VERIFY(dataSet->isValid(), BRWL_CHAR_LITERAL("Failed to load dataset.")))
         {
             return false;
         }
 
-        volumeTexture.state = TextureResource::State::REQUESTING_UPLOAD;
-
-        if (!BRWL_VERIFY(SUCCEEDED(r->device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&volumeTextureUploadFence))), BRWL_CHAR_LITERAL("Failed to create volume texture fence.")))
+        if (!dataSetHandle.startLoad())
         {
             return false;
         }
@@ -140,34 +136,36 @@ void Visualization2Renderer::render(Renderer* renderer)
     }
 #endif
 
-    bool success = ReloadVolumeAsset(renderer);
-    if (!success) {
-        renderer->logger->error(BRWL_CHAR_LITERAL("Failed to load volume data!"));
+    if (!ReloadVolumeAsset(renderer))
+    {
+        renderer->log(BRWL_CHAR_LITERAL("Failed to load volume data!"), Logger::LogLevel::Error);
     }
+
     //-------------------
     // swap pit images
     //--------------------
-    for (int i = 0; i < countof(pitCollection.array); ++i)
-    {
-        PitImage& pitImage = pitCollection.array[i];
-        const uint64_t completed = pitImage.fence->GetCompletedValue();
+    
+    //for (int i = 0; i < countof(pitCollection.array); ++i)
+    //{
+    //    PitImage& pitImage = pitCollection.array[i];
+    //    const uint64_t completed = pitImage.fence->GetCompletedValue();
 
-        // swap texture if ready
-        if (pitImage.stagedTexture->state == TextureResource::State::LOADING && completed >= pitImage.uploadFenceValue)
-        {
-            pitImage.stagedTexture->state = TextureResource::State::RESIDENT;
-            pitImage.stagedTexture->uploadHeap = nullptr; // free some resources
-            // We might still have some frames in flight with the old texture
-            // We have to wait until we are sure we that are the only one tampering with resources
-            renderer->waitForLastSubmittedFrame();
-            std::swap(pitImage.stagedTexture, pitImage.liveTexture);
-            // release old texture
-            pitImage.stagedTexture->destroy();
-            // Indicate new resource to be used by a compute shader.
-            renderer->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pitImage.liveTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-            hasViewChanged = true;
-        }
-    }
+    //    // swap texture if ready
+    //    if (pitImage.stagedTexture->state == TextureResource::State::LOADING && completed >= pitImage.uploadFenceValue)
+    //    {
+    //        pitImage.stagedTexture->state = TextureResource::State::RESIDENT;
+    //        pitImage.stagedTexture->uploadHeap = nullptr; // free some resources
+    //        // We might still have some frames in flight with the old texture
+    //        // We have to wait until we are sure we that are the only one tampering with resources
+    //        renderer->waitForLastSubmittedFrame();
+    //        std::swap(pitImage.stagedTexture, pitImage.liveTexture);
+    //        // release old texture
+    //        pitImage.stagedTexture->destroy();
+    //        // Indicate new resource to be used by a compute shader.
+    //        renderer->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pitImage.liveTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+    //        hasViewChanged = true;
+    //    }
+    //}
 
     //---------------------
     // UI
@@ -327,11 +325,10 @@ void Visualization2Renderer::render(Renderer* renderer)
     mainShader.render();
 }
 
-bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, TextureResource& texture);
-bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const Image* image, TextureResource& texture);
+#define DR(expression) PAL::HandleDeviceRemoved(expression, r->device.Get(), r->logger.get())
 
-#define DR(expression) PAL::HandleDeviceRemoved(expression, r->device.Get(), *r->logger)
-
+// todo: instead of passing the whole renderer, pass a context with the necessary pointers (evtl. also pointer to renderer)
+// but then remove public getters for srvHeap, command list etc.
 void Visualization2Renderer::draw(Renderer* r)
 {
     if (!initialized || skipFrame)
@@ -340,17 +337,18 @@ void Visualization2Renderer::draw(Renderer* r)
         return;
     }
 
-    if (!BRWL_VERIFY(r->srvHeap.isCreated() && r->srvHeap.getType() == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, BRWL_CHAR_LITERAL("Invalid descriptor heap.")))
+    PAL::DescriptorHeap& srvHeap = r->getSrvHeap();
+
+    if (!BRWL_VERIFY(srvHeap.isCreated() && srvHeap.getType() == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, BRWL_CHAR_LITERAL("Invalid descriptor heap.")))
     {
         return;
     }
 
     // If we have all resources then we draw else we wait another frame
-    if (pitCollection.isResident() && volumeTexture.state == TextureResource::State::RESIDENT)
+    if (pitCollection.isResident() && dataSetHandle.isResident())
     {
-        const MainShader::DrawData drawData{
-            &dataSet.getBoundingBox(),
-            &volumeTexture,
+        const MainShader::DrawData drawData {
+            &dataSetHandle,
             &pitCollection,
             uiResults[0].settings.voxelsPerCm,
             uiResults[0].settings.numSlicesPerVoxel,
@@ -365,7 +363,7 @@ void Visualization2Renderer::draw(Renderer* r)
             }
         };
         hasViewChanged = false;
-        mainShader.draw(r->device.Get(), r->commandList.Get(), drawData);
+        mainShader.draw(r->getDevice(), r->getCommandList(), drawData);
     }
 
     // check if we have to start uploading textures
@@ -409,41 +407,19 @@ void Visualization2Renderer::draw(Renderer* r)
     }
 }
 
+#undef DR
 
 void Visualization2Renderer::destroy(Renderer* r)
 {
-    if (r->eventSystem) {
-        r->eventSystem->unregisterListener(Event::CAM_HAS_MOVED, hasCameraMovedListenerHandle);
-    }
-
-    for (int i = 0; i < countof(pitCollection.array); ++i)
-    {
-        PitImage& pitImage = pitCollection.array[i];
-
-        if (pitImage.fence && pitImage.uploadFenceValue < pitImage.fence->GetCompletedValue())
-        {
-            DR(pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, pitImage.uploadEvent));
-            WaitForSingleObject(uploadFenceEvent, INFINITE);
-            ResetEvent(pitImage.uploadEvent);
-        }
+    if (r->getEventSystem()) {
+        r->getEventSystem()->unregisterListener(Event::CAM_HAS_MOVED, hasCameraMovedListenerHandle);
     }
 
     mainShader.destroy();
 
     initialized = false;
-    volumeTexture.destroy();
+    dataSetHandle.destroy();
     pitCollection.destroy();
-    volumeTextureUploadFence = nullptr;
-    volumeTextureFenceValue = 0;
-    if (uploadFenceEvent)
-    {
-        CloseHandle(uploadFenceEvent);
-        uploadFenceEvent = nullptr;
-    }
-
-    uploadCommandAllocator = nullptr;
-    uploadCommandList = nullptr;
-    uploadCommandQueue = nullptr;
 }
 
 void Visualization2Renderer::LoadFonts(float fontSize)
@@ -457,208 +433,183 @@ void Visualization2Renderer::LoadFonts(float fontSize)
     fonts[3] = io.Fonts->AddFontFromFileTTF("./Assets/Fonts/OpenSans-Bold.ttf", fontSize);
     ImGui_ImplDX12_CreateFontsTexture();
 }
+//
+//bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, TextureResource& texture)
+//{
+//    if (!dataSet->isValid() || !BRWL_VERIFY(texture.state == TextureResource::State::REQUESTING_UPLOAD, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
+//    {
+//        return false;
+//    }
+//
+//    texture.texture = nullptr;
+//    texture.uploadHeap = nullptr;
+//    // =========================================
+//    // TODO: add a second path for 8bit textures
+//    // =========================================
+//    D3D12_RESOURCE_DESC texDesc;
+//    memset(&texDesc, 0, sizeof(texDesc));
+//    texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+//    texDesc.Alignment = 0;
+//    texDesc.Width = dataSet->getSizeX();
+//    texDesc.Height = dataSet->getSizeY();
+//    texDesc.DepthOrArraySize= dataSet->getSizeZ();
+//    texDesc.MipLevels = 1;
+//    texDesc.Format = DXGI_FORMAT_R16_SNORM;
+//    texDesc.SampleDesc = { 1,0 };
+//    texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+//    texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+//
+//    HRESULT hr = device->CreateCommittedResource(
+//        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+//        D3D12_HEAP_FLAG_NONE,
+//        &texDesc,
+//        D3D12_RESOURCE_STATE_COMMON,
+//        nullptr,
+//        IID_PPV_ARGS(&texture.texture));
+//
+//    if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture.")))
+//    {
+//        texture.texture = nullptr;
+//        texture.state = TextureResource::State::FAILED;
+//        return false;
+//    }
+//
+//    texture.texture->SetName(dataSet->getSourcePath());
+//
+//    uint64_t requiredSize = GetRequiredIntermediateSize(texture.texture.Get(), 0, 1);
+//    BRWL_CHAR buf[100];
+//    BRWL_SNPRINTF(buf, countof(buf), BRWL_CHAR_LITERAL("Loading volume data. Required VRAM: %.2fMB"), (float)requiredSize / 1048576.f);
+//    engine->logger->info(buf);
+//    // Create the GPU upload buffer.
+//    hr = device->CreateCommittedResource(
+//        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+//        D3D12_HEAP_FLAG_NONE,
+//        &CD3DX12_RESOURCE_DESC::Buffer(requiredSize),
+//        D3D12_RESOURCE_STATE_GENERIC_READ,
+//        nullptr,
+//        IID_PPV_ARGS(&texture.uploadHeap));
+//    
+//
+//    if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture upload heap.")))
+//    {
+//        texture.texture = nullptr;
+//        texture.uploadHeap = nullptr;
+//        texture.state = TextureResource::State::FAILED;
+//        return false;
+//    }
+//
+//    D3D12_SUBRESOURCE_DATA textureData {
+//        dataSet->getData(),
+//        dataSet->getStrideY(),
+//        dataSet->getStrideZ()
+//    };
+//
+//    uint64_t result = UpdateSubresources(cmdList, texture.texture.Get(), texture.uploadHeap.Get(), 0, 0, 1, &textureData);
+//    if (!BRWL_VERIFY(result != 0, BRWL_CHAR_LITERAL("Failed to upload volume texture.")))
+//    {
+//        texture.texture = nullptr;
+//        texture.uploadHeap = nullptr;
+//        texture.state = TextureResource::State::FAILED;
+//        return false;
+//    }
+//
+//    // Create a SRV for the texture
+//    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+//    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+//    srvDesc.Format = texDesc.Format;
+//    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+//    srvDesc.Texture3D.MipLevels = 1;
+//    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle->getNonResident().cpu);
+// 
+//    texture.state = TextureResource::State::LOADING;
+//    return true;
+//}
 
-bool LoadVolumeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const DataSet* dataSet, TextureResource& texture)
-{
-    if (!dataSet->isValid() || !BRWL_VERIFY(texture.state == TextureResource::State::REQUESTING_UPLOAD, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
-    {
-        return false;
-    }
-
-    texture.texture = nullptr;
-    texture.uploadHeap = nullptr;
-    // =========================================
-    // TODO: add a second path for 8bit textures
-    // =========================================
-    D3D12_RESOURCE_DESC texDesc;
-    memset(&texDesc, 0, sizeof(texDesc));
-    texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
-    texDesc.Alignment = 0;
-    texDesc.Width = dataSet->getSizeX();
-    texDesc.Height = dataSet->getSizeY();
-    texDesc.DepthOrArraySize= dataSet->getSizeZ();
-    texDesc.MipLevels = 1;
-    texDesc.Format = DXGI_FORMAT_R16_SNORM;
-    texDesc.SampleDesc = { 1,0 };
-    texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-    HRESULT hr = device->CreateCommittedResource(
-        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-        D3D12_HEAP_FLAG_NONE,
-        &texDesc,
-        D3D12_RESOURCE_STATE_COMMON,
-        nullptr,
-        IID_PPV_ARGS(&texture.texture));
-
-    if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture.")))
-    {
-        texture.texture = nullptr;
-        texture.state = TextureResource::State::FAILED;
-        return false;
-    }
-
-    texture.texture->SetName(dataSet->getSourcePath());
-
-    uint64_t requiredSize = GetRequiredIntermediateSize(texture.texture.Get(), 0, 1);
-    BRWL_CHAR buf[100];
-    BRWL_SNPRINTF(buf, countof(buf), BRWL_CHAR_LITERAL("Loading volume data. Required VRAM: %.2fMB"), (float)requiredSize / 1048576.f);
-    engine->logger->info(buf);
-    // Create the GPU upload buffer.
-    hr = device->CreateCommittedResource(
-        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-        D3D12_HEAP_FLAG_NONE,
-        &CD3DX12_RESOURCE_DESC::Buffer(requiredSize),
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&texture.uploadHeap));
-    
-
-    if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture upload heap.")))
-    {
-        texture.texture = nullptr;
-        texture.uploadHeap = nullptr;
-        texture.state = TextureResource::State::FAILED;
-        return false;
-    }
-
-    D3D12_SUBRESOURCE_DATA textureData {
-        dataSet->getData(),
-        dataSet->getStrideY(),
-        dataSet->getStrideZ()
-    };
-
-    uint64_t result = UpdateSubresources(cmdList, texture.texture.Get(), texture.uploadHeap.Get(), 0, 0, 1, &textureData);
-    if (!BRWL_VERIFY(result != 0, BRWL_CHAR_LITERAL("Failed to upload volume texture.")))
-    {
-        texture.texture = nullptr;
-        texture.uploadHeap = nullptr;
-        texture.state = TextureResource::State::FAILED;
-        return false;
-    }
-
-    // Create a SRV for the texture
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.Format = texDesc.Format;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-    srvDesc.Texture3D.MipLevels = 1;
-    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle->getNonResident().cpu);
-     //hr = device->CreateCommittedResource(
-     //   &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-     //   D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES,  // set to none if this is a problem
-     //   &texDesc,
-     //   D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-     //   IID_PPV_ARGS(&texture));
-
-
-    //CD3DX12_RANGE readRange(0, 0); // No CPU read
-    //uint8_t* cpuPtr;
-    //{
-    //    void* ptr;
-    //    hr = texture->Map(0, &readRange, &ptr);
-    //    if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to fetch CPU pointer for volume texture.")))
-    //    {
-    //        texture = nullptr;
-    //        return;
-    //    }
-
-    //    cpuPtr = (uint8_t*)ptr;
-    //}
-
-    //memcpy(cpuPtr, dataSet->getData(), dataSet->getBufferSize());
-
-    //m_pDataCur = m_pDataBegin = reinterpret_cast<UINT8*>(pData);
-    //m_pDataEnd = m_pDataBegin + uSize;
-    texture.state = TextureResource::State::LOADING;
-    return true;
-}
-
-bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const Image* image, TextureResource& texture)
-{
-    if (!image->isValid() || !BRWL_VERIFY(texture.state == TextureResource::State::REQUESTING_UPLOAD, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
-    {
-        return false;
-    }
-
-    texture.texture = nullptr;
-    texture.uploadHeap = nullptr;
-    D3D12_RESOURCE_DESC texDesc;
-    memset(&texDesc, 0, sizeof(texDesc));
-    texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    texDesc.Alignment = 0;
-    texDesc.Width = image->getSizeX();
-    texDesc.Height = image->getSizeY();
-    texDesc.DepthOrArraySize = 1;
-    texDesc.MipLevels = 1;
-    texDesc.Format = DXGI_FORMAT_R32_FLOAT;
-    texDesc.SampleDesc = { 1, 0 };
-    texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN; // todo: try swizzled texture, may be faster
-    texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-    HRESULT hr = device->CreateCommittedResource(
-        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-        D3D12_HEAP_FLAG_NONE,
-        &texDesc,
-        D3D12_RESOURCE_STATE_COMMON,
-        nullptr,
-        IID_PPV_ARGS(&texture.texture));
-
-    if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture.")))
-    {
-        texture.texture = nullptr;
-        texture.state = TextureResource::State::FAILED;
-        return false;
-    }
-
-    texture.texture->SetName(image->getName());
-
-    uint64_t requiredSize = GetRequiredIntermediateSize(texture.texture.Get(), 0, 1);
-    // Create the GPU upload buffer.
-    hr = device->CreateCommittedResource(
-        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-        D3D12_HEAP_FLAG_NONE,
-        &CD3DX12_RESOURCE_DESC::Buffer(requiredSize),
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&texture.uploadHeap));
-
-
-    if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture upload heap.")))
-    {
-        texture.texture = nullptr;
-        texture.uploadHeap = nullptr;
-        texture.state = TextureResource::State::FAILED;
-        return false;
-    }
-
-    D3D12_SUBRESOURCE_DATA textureData {
-        image->getData(),
-        image->getStrideY(),
-        image->getBufferSize()
-    };
-
-    uint64_t result = UpdateSubresources(cmdList, texture.texture.Get(), texture.uploadHeap.Get(), 0, 0, 1, &textureData);
-    if (!BRWL_VERIFY(result != 0, BRWL_CHAR_LITERAL("Failed to upload volume texture.")))
-    {
-        texture.texture = nullptr;
-        texture.uploadHeap = nullptr;
-        texture.state = TextureResource::State::FAILED;
-        return false;
-    }
-
-    // Create a SRV for the texture
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.Format = texDesc.Format;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = 1;
-    srvDesc.Texture2D.PlaneSlice = 0;
-    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle->getNonResident().cpu);
-
-    texture.state = TextureResource::State::LOADING;
-    return true;
-}
+//bool LoadFloatTexture2D(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const Image* image, TextureResource& texture)
+//{
+//    if (!image->isValid() || !BRWL_VERIFY(texture.state == TextureResource::State::REQUESTING_UPLOAD, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
+//    {
+//        return false;
+//    }
+//
+//    texture.texture = nullptr;
+//    texture.uploadHeap = nullptr;
+//    D3D12_RESOURCE_DESC texDesc;
+//    memset(&texDesc, 0, sizeof(texDesc));
+//    texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+//    texDesc.Alignment = 0;
+//    texDesc.Width = image->getSizeX();
+//    texDesc.Height = image->getSizeY();
+//    texDesc.DepthOrArraySize = 1;
+//    texDesc.MipLevels = 1;
+//    texDesc.Format = DXGI_FORMAT_R32_FLOAT;
+//    texDesc.SampleDesc = { 1, 0 };
+//    texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN; // todo: try swizzled texture, may be faster
+//    texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+//
+//    HRESULT hr = device->CreateCommittedResource(
+//        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+//        D3D12_HEAP_FLAG_NONE,
+//        &texDesc,
+//        D3D12_RESOURCE_STATE_COMMON,
+//        nullptr,
+//        IID_PPV_ARGS(&texture.texture));
+//
+//    if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture.")))
+//    {
+//        texture.texture = nullptr;
+//        texture.state = TextureResource::State::FAILED;
+//        return false;
+//    }
+//
+//    texture.texture->SetName(image->getName());
+//
+//    uint64_t requiredSize = GetRequiredIntermediateSize(texture.texture.Get(), 0, 1);
+//    // Create the GPU upload buffer.
+//    hr = device->CreateCommittedResource(
+//        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+//        D3D12_HEAP_FLAG_NONE,
+//        &CD3DX12_RESOURCE_DESC::Buffer(requiredSize),
+//        D3D12_RESOURCE_STATE_GENERIC_READ,
+//        nullptr,
+//        IID_PPV_ARGS(&texture.uploadHeap));
+//
+//
+//    if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture upload heap.")))
+//    {
+//        texture.texture = nullptr;
+//        texture.uploadHeap = nullptr;
+//        texture.state = TextureResource::State::FAILED;
+//        return false;
+//    }
+//
+//    D3D12_SUBRESOURCE_DATA textureData {
+//        image->getData(),
+//        image->getStrideY(),
+//        image->getBufferSize()
+//    };
+//
+//    uint64_t result = UpdateSubresources(cmdList, texture.texture.Get(), texture.uploadHeap.Get(), 0, 0, 1, &textureData);
+//    if (!BRWL_VERIFY(result != 0, BRWL_CHAR_LITERAL("Failed to upload volume texture.")))
+//    {
+//        texture.texture = nullptr;
+//        texture.uploadHeap = nullptr;
+//        texture.state = TextureResource::State::FAILED;
+//        return false;
+//    }
+//
+//    // Create a SRV for the texture
+//    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+//    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+//    srvDesc.Format = texDesc.Format;
+//    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+//    srvDesc.Texture2D.MipLevels = 1;
+//    srvDesc.Texture2D.PlaneSlice = 0;
+//    device->CreateShaderResourceView(texture.texture.Get(), &srvDesc, texture.descriptorHandle->getNonResident().cpu);
+//
+//    texture.state = TextureResource::State::LOADING;
+//    return true;
+//}
 
 
 

@@ -9,19 +9,17 @@
 BRWL_RENDERER_NS
 
 
-class Visualization2Renderer;
-
 namespace PAL
 {
-	void HandleDeviceRemoved(HRESULT result, ID3D12Device* device, ::BRWL::Logger& logger);
+
+	void HandleDeviceRemoved(HRESULT result, ID3D12Device* device, ::BRWL::Logger* logger=nullptr);
 
 	extern  DXGI_FORMAT g_RenderTargetFormat;
 
 	class WinRenderer : public BaseRenderer
 	{
-		// TODO: ugly but no time to write that properly now
-		friend class Visualization2Renderer;
 		friend class MainShader;
+
 	public:
 		static const D3D_FEATURE_LEVEL	featureLevel;
 		static const unsigned int numBackBuffers = 3;
@@ -33,7 +31,11 @@ namespace PAL
 		virtual void setVSync(bool enable) override { vSync = enable; }
 		virtual bool getVSync() const override { return vSync; }
 		void waitForLastSubmittedFrame();
+		ID3D12Device* getDevice() { return device.Get(); }
+		RtvDescriptorHeap& getRtvHeap() { return rtvHeap; }
+		// todo: remove these and move them into context passed into draw function
 		DescriptorHeap& getSrvHeap() { return srvHeap; }
+		ID3D12GraphicsCommandList* getCommandList() { return commandList.Get(); }
 	protected:
 		virtual bool internalInit(const WinRendererParameters params) override;
 		virtual void nextFrame() override;
@@ -50,6 +52,19 @@ namespace PAL
 		bool createDevice(HWND hWnd, unsigned int framebufferWidth = 0, unsigned int framebufferHeight = 0);
 		void destroyDevice();
 
+		void createRenderTargets();
+		void destroyRenderTargets();
+		struct FrameContext;
+		FrameContext* waitForNextFrameResources();
+		FrameContext* getCurrentFrameContext();
+		FrameContext* getNextFrameContext();
+		void resizeSwapChain(HWND hWnd, int width, int height);
+
+		// Inherited via BaseRenderer
+		virtual void OnFramebufferResize() override;
+		virtual std::unique_ptr<BaseTextureManager> makeTextureManager() override;
+		
+
 		struct FrameContext
 		{
 			ComPtr<ID3D12CommandAllocator>	CommandAllocator;
@@ -58,16 +73,8 @@ namespace PAL
 
 		static const int	NUM_FRAMES_IN_FLIGHT = 3;
 		bool				vSync;
-		FrameContext		frameContext[NUM_FRAMES_IN_FLIGHT];
-		size_t				frameIndex;
-		
-
-		void createRenderTargets();
-		void destroyRenderTargets();
-		FrameContext* waitForNextFrameResources();
-		FrameContext* getCurrentFrameContext();
-		FrameContext* getNextFrameContext();
-		void resizeSwapChain(HWND hWnd, int width, int height);
+		FrameContext		frameContext[NUM_FRAMES_IN_FLIGHT];  //! Context for drawn frames
+		size_t				frameIndex; //! Index of drawn frames. Not equal to game loop iterations since some frames may not be rendered.
 
 
 		ComPtr<ID3D12CommandQueue>			commandQueue;
@@ -79,13 +86,9 @@ namespace PAL
 		HANDLE								swapChainWaitableObject = NULL;
 		ComPtr<ID3D12Resource>				mainRenderTargetResource[numBackBuffers] = { nullptr };
 		RtvDescriptorHeap::Handle			mainRenderTargetDescriptor[numBackBuffers] = { };
-
-		// Inherited via BaseRenderer
-		virtual void OnFramebufferResize() override;
-		virtual std::unique_ptr<BaseTextureManager> makeTextureManager() override;
-
 	};
-}
+
+} // namespace PAL
 
 
 BRWL_RENDERER_NS_END

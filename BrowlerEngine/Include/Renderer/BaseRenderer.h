@@ -41,14 +41,21 @@ public:
 		if (appRenderer) appRenderer = nullptr;
 		appRenderer = std::make_shared<AppRendererT>(std::forward<Types>(args)...);
 	}
-
+	EventBusSwitch<Event>* getEventSystem() { return eventSystem; }
 	AppRenderer* getAppRenderer() { return appRenderer.get(); }
+	BaseTextureManager* getTextureManager() { return textureManager.get(); }
+	
 
 	void setCamera(Camera* newCamera);
 	Camera* getCamera() const { return camera; }
 	void getFrameBufferSize(unsigned int& width, unsigned int& height) { width = currentFramebufferWidth; height = currentFramebufferHeight; }
 	virtual void setVSync(bool enable) = 0;
 	virtual bool getVSync() const = 0;
+
+	void log(const BRWL_CHAR* msg, Logger::LogLevel level, Logger::ScopedMultiLog* multiLog = nullptr) const {
+		if (logger) logger->log(msg, level, multiLog);
+	}
+
 protected:
 	virtual bool internalInit(const RendererParameters params); //!< returns true if succeeded else false
 	virtual void nextFrame() { };

@@ -6,14 +6,14 @@
 BRWL_RENDERER_NS
 
 
-// A collection of texture resources for preintegration tables
+// A collection of textures for preintegration tables
 union PitCollection
 {
 	typedef TextureF32 PitImage;
 
-	PitCollection(BaseTextureManager* mgr);
+	PitCollection();
 	~PitCollection();
-	bool init(ID3D12Device* device);
+	void create(BaseTextureManager* mgr);
 	bool isResident() const;
 	void destroy();
 

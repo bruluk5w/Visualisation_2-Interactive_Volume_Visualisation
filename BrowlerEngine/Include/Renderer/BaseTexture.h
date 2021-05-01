@@ -17,10 +17,24 @@ enum class TextureDimension : uint8_t
 
 enum class TextureCreationParams : uint8_t
 {
+	NONE = 0,
 	INIT_ZERO_MEMORY = 1 << 0,
 };
 
 DEFINE_ENUM_CLASS_OPERATORS(TextureCreationParams)
+
+enum class SampleFormat : uint8_t
+{
+	F32 = 0,
+	F64,
+	S16,
+	U16,
+	S32,
+	U32,
+	MAX,
+	MIN = 0
+};
+
 
 //!  The main texture class
 /*!
@@ -51,6 +65,7 @@ public:
 	 * (Re)creates an empty CPU-side buffer for a texture of the the given size. Destroys old data if present
 	 */
 	void create(uint16_t sizeX, uint16_t sizeY, uint16_t sizeZ = 1, TextureDimension dim = TextureDimension::TEXTURE_2D, TextureCreationParams params = TextureCreationParams::INIT_ZERO_MEMORY);
+	
 	/*!
 	 * \return Returns true if the CPU-side buffer exists.
 	 */
@@ -61,7 +76,6 @@ public:
 	 * \return Returns a pointer to the start of the internal buffer.
 	 */
 	const uint8_t* getPtr() const { checkValid(); return data.get(); }
-
 	TextureDimension getDim() const { checkValid(); return dim; } //!< The dimensionality of the texture
 	uint16_t getSizeX() const { checkValid(); return sizeX; } //!< The number of colums.
 	uint16_t getSizeY() const { checkValid(); return sizeY; } //!< The number of rows.
@@ -69,10 +83,12 @@ public:
 	uint32_t getStrideX() const { checkValid(); return strideX; } //!< The size of a pixel in bytes.
 	uint32_t getStrideY() const { checkValid(); return strideY; } //!< The size of an row in bytes.
 	uint32_t getStrideZ() const { checkValid(); return strideZ; } //!< The size of an image slice in bytes.
-
 	size_t getBufferSize() const { checkValid(); return bufferSize; } //!< The size of the whole CPU-side buffer in bytes.
 	const BRWL_CHAR* getName() const { return name.c_str(); } //!< The name of the texture. This is also set to graphics API as a name of the corresponding resource.
-	
+
+	virtual int getSampleByteSize() const = 0;
+	virtual SampleFormat getSampleFormat() const = 0;
+
 	/*!
 	 * Writes all zeros over the CPU-side buffer.
 	 */
@@ -80,8 +96,6 @@ public:
 
 protected:
 	void checkValid() const { BRWL_EXCEPTION(valid, BRWL_CHAR_LITERAL("Accessing data of invalid texture.")); }
-	virtual int getSampleByteSize() const = 0;
-
 
 	BRWL_STR name;
 	bool valid;

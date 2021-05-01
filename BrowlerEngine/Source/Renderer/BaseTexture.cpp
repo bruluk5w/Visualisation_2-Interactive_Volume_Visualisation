@@ -1,6 +1,4 @@
 #include "BaseTexture.h"
-#include "TextureResource.h"
-#include "TextureManager.h"
 
 BRWL_RENDERER_NS
 

@@ -7,12 +7,12 @@
 BRWL_RENDERER_NS
 
 
-PitCollection::PitCollection(BaseTextureManager* mgr) :
+PitCollection::PitCollection() :
 	tables {
-		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Refraction PIT")),
-		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Particle Color PIT")),
-		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Opacity PIT")),
-		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Medium Color PIT"))
+		TextureHandle::Invalid,
+		TextureHandle::Invalid,
+		TextureHandle::Invalid,
+		TextureHandle::Invalid
 	}
 { }
 
@@ -23,8 +23,16 @@ PitCollection::~PitCollection()
 	tables.~Aliases();
 }
 
-bool PitCollection::init(ID3D12Device* device)
+void PitCollection::create(BaseTextureManager* mgr)
 {
+	tables = {
+		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Refraction PIT")),
+		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Particle Color PIT")),
+		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Opacity PIT")),
+		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Medium Color PIT"))
+	};
+
+	//todo: remvove
 	//for (int i = 0; i < countof(array); ++i)
 	//{
 	//	TextureHandle& pit = array[i];
@@ -32,8 +40,6 @@ bool PitCollection::init(ID3D12Device* device)
 	//		return false;
 	//	}
 	//}
-
-	return true;
 }
 
 bool PitCollection::isResident() const

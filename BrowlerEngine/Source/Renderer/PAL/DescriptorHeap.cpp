@@ -27,7 +27,7 @@ namespace
 		case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
 			return isGpu ? BRWL_CHAR_LITERAL("SAMPLER HEAP GPU") : BRWL_CHAR_LITERAL("SAMPLER HEAP CPU");
 		case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
-			return isGpu ? BRWL_CHAR_LITERAL("RTV HEAP GPU"): BRWL_CHAR_LITERAL("RTV HEAP CPU");
+			return isGpu ? BRWL_CHAR_LITERAL("RTV HEAP GPU") : BRWL_CHAR_LITERAL("RTV HEAP CPU");
 		case D3D12_DESCRIPTOR_HEAP_TYPE_DSV:
 			return isGpu ? BRWL_CHAR_LITERAL("DSV HEAP GPU") : BRWL_CHAR_LITERAL("DSV HEAP CPU");
 		default:
@@ -201,6 +201,10 @@ namespace PAL
 
 	DescriptorHandle* DescriptorHeap::allocateOne(const BRWL_CHAR* name, bool forceUpdate)
 	{
+#ifdef _DEBUG
+		BRWL_CHECK(frameActive, BRWL_CHAR_LITERAL("Manipulation of descriptor heap outside an active frame is not allowed!"));
+#endif
+
 		std::scoped_lock(mutex);
 
 		if (!BRWL_VERIFY(numOccupiedDescriptors < handles.size(), BRWL_CHAR_LITERAL("Cannot allocate another descriptor handle. Heap full.")))
@@ -259,6 +263,10 @@ namespace PAL
 
 	void DescriptorHeap::releaseOne(DescriptorHandle* handle)
 	{
+#ifdef _DEBUG
+		BRWL_CHECK(frameActive, BRWL_CHAR_LITERAL("Manipulation of descriptor heap outside an active frame is not allowed!"));
+#endif
+
 		std::scoped_lock(mutex);
 
 		BRWL_EXCEPTION(handle && handle->owningHeap == this, nullptr);
@@ -275,6 +283,10 @@ namespace PAL
 
 	DescriptorHandle* DescriptorHeap::allocateRange(unsigned int n, const BRWL_CHAR* name)
 	{
+#ifdef _DEBUG
+		BRWL_CHECK(frameActive, BRWL_CHAR_LITERAL("Manipulation of descriptor heap outside an active frame is not allowed!"));
+#endif
+
 		std::scoped_lock(mutex);
 
 		if (!BRWL_VERIFY(numOccupiedDescriptors  + n <= handles.size(), BRWL_CHAR_LITERAL("Cannot allocate requested descriptor range. Heap too full.")))
@@ -322,6 +334,9 @@ namespace PAL
 
 	void DescriptorHeap::releaseRange(DescriptorHandle* handle)
 	{
+#ifdef _DEBUG
+		BRWL_CHECK(frameActive, BRWL_CHAR_LITERAL("This action may be allowed, but this information shouldn't be needed at the moment, are you sure that there is not something weird going on?"));
+#endif
 		std::scoped_lock(mutex);
 
 		BRWL_EXCEPTION(handle && handle->owningHeap == this, nullptr);
@@ -340,6 +355,9 @@ namespace PAL
 
 	ID3D12DescriptorHeap* const* DescriptorHeap::getPointerAddress()
 	{
+#ifdef _DEBUG
+		BRWL_CHECK(frameActive, BRWL_CHAR_LITERAL("This action may be allowed, but this information shouldn't be needed at the moment, are you sure that there is not something weird going on?"));
+#endif
 		BRWL_EXCEPTION(created, BRWL_CHAR_LITERAL("Invalid operation on unitialized heap."));
 		return gpuHeap.GetAddressOf();
 	}
@@ -374,6 +392,7 @@ namespace PAL
 			numCopied += n;
 		}
 
+		// todo: can  we remove this? Seems so, no?
 		//{	// copy last to first
 		//	size_t cpyStride = (newOffset - oldOffset);
 		//	size_t numCopied = 0;
@@ -440,10 +459,19 @@ namespace PAL
 	void DescriptorHeap::notifyNewFrameStarted()
 	{
 		++queueNextIdx;
+#ifdef _DEBUG
+		BRWL_EXCEPTION(!frameActive, BRWL_CHAR_LITERAL("Invalid State!"));
+		frameActive = true;
+#endif
 	}
 
 	void DescriptorHeap::notifyOldFrameCompleted()
 	{
+#ifdef _DEBUG
+		BRWL_EXCEPTION(frameActive, BRWL_CHAR_LITERAL("Invalid State!"));
+		frameActive = false;
+#endif
+
 		BRWL_EXCEPTION(created, nullptr);
 		BRWL_CHECK(handles.size() == dirtyArray.size(), nullptr); // todo: remove
 		++queueCompletedIdx;
