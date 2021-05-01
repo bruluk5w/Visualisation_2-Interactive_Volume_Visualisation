@@ -18,7 +18,7 @@ BRWL_RENDERER_NS
 
 class AppRenderer;
 class Camera;
-class TextureManager
+class BaseTextureManager;
 
 class BaseRenderer
 {
@@ -27,7 +27,7 @@ public:
 	virtual ~BaseRenderer();
 
 	void setLogger(std::shared_ptr<Logger> logger) { this->logger = logger; }
-	virtual bool init(const RendererParameters params);
+	bool init(const RendererParameters params);
 	virtual void preRender();
 	void render();
 	virtual void draw();
@@ -50,8 +50,11 @@ public:
 	virtual void setVSync(bool enable) = 0;
 	virtual bool getVSync() const = 0;
 protected:
-	virtual void platformRender();
+	virtual bool internalInit(const RendererParameters params); //!< returns true if succeeded else false
+	virtual void nextFrame() { };
+	virtual void appRender();
 	virtual void OnFramebufferResize() = 0;
+	virtual std::unique_ptr<BaseTextureManager> makeTextureManager() = 0;
 
 	bool							initialized;
 	EventBusSwitch<Event>*			eventSystem;
@@ -59,7 +62,7 @@ protected:
 	std::shared_ptr<Logger>			logger;
 	PlatformGlobals*				globals;
 	std::unique_ptr<RendererParameters> params;
-	std::unique_ptr<TextureManager>	textureManager;
+	std::unique_ptr<BaseTextureManager>	textureManager;
 	std::shared_ptr<AppRenderer>	appRenderer;
 	Camera*							camera;
 	unsigned int					currentFramebufferWidth;

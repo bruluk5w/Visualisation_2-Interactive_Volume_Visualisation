@@ -1,5 +1,7 @@
 #pragma once // (c) 2020 Lukas Brunner
 
+#include <functional>
+
 BRWL_NS
 
 
@@ -33,7 +35,79 @@ namespace Utils
 
 	template<typename T>
 	using is_enum_class = std::integral_constant<bool, (std::is_enum_v<T> && !std::is_convertible_v<T, int>)>;
+	
+	//template<typename MutexType=std::mutex>
+	//struct WithLock
+	//{
+	//	WithLock(MutexType& lock) : guard(lock) { };
+	//	std::scoped_lock<MutexType> guard;
+	//};
 
+	//template<typename ValueType, typename MutexType = std::mutex>
+	//struct PtrWithLockRef : public WithLock<MutexType>
+	//{
+
+	//	PtrWithLockRef(MutexType& lock, ValueType& value) : WithLock(lock), value(value)
+	//	{ }
+
+	//	ValueType& operator*() const { return *value; }
+	//	ValueType* operator->() const { return &*value; }
+
+	//	ValueType& value;
+	//};
+
+	//template<typename ValueType, typename MutexType = std::mutex>
+	//struct PtrWithLock : public WithLock<MutexType>
+	//{
+
+	//	PtrWithLock(MutexType& lock, ValueType value) : WithLock(lock), value(value)
+	//	{ }
+
+	//	ValueType& operator*() const { return *value; }
+	//	ValueType* operator->() const { return &*value; }
+
+	//	ValueType value;
+	//};
+
+
+	//template<typename ValueType, typename MutexType = std::mutex>
+	//struct SubscriptWithLockRef : public WithLock<MutexType>
+	//{
+	//	SubscriptWithLockRef(MutexType& lock, ValueType& value) : WithLock(lock), value(value)
+	//	{ }
+
+	//	decltype(std::declval<ValueType&>()[int{}])& operator[](int idx) { return value[idx]; }
+
+	//	ValueType& value;
+	//};
+
+	//template<typename ValueType, typename MutexType = std::mutex>
+	//struct SubscriptWithLock : public WithLock<MutexType>
+	//{
+	//	SubscriptWithLock(MutexType& lock, ValueType value) : WithLock(lock), value(value)
+	//	{ }
+
+	//	decltype(std::declval<ValueType&>()[int{}])& operator[](int idx) { return value[idx]; }
+	//	int size() const { return value.size(); }
+
+	//	ValueType value;
+	//};
+
+	//template<typename R>
+	//struct LambdaAsIndirection
+	//{
+	//	static_assert(std::is_reference_v<R>, "Function must return a reference");
+	//	R operator*() const { return f(); }
+	//	std::function<R(void)> f;
+	//};
+
+	//template<typename R>
+	//struct LambdaAsSubscript
+	//{
+	//	static_assert(std::is_pointer_v<R>, "Lambda must return a pointer");
+	//	R operator[](int idx) const { return f(idx); }
+	//	std::function<R(int)> f;
+	//};
 }
 
 // count of elemets in c array

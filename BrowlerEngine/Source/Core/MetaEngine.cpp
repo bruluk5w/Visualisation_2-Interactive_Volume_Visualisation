@@ -141,7 +141,7 @@ void MetaEngine::update()
 
 		if (mode != EngineRunMode::META_ENGINE_MAIN_THREAD)
 		{
-			BRWL_EXCEPTION(frameThreads[i]->getState() == ThreadState::READY, BRWL_CHAR_LITERAL("Something is fishy, the thread is RUNNING but it should be set to READY"));
+			BRWL_EXCEPTION(frameThreads[i]->getState() == ThreadState::READY, BRWL_CHAR_LITERAL("Something is not right, the thread is RUNNING but it should be set to READY"));
 
 			bool successDispatch = frameThreads[i]->run();
 			BRWL_EXCEPTION(successDispatch, BRWL_CHAR_LITERAL("Failed to start frame thread!"));

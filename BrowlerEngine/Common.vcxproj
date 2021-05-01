@@ -47,8 +47,8 @@
     <ClInclude Include="Include\Common\Globals.h" />
     <ClInclude Include="Include\Common\GlobalsFwd.h" />
     <ClInclude Include="Include\Common\Logger.h" />
+    <ClInclude Include="Include\Common\MacroUtils.h" />
     <ClInclude Include="Include\Common\PAL\BrowlerWindowsInclude.h" />
-    <ClInclude Include="Include\Common\PAL\DescriptorHeap.h" />
     <ClInclude Include="Include\Common\PAL\WinGlobals.h" />
     <ClInclude Include="Include\Common\PAL\WinStackTrace.h" />
     <ClInclude Include="Include\Common\ProceduralGeometry.h">
@@ -92,7 +92,6 @@
     <ClCompile Include="Source\Common\EventBus.cpp" />
     <ClCompile Include="Source\Common\Exception.cpp" />
     <ClCompile Include="Source\Common\Logger.cpp" />
-    <ClCompile Include="Source\Common\PAL\DescriptorHeap.cpp" />
     <ClCompile Include="Source\Common\PAL\WinGlobals.cpp" />
     <ClCompile Include="Source\Common\PAL\WinStackTrace.cpp" />
     <ClCompile Include="Source\Common\proceduralGeometry.cpp">
@@ -221,6 +220,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -245,6 +245,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -271,6 +272,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -299,6 +301,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -326,6 +329,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -354,6 +358,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -364,17 +369,20 @@
     <Lib>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
+    <PostBuildEvent>
+      <Command>robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="packages\directxmath.2020.4.23.1\build\native\directxmath.targets" Condition="Exists('packages\directxmath.2020.4.23.1\build\native\directxmath.targets')" />
-    <Import Project="packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets" Condition="Exists('packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets')" />
+    <Import Project="packages\WinPixEventRuntime.1.0.210209001\build\WinPixEventRuntime.targets" Condition="Exists('packages\WinPixEventRuntime.1.0.210209001\build\WinPixEventRuntime.targets')" />
+    <Import Project="packages\directxmath.2021.1.11.2\build\native\directxmath.targets" Condition="Exists('packages\directxmath.2021.1.11.2\build\native\directxmath.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('packages\directxmath.2020.4.23.1\build\native\directxmath.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\directxmath.2020.4.23.1\build\native\directxmath.targets'))" />
-    <Error Condition="!Exists('packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets'))" />
+    <Error Condition="!Exists('packages\WinPixEventRuntime.1.0.210209001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\WinPixEventRuntime.1.0.210209001\build\WinPixEventRuntime.targets'))" />
+    <Error Condition="!Exists('packages\directxmath.2021.1.11.2\build\native\directxmath.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\directxmath.2021.1.11.2\build\native\directxmath.targets'))" />
   </Target>
 </Project>

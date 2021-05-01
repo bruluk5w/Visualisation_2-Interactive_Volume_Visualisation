@@ -8,11 +8,20 @@ BRWL_RENDERER_NS
 //!  The main texture class
 /*!
  * This class allows specialization on the pixel format of a texture.
- * The tempalte parameter states the type of one sample and may be a struct (possibly including bitfields) for multiple channels.
+ * The template parameter states the type of one sample and may be a struct (possibly including bitfields) for multiple channels.
  */
 template<typename T>
 class Texture : public BaseTexture
 {
+	friend class BaseTextureManager;
+
+	/*!
+	 * Textures are only created by a texture manager. This is will also be set as a name to the respective resource in the graphics API.
+	 * \param name The name of the texture. This is will also be set as a name to the respective resource in the graphics API.
+	 */
+	Texture(const BRWL_CHAR* name) : BaseTexture(name)
+	{ }
+
 public:
 
 	/*!
@@ -20,13 +29,6 @@ public:
 	 */
 	using sampleT = T;
 
-	/*!
-	 * \param name The name of the texture. This is will also be set as a name to the respective resource in the graphics API.
-	 * \param mgr The TextureManager which will manage this texture. The texture automatically registers itself with the the TextureManager.
-	 */
-	Texture(const BRWL_CHAR* name, TextureManager* mgr) : BaseTexture(name, mgr)
-	{ };
-	
 	/*!
 	 * Returns a pointer to the start of the internal buffer.
 	 * May only be called if that buffer exists.

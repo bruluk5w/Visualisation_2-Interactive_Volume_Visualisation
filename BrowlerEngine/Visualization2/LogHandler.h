@@ -1,6 +1,6 @@
 #pragma once // (c) 2020 Lukas Brunner
+
 #include "Common/Logger.h"
-#include <vector>
 #include <algorithm>
 
 class LogHandler : public BRWL::ILogHandler {

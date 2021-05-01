@@ -1,11 +1,26 @@
 #pragma once // (c) 2020 Lukas Brunner
 
+#include "TextureManagerFwd.h"
 
 BRWL_RENDERER_NS
 
 
-class TextureManager;
 struct TextureResource;
+
+enum class TextureDimension : uint8_t
+{
+	TEXTURE_2D = 0,
+	TEXTURE_3D,
+	MAX,
+	MIN = 0
+};
+
+enum class TextureCreationParams : uint8_t
+{
+	INIT_ZERO_MEMORY = 1 << 0,
+};
+
+DEFINE_ENUM_CLASS_OPERATORS(TextureCreationParams)
 
 //!  The main texture class
 /*!
@@ -21,34 +36,33 @@ struct TextureResource;
  */
 class BaseTexture
 {
+	friend class BaseTextureManager;
+
+protected:
+	/*!
+	 * Textures are only created by a texture manager.
+	 * \param name The name of the texture. This is will also be set as a name to the respective resource in the graphics API.
+	 */
+	BaseTexture(const BRWL_CHAR* name);
+
 public:
 
 	/*!
-	 * \param name The name of the texture. This is will also be set as a name to the respective resource in the graphics API.
-	 * \param mgr The TextureManager which will manage this texture. The texture automatically registers itself with the the TextureManager.
+	 * (Re)creates an empty CPU-side buffer for a texture of the the given size. Destroys old data if present
 	 */
-	BaseTexture(const BRWL_CHAR* name, TextureManager* mgr);
-
-	virtual ~BaseTexture();
-
-	/*!
-	 * (Re)creates an empty CPU-side buffer for a texture of the the given size.
-	 * TODO: effects on GPU texture?
-	 */
-	void create(uint16_t sizeX, uint16_t sizeY, uint16_t sizeZ = 1);
+	void create(uint16_t sizeX, uint16_t sizeY, uint16_t sizeZ = 1, TextureDimension dim = TextureDimension::TEXTURE_2D, TextureCreationParams params = TextureCreationParams::INIT_ZERO_MEMORY);
 	/*!
 	 * \return Returns true if the CPU-side buffer exists.
 	 */
 	bool isValid() const { return valid; }
 
-	/**/
-	bool isResident() const { return gpu.isResident(); }
 	/*!
 	 * May only be called if that buffer exists.
 	 * \return Returns a pointer to the start of the internal buffer.
 	 */
 	const uint8_t* getPtr() const { checkValid(); return data.get(); }
 
+	TextureDimension getDim() const { checkValid(); return dim; } //!< The dimensionality of the texture
 	uint16_t getSizeX() const { checkValid(); return sizeX; } //!< The number of colums.
 	uint16_t getSizeY() const { checkValid(); return sizeY; } //!< The number of rows.
 	uint16_t getSizeZ() const { checkValid(); return sizeZ; } //!< The number image slices.
@@ -62,50 +76,16 @@ public:
 	/*!
 	 * Writes all zeros over the CPU-side buffer.
 	 */
-	void clear();
-
-	void requestUpload();
-
-	bool isReadyForUpload();
-
-	/*!
-	 * Creates the respective graphics resources required to upload and use the texture on the GPU.
-	 * \return Returns true if the initialization was successful, else false;
-	 */
-	virtual bool initGpu();
-	virtual void destroyGpu();
-
-
-	class GpuData
-	{
-	private:
-
-		friend class BaseTexture;
-		friend class TextureManager;
-		virtual ~GpuData();
-		/*!
-		 * Creates the respective graphics resources required to upload and use the texture on the GPU.
-		 * \param device The device to create the resource for.
-		 * \return Returns true if the initialization was successful, else false;
-		 */
-		bool init(ID3D12Device* device);
-		void destroy();
-		bool isResident() const;
-		ComPtr<ID3D12Fence> fence =  nullptr ;
-		uint64_t uploadFenceValue = 0;
-		HANDLE uploadEvent = NULL;
-		std::unique_ptr<TextureResource> liveTexture = nullptr;
-		std::unique_ptr<TextureResource> stagedTexture = nullptr;
-	} gpu;
+	void zero();
 
 protected:
-	void checkValid() const { BRWL_EXCEPTION(valid, BRWL_CHAR_LITERAL("Accessing data of invalid image.")); }
+	void checkValid() const { BRWL_EXCEPTION(valid, BRWL_CHAR_LITERAL("Accessing data of invalid texture.")); }
 	virtual int getSampleByteSize() const = 0;
 
 
 	BRWL_STR name;
-	TextureManager* mgr;
 	bool valid;
+	TextureDimension dim;
 	uint16_t sizeX;
 	uint16_t sizeY;
 	uint16_t sizeZ;

@@ -21,6 +21,8 @@ private:
 	bool initialized;
 public:
 	bool isInitalized() { return initialized; }
+
+protected:
 	virtual bool init(PAL::WinRenderer* renderer) = 0;
 	virtual void preRender(PAL::WinRenderer* renderer) = 0;
 	virtual void render(PAL::WinRenderer* renderer) = 0;

@@ -1,7 +1,5 @@
 #include "ProceduralGeometry.h"
 
-#include "BrwlMath.h"
-
 BRWL_NS
 
 

@@ -141,6 +141,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Renderer;$(ProjectDir)Shaders\Compiled;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -176,6 +177,7 @@ if not exist %compiled_folder% (
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Renderer;$(ProjectDir)Shaders\Compiled;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -213,6 +215,7 @@ if not exist %compiled_folder% (
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Renderer;$(ProjectDir)Shaders\Compiled;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -253,6 +256,7 @@ if not exist %compiled_folder% (
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Renderer;$(ProjectDir)Shaders\Compiled;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -292,6 +296,7 @@ if not exist %compiled_folder% (
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Renderer;$(ProjectDir)Shaders\Compiled;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -332,6 +337,7 @@ if not exist %compiled_folder% (
       <AdditionalIncludeDirectories>$(ProjectDir)Include;$(ProjectDir)Include\Renderer;$(ProjectDir)Shaders\Compiled;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -366,6 +372,7 @@ if not exist %compiled_folder% (
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="Include\Renderer\BaseTextureManager.h" />
     <ClInclude Include="Include\Renderer\Camera.h">
       <SubType>
       </SubType>
@@ -376,14 +383,18 @@ if not exist %compiled_folder% (
       </SubType>
     </ClInclude>
     <ClInclude Include="Include\Renderer\PAL\d3dx12.h" />
+    <ClInclude Include="Include\Renderer\PAL\DescriptorHeap.h" />
+    <ClInclude Include="Include\Renderer\PAL\GpuTexture.h" />
     <ClInclude Include="Include\Renderer\PAL\imgui_impl_dx12.h" />
     <ClInclude Include="Include\Renderer\PAL\imgui_impl_win32.h" />
     <ClInclude Include="Include\Renderer\PAL\RtvDescriptorHeap.h" />
+    <ClInclude Include="Include\Renderer\PAL\TextureResource.h" />
     <ClInclude Include="Include\Renderer\PAL\WinRenderer.h" />
     <ClInclude Include="Include\Renderer\PAL\WinRendererParameters.h">
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="Include\Renderer\PAL\WinTextureManager.h" />
     <ClInclude Include="Include\Renderer\Renderer.h" />
     <ClInclude Include="Include\Renderer\RendererFwd.h" />
     <ClInclude Include="Include\Renderer\RendererParameters.h">
@@ -401,7 +412,7 @@ if not exist %compiled_folder% (
       <SubType>
       </SubType>
     </ClInclude>
-    <ClInclude Include="Include\Renderer\TextureResource.h" />
+    <ClInclude Include="Include\Renderer\TextureManagerFwd.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Renderer\AppRenderer.cpp">
@@ -416,14 +427,18 @@ if not exist %compiled_folder% (
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="Source\Renderer\BaseTextureManager.cpp" />
     <ClCompile Include="Source\Renderer\Camera.cpp">
       <SubType>
       </SubType>
     </ClCompile>
     <ClCompile Include="Source\Renderer\DataSet.cpp" />
+    <ClCompile Include="Source\Renderer\PAL\DescriptorHeap.cpp" />
+    <ClCompile Include="Source\Renderer\PAL\GpuTexture.cpp" />
     <ClCompile Include="Source\Renderer\PAL\imgui_impl_dx12.cpp" />
     <ClCompile Include="Source\Renderer\PAL\imgui_impl_win32.cpp" />
     <ClCompile Include="Source\Renderer\PAL\RtvDescriptorHeap.cpp" />
+    <ClCompile Include="Source\Renderer\PAL\WinTextureManager.cpp" />
     <ClCompile Include="Source\Renderer\Renderer_Precomp.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -447,9 +462,6 @@ if not exist %compiled_folder% (
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
     <DXCShader Include="Shaders\Guides_ps.hlsl" />
     <DXCShader Include="Shaders\Guides_vs.hlsl" />
     <DXCShader Include="Shaders\GUI_ps.hlsl" />
@@ -463,15 +475,15 @@ if not exist %compiled_folder% (
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="packages\directxmath.2020.4.23.1\build\native\directxmath.targets" Condition="Exists('packages\directxmath.2020.4.23.1\build\native\directxmath.targets')" />
-    <Import Project="packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets" Condition="Exists('packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets')" />
+    <Import Project="packages\directxmath.2021.1.11.2\build\native\directxmath.targets" Condition="Exists('packages\directxmath.2021.1.11.2\build\native\directxmath.targets')" />
+    <Import Project="packages\WinPixEventRuntime.1.0.210209001\build\WinPixEventRuntime.targets" Condition="Exists('packages\WinPixEventRuntime.1.0.210209001\build\WinPixEventRuntime.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('packages\directxmath.2020.4.23.1\build\native\directxmath.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\directxmath.2020.4.23.1\build\native\directxmath.targets'))" />
-    <Error Condition="!Exists('packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets'))" />
+    <Error Condition="!Exists('packages\directxmath.2021.1.11.2\build\native\directxmath.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\directxmath.2021.1.11.2\build\native\directxmath.targets'))" />
+    <Error Condition="!Exists('packages\WinPixEventRuntime.1.0.210209001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\WinPixEventRuntime.1.0.210209001\build\WinPixEventRuntime.targets'))" />
   </Target>
   <Import Project="dxc.targets" />
 </Project>

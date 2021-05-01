@@ -444,6 +444,7 @@ namespace PAL
 
 	void DescriptorHeap::notifyOldFrameCompleted()
 	{
+		BRWL_EXCEPTION(created, nullptr);
 		BRWL_CHECK(handles.size() == dirtyArray.size(), nullptr); // todo: remove
 		++queueCompletedIdx;
 

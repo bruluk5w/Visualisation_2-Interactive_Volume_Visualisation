@@ -35,7 +35,7 @@ bool BaseRenderer::init(const RendererParameters params)
 {
 	if (initialized)
 	{
-		if (!BRWL_VERIFY(memcmp(&params, this->params.get(), sizeof(RendererParameters)) == 0, BRWL_CHAR_LITERAL("Renderer is being initialized on a new window while it is still attached to another window!")))
+		if (!BRWL_VERIFY(memcmp(&params, this->params.get(), sizeof(RendererParameters)) == 0, BRWL_CHAR_LITERAL("Renderer is being initialized on a window while it is still attached to another window!")))
 		{
 			destroy();
 		}
@@ -43,28 +43,8 @@ bool BaseRenderer::init(const RendererParameters params)
 
 	if (!initialized)
 	{
-		this->params = std::make_unique<RendererParameters>(params);
-		this->textureManager = std::make_unique<TextureManager>();
-		windowResizeEventHandle = eventSystem->registerListener(Event::WINDOW_RESIZE, [this](Event, void* param) -> bool
-			{
-				logger->info(BRWL_CHAR_LITERAL("Resizing Framebuffer"));
-				currentFramebufferWidth = castParam<Event::WINDOW_RESIZE>(param)->width;
-				currentFramebufferHeight = castParam<Event::WINDOW_RESIZE>(param)->height;
-				OnFramebufferResize();
-				return false;
-			});
-
-		if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(appRenderer->rendererInit(static_cast<Renderer*>(this)), BRWL_CHAR_LITERAL("Failed to initialize the app renderer")))
-		{
-			destroy(true);
-		}
-		else
-		{
-			initialized = true;
-		}
+		return internalInit(params);
 	}
-	
-	return initialized;
 }
 
 void BaseRenderer::preRender()
@@ -80,15 +60,46 @@ void BaseRenderer::render()
 {
 	if (!currentFramebufferHeight || !currentFramebufferWidth)
 	{
-		logger->info(BRWL_CHAR_LITERAL("Nothing to render, framebuffer too small."));
+		logger->debug(BRWL_CHAR_LITERAL("Nothing to render, framebuffer too small."));
 		return;
 	}
-
-	platformRender();
+	nextFrame();
+	appRender();
 }
 
 
-void BaseRenderer::platformRender()
+bool BaseRenderer::internalInit(const RendererParameters params)
+{
+	if (BRWL_VERIFY(!initialized, nullptr))
+	{
+		this->params = std::make_unique<RendererParameters>(params);
+
+		this->textureManager = makeTextureManager();
+
+		windowResizeEventHandle = eventSystem->registerListener(Event::WINDOW_RESIZE, [this](Event, void* param) -> bool
+			{
+				logger->info(BRWL_CHAR_LITERAL("Resizing Framebuffer"));
+				currentFramebufferWidth = Utils::max<unsigned int>(currentFramebufferWidth, 1);
+				currentFramebufferHeight = Utils::max<unsigned int>(currentFramebufferHeight, 1);
+
+				OnFramebufferResize();
+				return false;
+			});
+
+		if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(appRenderer->rendererInit(static_cast<Renderer*>(this)), BRWL_CHAR_LITERAL("Failed to initialize the app renderer")))
+		{
+			destroy(true);
+		}
+		else
+		{
+			initialized = true;
+		}
+	}
+
+	return initialized;
+}
+
+void BaseRenderer::appRender()
 {
 	if (appRenderer)
 	{

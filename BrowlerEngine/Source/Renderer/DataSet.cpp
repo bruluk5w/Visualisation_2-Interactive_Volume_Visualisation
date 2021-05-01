@@ -65,7 +65,5 @@ void DataSet<T>::loadFromFile(const BRWL_CHAR* relativePath)
 	this->valid = true;
 }
 
-using DataSetS16 = DataSet<int16_t>;
-
 
 BRWL_RENDERER_NS_END

@@ -6,7 +6,7 @@
 
 #ifdef BRWL_PLATFORM_WINDOWS
 
-#include "DirectXMath.h"
+#include <DirectXMath.h>
 
 BRWL_NS
 

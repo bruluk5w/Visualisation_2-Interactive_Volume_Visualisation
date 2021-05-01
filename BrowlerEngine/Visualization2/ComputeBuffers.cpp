@@ -72,11 +72,11 @@ bool ComputeBuffers::create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, 
     heapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
     heapDesc.Properties.CreationNodeMask = 0;
     heapDesc.Properties.VisibleNodeMask = 0;
-    heapDesc.Flags = D3D12_HEAP_FLAG_NONE;
+    heapDesc.Flags = D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_BUFFERS;
 
     // Dear GPU,
     // Please take it or die!
-    if (!BRWL_VERIFY(SUCCEEDED(device->CreateHeap(&heapDesc, IID_PPV_ARGS(&bufferHeap))), BRWL_CHAR_LITERAL("Failed to allocate compute buffers. It's not a bug. It's your VRAM.")))
+    if (!BRWL_VERIFY(SUCCEEDED(device->CreateHeap(&heapDesc, IID_PPV_ARGS(&bufferHeap))), BRWL_CHAR_LITERAL("Failed to allocate compute buffers.")))
     {
         destroy();
         return false;

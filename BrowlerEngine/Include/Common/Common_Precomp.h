@@ -26,6 +26,7 @@ namespace PAL {
 #include <string>
 #include <cmath>
 #include <mutex>
+#include <vector>
 
 #ifdef BRWL_PLATFORM_WINDOWS
 
@@ -42,7 +43,7 @@ namespace PAL {
 #define ENABLE_GRAPHICS_DEBUG_FEATURES 1
 #endif
 
-#define FORCE_ENABLE_PIX 1
+#define FORCE_ENABLE_PIX 0
 
 #if ENABLE_GRAPHICS_DEBUG_FEATURES
 #include <dxgidebug.h>
@@ -65,7 +66,7 @@ using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 #ifdef UNICODE
 #define BRWL_CHAR wchar_t
-//TODO: rename to something shorter 
+//TODO: rename to something shorter. And it's actually a string
 #define BRWL_CHAR_LITERAL(LITERAL) L##LITERAL
 #define BRWL_STRLEN wcslen
 #define BRWL_STR ::std::wstring
@@ -90,8 +91,8 @@ using ComPtr = Microsoft::WRL::ComPtr<T>;
 #if defined(BRWL_PLATFORM_WINDOWS) && ENABLE_GRAPHICS_DEBUG_FEATURES || FORCE_ENABLE_PIX
 #define USE_PIX
 #include "pix3.h"
-#define SCOPED_CPU_EVENT(r, g, b, label, ...) PIXScopedEvent(PIX_COLOR(r, g, b), BRWL_CHAR_LITERAL(label), __VA_ARGS__)
-#define SCOPED_GPU_EVENT(pContext, r, g, b, label, ...) PIXScopedEvent(pContext, PIX_COLOR(r, g, b), BRWL_CHAR_LITERAL(label), __VA_ARGS__)
+#define SCOPED_CPU_EVENT(r, g, b, label, ...) PIXScopedEvent(PIX_COLOR(r, g, b), BRWL_CHAR_LITERAL(label), ## __VA_ARGS__)
+#define SCOPED_GPU_EVENT(pContext, r, g, b, label, ...) PIXScopedEvent(pContext, PIX_COLOR(r, g, b), BRWL_CHAR_LITERAL(label), ##  __VA_ARGS__)
 #else
 #define SCOPED_CPU_EVENT(...)
 #define SCOPED_GPU_EVENT(...)
@@ -105,6 +106,9 @@ using ComPtr = Microsoft::WRL::ComPtr<T>;
 #include "Exception.h"
 
 #include "BrwlMath.h"
+#
+
+#include "MacroUtils.h"
 
 BRWL_NS
 
@@ -113,19 +117,4 @@ void earlyStaticInit();
 // this function should be called as late as possible during destruction of the program
 void lateStaticDestroy();
 
-BRWL_NS_END
-
-// TODO Move this into a different place
-// Reason: ui has to reference DescriptorHandle
-
-#define RENDERER Renderer
-
-#define RENDERER_NS namespace RENDERER {
-
-#define RENDERER_NS_END }
-
-#define BRWL_RENDERER_NS BRWL_NS \
-RENDERER_NS
-
-#define BRWL_RENDERER_NS_END RENDERER_NS_END \
 BRWL_NS_END

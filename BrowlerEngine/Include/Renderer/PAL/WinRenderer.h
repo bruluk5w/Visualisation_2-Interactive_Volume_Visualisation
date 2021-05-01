@@ -4,7 +4,7 @@
 
 #include "BaseRenderer.h"
 #include "RtvDescriptorHeap.h"
-#include "Common/PAL/DescriptorHeap.h"
+#include "PAL/DescriptorHeap.h"
 
 BRWL_RENDERER_NS
 
@@ -19,7 +19,7 @@ namespace PAL
 
 	class WinRenderer : public BaseRenderer
 	{
-		// ugly but no time to write that properly now
+		// TODO: ugly but no time to write that properly now
 		friend class Visualization2Renderer;
 		friend class MainShader;
 	public:
@@ -28,7 +28,6 @@ namespace PAL
 
 		WinRenderer(EventBusSwitch<Event>* eventSystem, PlatformGlobals* globals);
 		virtual ~WinRenderer();
-		virtual bool init(const WinRendererParameters params) override;
 		virtual void draw() override;
 		virtual void destroy(bool force = true) override;
 		virtual void setVSync(bool enable) override { vSync = enable; }
@@ -36,7 +35,9 @@ namespace PAL
 		void waitForLastSubmittedFrame();
 		DescriptorHeap& getSrvHeap() { return srvHeap; }
 	protected:
-		virtual void platformRender() override;
+		virtual bool internalInit(const WinRendererParameters params) override;
+		virtual void nextFrame() override;
+		virtual void appRender() override;
 
 		static const Vec4 clearColor;
 
@@ -81,6 +82,8 @@ namespace PAL
 
 		// Inherited via BaseRenderer
 		virtual void OnFramebufferResize() override;
+		virtual std::unique_ptr<BaseTextureManager> makeTextureManager() override;
+
 	};
 }
 

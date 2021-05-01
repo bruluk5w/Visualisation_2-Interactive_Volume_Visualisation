@@ -222,7 +222,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
             Text("Plot Size: ");
             SLIDER_FIX(2, 2);
                 Text("Width: ");
-                int cursorX = GetCursorPosX(); SliderFloat("", &plotWidth, 1, 3, "");
+                SliderFloat("", &plotWidth, 1, 3, "");
                 if (!lockAspect) { SameLine(); if (Button("Reset")) plotWidth = 1; }
             SLIDER_FIX_END();
             SLIDER_FIX(3, 2);

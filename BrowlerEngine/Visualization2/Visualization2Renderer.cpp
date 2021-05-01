@@ -6,7 +6,6 @@
 #include "Preintegration.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/PAL/imgui_impl_dx12.h"
-#include "Renderer/PAL/d3dx12.h"
 #include "Common/PAl/DescriptorHeap.h"
 #include "Core/Events.h"
 
@@ -128,6 +127,7 @@ void Visualization2Renderer::preRender(Renderer* renderer)
 void Visualization2Renderer::render(Renderer* renderer)
 {
     if (!initialized) return;
+
 #ifdef BRWL_USE_DEAR_IM_GUI
     if (!g_FontDescHandle->isResident())
     {
@@ -193,6 +193,8 @@ void Visualization2Renderer::render(Renderer* renderer)
     renderAppUI(r, v);
     ImGui::PopFont();
 
+    ImGui::Render();
+
     //-------------------
     // recompute PIT images
     // (wait for ongoing upload to finish +) request upload
@@ -206,7 +208,6 @@ void Visualization2Renderer::render(Renderer* renderer)
         PitImage& pitImage = pitCollection.array[i];
         UIResult::TransferFunction& tFuncValue = v.transferFunctions.array[i];
         UIResult::TransferFunction& tFuncResult = r.transferFunctions.array[i];
-        // TODO: assert on dissimilar bitDepth!
         if (!pitImage.cpuImage.isValid() || tFuncValue.bitDepth != tFuncResult.bitDepth ||
             memcmp(tFuncValue.transferFunction, tFuncResult.transferFunction, tFuncValue.getArrayLength() * sizeof(UIResult::TransferFunction::sampleT)) != 0)
         {

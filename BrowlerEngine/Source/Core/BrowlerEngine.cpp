@@ -69,7 +69,7 @@ void Engine::update()
 	input->preMessageUpdate();
 
 	if (window && runMode == MetaEngine::EngineRunMode::DETATCHED)
-	{	// only process messages if they are not receiving them from the parent window
+	{	// only process messages if we are not receiving them from the parent window
 		window->processPlatformMessages();
 	}
 
@@ -78,7 +78,7 @@ void Engine::update()
 	{
 		double dt = time->getDeltaTime();
 		std::scoped_lock(updatablesMutex);
-		std::for_each(updatables.begin(), updatables.end(), [dt](std::unique_ptr<IUpdatable>& updatable) {
+		std::for_each(updatables.begin(), updatables.end(), [dt](std::unique_ptr<IUpdatable>& updatable){
 			if (updatable) {
 				if (!updatable->isInitialized()) {
 					updatable->internalInit();
@@ -102,9 +102,12 @@ void Engine::update()
 			hierarchy->addToRoot(defaultCamera.get());
 			renderer->setCamera(defaultCamera.get());
 		}
+	}
+	
+	hierarchy->update();
 
-		hierarchy->update();
-
+	if (renderer && renderer->isInitialized())
+	{
 		renderer->preRender();
 		renderer->render();
 		renderer->draw();

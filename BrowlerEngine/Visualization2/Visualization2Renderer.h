@@ -52,7 +52,7 @@ protected:
 	// The main data set
 	std::mutex assetPathMutex;
 	BRWL_STR assetPath; // set from different thread
-	DataSet dataSet;
+	DataSetS16 dataSet;
 	uint64_t volumeTextureFenceValue;
 
 	PitCollection pitCollection;

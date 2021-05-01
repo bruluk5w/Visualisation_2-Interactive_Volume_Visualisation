@@ -1,6 +1,5 @@
 #pragma once // (c) 2020 Lukas Brunner
 
-#include <vector>
 #include <deque>
 
 BRWL_RENDERER_NS
@@ -20,7 +19,8 @@ namespace PAL
             D3D12_GPU_DESCRIPTOR_HANDLE gpu; // should not be accessed
         };
     public:
-        // different types help to distinguish whether we have a cpu only or a gpu valid handle
+        // With different types we enforce that only ever the same type of handle is used in a given place.
+        // A ResidentHandles variable is thus guaranteed to only contain resident descriptor handles if it is backed by memory managed by the DescriptorHeap (== Do not copy this struct!)
         struct ResidentHandles {
             D3D12_CPU_DESCRIPTOR_HANDLE residentCpu; //!< gpu visible descriptor - used for rendering
             D3D12_GPU_DESCRIPTOR_HANDLE residentGpu; //!< gpu visible descriptor - used for rendering
@@ -41,8 +41,7 @@ namespace PAL
         bool resident;
         bool remove;
     public:
-        // Needed for vector, but do not use!
-        DescriptorHandle();
+        DescriptorHandle(); // Needed for vector, but do not use!
         DescriptorHandle(DescriptorHandle&&) = default;
         DescriptorHandle& operator = (DescriptorHandle&&) = default;
         bool isResident() { return resident && !remove; }

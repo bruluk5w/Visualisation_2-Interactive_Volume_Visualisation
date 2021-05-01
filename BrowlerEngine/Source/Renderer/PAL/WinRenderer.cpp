@@ -5,7 +5,6 @@
 #include "Common/Logger.h"
 
 // DX12 additional headers
-#include <DirectXMath.h>
 #include "PAL/d3dx12.h"
 
 #include "PAL/WinRendererParameters.h"
@@ -19,6 +18,7 @@ extern ImGuiContext* GImGui;
 #endif // BRWL_USE_DEAR_IM_GUI
 
 #include "AppRenderer.h"
+#include "TextureManager.h"
 
 namespace
 {
@@ -131,53 +131,10 @@ namespace PAL
 #endif
     }
 
-    bool WinRenderer::init(const WinRendererParameters rendererParameters)
-    {
-        // wrap initialization in a pseudo frame for preloading resources like the font texture
-        struct RAII {
-            RAII(DescriptorHeap* h) : h(h) { h->notifyNewFrameStarted(); }
-            ~RAII() { h->notifyOldFrameCompleted(); }
-            DescriptorHeap* h;
-        } pseudoFrame(&srvHeap);
-
-#ifdef BRWL_USE_DEAR_IM_GUI
-        IMGUI_CHECKVERSION();
-        // Setup Dear ImGui context
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO(); (void)io;
-        io.Fonts->AddFontDefault();
-#endif
-        // Initialize Direct3D
-        if (!createDevice(rendererParameters.hWnd, rendererParameters.initialDimensions.width, rendererParameters.initialDimensions.height))
-        {
-            destroyDevice();
-            return false;;
-        }
-
-#ifdef BRWL_USE_DEAR_IM_GUI
-        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-        ImGui::StyleColorsDark();
-        //ImGui::StyleColorsClassic();
-
-        ImGui_ImplWin32_Init(rendererParameters.hWnd);
-#endif // BRWL_USE_DEAR_IM_GUI
-
-        if (!BRWL_VERIFY(BaseRenderer::init(rendererParameters), BRWL_CHAR_LITERAL("Failed to init BaseRenderer")))
-        {
-            return false;
-        }
-
-        return true;
-    }
-
 #define DR(expression) HandleDeviceRemoved(expression, device.Get(), *logger)
 
-    void WinRenderer::platformRender()
+    void WinRenderer::nextFrame()
     {
-        // Start new frame
-        SCOPED_CPU_EVENT(0, 255, 0, "RENDER CPU");
 #ifdef _DEBUG
         rtvHeap.notifyNewFrame();
 #endif
@@ -189,19 +146,16 @@ namespace PAL
         ImGui::NewFrame();
 #endif // BRWL_USE_DEAR_IM_GUI
 
-
-
-        // NOTICE: We open the command list early for the renderer method below to schedule resource barriers after some uploads have finished
+        // NOTICE: We open the command list early for the render method below to schedule resource barriers after some uploads have finished
         FrameContext* frameCtxt = waitForNextFrameResources();
         frameCtxt->CommandAllocator->Reset();
         DR(commandList->Reset(frameCtxt->CommandAllocator.Get(), nullptr));
+    }
 
-        // Render
-        BaseRenderer::platformRender();
-
-#ifdef BRWL_USE_DEAR_IM_GUI
-        ImGui::Render();
-#endif
+    void WinRenderer::appRender()
+    {
+        SCOPED_CPU_EVENT(0, 255, 0, "RENDER CPU");
+        BaseRenderer::appRender();
     }
 
     void WinRenderer::draw()
@@ -212,6 +166,7 @@ namespace PAL
             logger->info(BRWL_CHAR_LITERAL("Nothing to draw, framebuffer too small."));
             return;
         }
+
         SCOPED_CPU_EVENT(50, 50, 50, "DRAW CPU");
         // Draw
 
@@ -246,13 +201,16 @@ namespace PAL
         //    D3D12_MEASUREMENTS_ACTION_COMMIT_RESULTS,
         //    nullptr, nullptr);
 
-#ifdef BRWL_USE_DEAR_IM_GUI
+         // Draw Scene
         BaseRenderer::draw();
-        // Draw Gui last
+        // Draw Gui
+#ifdef BRWL_USE_DEAR_IM_GUI
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 #endif // BRWL_USE_DEAR_IM_GUI
 
         // =========  END DRAW SCENE  ========= //
+
+        // Dispatch command list execution
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
         commandList->ResourceBarrier(1, &barrier);
@@ -261,6 +219,7 @@ namespace PAL
         ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
         commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
+        // Dispatch presentation of frame
         if (vSync)
         {
             DR(swapChain->Present(1, 0));
@@ -312,7 +271,7 @@ namespace PAL
 #endif
 
         UINT flags = 0;
-#if defined(_DEBUG)
+#if ENABLE_GRAPHICS_DEBUG_FEATURES
         flags = DXGI_CREATE_FACTORY_DEBUG;
 #endif
         ComPtr<IDXGIFactory2> dxgiFactory2;
@@ -334,7 +293,7 @@ namespace PAL
             {
                 return false;
             }
-            //if(!BRWL_VERIFY( == S_OK, BRWL_CHAR_LITERAL("")))
+
             if (!BRWL_VERIFY(dxgiAdapter1.As(&dxgiAdapter) == S_OK, BRWL_CHAR_LITERAL("Failed to get software rasterizer as DXGIAdapter4.")))
             {
                 return false;
@@ -344,7 +303,7 @@ namespace PAL
         {
             ComPtr<IDXGIAdapter4> dxgiAdapter4;
             HRESULT enumerationResult;
-            for (unsigned int i = 0; (enumerationResult = dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_MINIMUM_POWER, IID_PPV_ARGS(&dxgiAdapter4))) == S_OK; ++i)
+            for (unsigned int i = 0; (enumerationResult = dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&dxgiAdapter4))) == S_OK; ++i)
             {
                 DXGI_ADAPTER_DESC1 desc;
                 if (!BRWL_VERIFY(SUCCEEDED(dxgiAdapter4->GetDesc1(&desc)), BRWL_CHAR_LITERAL("Failed to get adapter description.")))
@@ -403,7 +362,7 @@ namespace PAL
         }
 
 #if ENABLE_GRAPHICS_DEBUG_FEATURES
-        // Enable debug messages in debug mode.
+        // Enable 3d api debug messages
         ComPtr<ID3D12InfoQueue> pInfoQueue;
         if (BRWL_VERIFY(SUCCEEDED(device.As(&pInfoQueue)), BRWL_CHAR_LITERAL("Failed to get debug info queue.")))
         {
@@ -439,7 +398,17 @@ namespace PAL
                 return false;
             }
         }
-#endif // defined(_DEBUG)
+#endif // defined(ENABLE_GRAPHICS_DEBUG_FEATURES)
+
+        ComPtr<ID3D12DebugDevice1> debugDevice;
+        if (BRWL_VERIFY(SUCCEEDED(device.As(&debugDevice)), BRWL_CHAR_LITERAL("Failed to get debug device.")))
+        {
+            D3D12_DEBUG_DEVICE_GPU_BASED_VALIDATION_SETTINGS gpuValidationSettings = {};
+            gpuValidationSettings.MaxMessagesPerCommandList = 256; // default
+            gpuValidationSettings.DefaultShaderPatchMode = D3D12_GPU_BASED_VALIDATION_SHADER_PATCH_MODE_UNGUARDED_VALIDATION; // default
+            gpuValidationSettings.PipelineStateCreateFlags = D3D12_GPU_BASED_VALIDATION_PIPELINE_STATE_CREATE_FLAG_NONE; // default
+            debugDevice->SetDebugParameter(D3D12_DEBUG_DEVICE_PARAMETER_GPU_BASED_VALIDATION_SETTINGS, &gpuValidationSettings, sizeof(gpuValidationSettings));
+        }
 
         
         if (!rtvHeap.create(device.Get(), numBackBuffers))
@@ -611,13 +580,13 @@ namespace PAL
 
     void WinRenderer::waitForLastSubmittedFrame()
     {
-        FrameContext* frameCtxt = &frameContext[frameIndex % NUM_FRAMES_IN_FLIGHT];
+        FrameContext* frameCtx = &frameContext[frameIndex % NUM_FRAMES_IN_FLIGHT];
 
-        UINT64 fenceValue = frameCtxt->FenceValue;
+        UINT64 fenceValue = frameCtx->FenceValue;
         if (fenceValue == 0)
             return; // No fence was signaled
 
-        frameCtxt->FenceValue = 0;
+        frameCtx->FenceValue = 0;
         if (frameFence->GetCompletedValue() >= fenceValue)
             return;
 
@@ -700,11 +669,48 @@ namespace PAL
         assert(swapChainWaitableObject != NULL);
     }
 
+    bool WinRenderer::internalInit(const WinRendererParameters rendererParameters)
+    {
+        // Initialize Direct3D
+        if (!createDevice(rendererParameters.hWnd, rendererParameters.initialDimensions.width, rendererParameters.initialDimensions.height))
+        {
+            destroyDevice();
+            return false;;
+        }
+
+        // wrap initialization in a pseudo frame for preloading resources like the font texture
+        struct RAII {
+            RAII(DescriptorHeap* h) : h(h) { h->notifyNewFrameStarted(); }
+            ~RAII() { h->notifyOldFrameCompleted(); }
+            DescriptorHeap* h;
+        } pseudoFrame(&srvHeap);
+
+#ifdef BRWL_USE_DEAR_IM_GUI
+        IMGUI_CHECKVERSION();
+        // Setup Dear ImGui context
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+        io.Fonts->AddFontDefault();
+
+        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+        ImGui::StyleColorsDark();
+        //ImGui::StyleColorsClassic();
+
+        ImGui_ImplWin32_Init(rendererParameters.hWnd);
+#endif // BRWL_USE_DEAR_IM_GUI
+
+        if (!BRWL_VERIFY(BaseRenderer::internalInit(rendererParameters), BRWL_CHAR_LITERAL("Failed to init BaseRenderer")))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     void WinRenderer::OnFramebufferResize()
     {
-        currentFramebufferWidth = Utils::max<unsigned int>(currentFramebufferWidth, 1);
-        currentFramebufferHeight = Utils::max<unsigned int>(currentFramebufferHeight, 1);
-
         waitForLastSubmittedFrame();
         ImGui_ImplDX12_InvalidateDeviceObjects();
         resizeSwapChain(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
@@ -712,6 +718,11 @@ namespace PAL
         preRender();
         render();
         draw();
+    }
+
+    std::unique_ptr<BaseTextureManager> WinRenderer::makeTextureManager()
+    {
+        return std::make_unique<TextureManager>(device.Get(), &srvHeap);
     }
 
 } // namespace PAL

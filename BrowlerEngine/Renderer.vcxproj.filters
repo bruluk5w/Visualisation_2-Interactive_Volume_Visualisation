@@ -73,9 +73,6 @@
     <ClInclude Include="Include\Renderer\PAL\RtvDescriptorHeap.h">
       <Filter>Header Files\PAL</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Renderer\TextureResource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Renderer\DataSet.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -86,6 +83,24 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Renderer\BaseTexture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Renderer\PAL\DescriptorHeap.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Renderer\PAL\WinTextureManager.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Renderer\TextureManagerFwd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Renderer\PAL\GpuTexture.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Renderer\PAL\TextureResource.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Renderer\BaseTextureManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -123,9 +138,18 @@
     <ClCompile Include="Source\Renderer\BaseTexture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
+    <ClCompile Include="Source\Renderer\PAL\DescriptorHeap.cpp">
+      <Filter>Source Files\PAL</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Renderer\PAL\WinTextureManager.cpp">
+      <Filter>Source Files\PAL</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Renderer\BaseTextureManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Renderer\PAL\GpuTexture.cpp">
+      <Filter>Source Files\PAL</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <DXCShader Include="Shaders\GUI_ps.hlsl">
@@ -158,8 +182,5 @@
     <DXCShader Include="Shaders\Imposter_ps.hlsl">
       <Filter>Shaders</Filter>
     </DXCShader>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
 </Project>

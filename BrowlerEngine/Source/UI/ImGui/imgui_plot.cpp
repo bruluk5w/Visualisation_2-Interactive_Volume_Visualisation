@@ -269,8 +269,8 @@ PlotStatus Plot(const char* label, const PlotConfig& conf)
                 if (mouseLeftClicked) {
                     SetActiveID(id, window);
                     FocusWindow(window);
-                    uint32_t start = conf.values.offset + (mouseXIdx % conf.values.count);
-                    uint32_t end = start;
+                    int start = conf.values.offset + (mouseXIdx % conf.values.count);
+                    int end = start;
                     if (conf.selection.sanitize_fn)
                         end = conf.selection.sanitize_fn(end - start) + start;
                     if (end < conf.values.offset + conf.values.count) {
@@ -285,8 +285,8 @@ PlotStatus Plot(const char* label, const PlotConfig& conf)
             {
                 if (mouseLeftDown)
                 {
-                    const uint32_t start = *conf.selection.start;
-                    uint32_t end = conf.values.offset + (mouseXIdx % conf.values.count);
+                    const int start = *conf.selection.start;
+                    int end = conf.values.offset + (mouseXIdx % conf.values.count);
                     if (end > start) {
                         if (conf.selection.sanitize_fn)
                             end = conf.selection.sanitize_fn(end - start) + start;

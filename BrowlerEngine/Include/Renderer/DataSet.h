@@ -45,5 +45,8 @@ protected:
 	::BRWL::BBox bbox;
 };
 
+typedef DataSet<int16_t> DataSetS16;
+
+
 
 BRWL_RENDERER_NS_END
