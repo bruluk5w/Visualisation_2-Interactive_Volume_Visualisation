@@ -1,4 +1,4 @@
-#pragma once
+#pragma once // (c) 2020 Lukas Brunner
 
 #if defined(_MSVC_TRADITIONAL) && _MSVC_TRADITIONAL
 #error When using MSVC compile with /Zc:preprocessor to use a standard conformant preprocessor
