@@ -43,7 +43,7 @@ namespace PAL
 		virtual void destroyAll() override;
 
 		//! Remove and destroy the texture of this handle
-		virtual void destroy(TextureHandle& handle) override;
+		virtual void destroy(BaseTextureHandle& handle) override;
 
 		//! Dispatch loading the texture
 		/**
@@ -52,9 +52,9 @@ namespace PAL
 		 * two heaps are implicitly crated (upload and default (in non-cpu accessible memory)).
 		 * These operations are blocking until the resource heap is resident.
 		 */
-		virtual bool startLoad(const TextureHandle& handle) override;
+		virtual bool startLoad(const BaseTextureHandle& handle) override;
 		//! Returns true if the GPU resources are resident in GPU memory
-		virtual bool isResident(const TextureHandle& handle) const override;
+		virtual bool isResident(const BaseTextureHandle& handle) const override;
 
 		//! Updates the textures managed by the TextureManager
 		/**
@@ -66,7 +66,7 @@ namespace PAL
 		 /**
 		  * Swaps pointers to staged textures with pointers to live textures if staged textures are resident.
 		  */
-		 virtual void promoteStagedTextures() override;
+		 virtual bool promoteStagedTextures() override;
 		 //! 
 		 //void waitForPendingUploads();
 

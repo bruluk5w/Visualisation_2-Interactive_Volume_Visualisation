@@ -1,24 +1,24 @@
 #include "TextureManager.h"
 
+#include "BaseTextureHandle.h"
 #include "BaseTexture.h"
 
 BRWL_RENDERER_NS
 
-const TextureHandle TextureHandle::Invalid = { nullptr, -1 };
 
 BaseTextureManager::~BaseTextureManager()
 {
     destroyAll();
 }
 
-void BaseTextureManager::destroy(TextureHandle& handle)
+void BaseTextureManager::destroy(BaseTextureHandle& handle)
 {
     BaseTexture* tex = remove(handle.id);
     delete tex;
-    handle = TextureHandle::Invalid;
+    handle = BaseTextureHandle::Invalid;
 }
 
-BaseTexture* BaseTextureManager::get(const TextureHandle& handle, id_type* idx/*=nullptr*/) const
+BaseTexture* BaseTextureManager::get(const BaseTextureHandle& handle, id_type* idx/*=nullptr*/) const
 {
     checkHandle(handle);
     std::scoped_lock l(registry.registryLock);
@@ -50,7 +50,7 @@ BaseTextureManager::id_type BaseTextureManager::add(BaseTexture* tex)
 
     BRWL_CHECK(std::find(registry.store.begin(), registry.store.end(), tex) == registry.store.end(), BRWL_CHAR_LITERAL("Cannot add the same texture twice."));
 
-    const auto idx = std::find(registry.index.begin(), registry.index.end(), TextureHandle::Invalid.id);
+    const auto idx = std::find(registry.index.begin(), registry.index.end(), BaseTextureHandle::Invalid.id);
 
     if (idx == registry.index.end())
     {
@@ -81,7 +81,7 @@ void BaseTextureManager::remove(BaseTexture* tex)
     BRWL_CHECK(idx != registry.index.end(), nullptr);
  
     *slot = nullptr;
-    *idx = TextureHandle::Invalid.id;
+    *idx = BaseTextureHandle::Invalid.id;
 }
 
 BaseTexture* BaseTextureManager::remove(id_type id)
@@ -89,7 +89,7 @@ BaseTexture* BaseTextureManager::remove(id_type id)
     checkTextureId(id);
     std::scoped_lock l(registry.registryLock);
     const id_type idx = getIndex(id);
-    registry.index[idx] = TextureHandle::Invalid.id;
+    registry.index[idx] = BaseTextureHandle::Invalid.id;
     BaseTexture* tex = registry.store[idx];
     BRWL_CHECK(tex != nullptr, nullptr);
     registry.store[idx] = nullptr;
@@ -97,7 +97,7 @@ BaseTexture* BaseTextureManager::remove(id_type id)
     return tex;
 }
 
-void BaseTextureManager::checkHandle(const TextureHandle& handle) const
+void BaseTextureManager::checkHandle(const BaseTextureHandle& handle) const
 {
     BRWL_EXCEPTION(handle.mgr == this, BRWL_CHAR_LITERAL("Texture manager method  called with a texture which this manager does not own."));
     checkTextureId(handle.id);
@@ -105,7 +105,7 @@ void BaseTextureManager::checkHandle(const TextureHandle& handle) const
 
 void BaseTextureManager::checkTextureId(const BaseTextureManager::id_type id)
 {
-    BRWL_EXCEPTION(id >= 0 && id != TextureHandle::Invalid.id, BRWL_CHAR_LITERAL("Invalid texture ID."));
+    BRWL_EXCEPTION(id >= 0 && id != BaseTextureHandle::Invalid.id, BRWL_CHAR_LITERAL("Invalid texture ID."));
 }
 
 BaseTextureManager::id_type BaseTextureManager::getIndex(const id_type id) const

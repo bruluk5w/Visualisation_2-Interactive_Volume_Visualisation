@@ -56,6 +56,9 @@ public:
 		if (logger) logger->log(msg, level, multiLog);
 	}
 
+	// todo: remove if not needed anymore
+	bool anyTextureBecameResident;
+
 protected:
 	virtual bool internalInit(const RendererParameters params); //!< returns true if succeeded else false
 	virtual void nextFrame() { };
@@ -74,7 +77,6 @@ protected:
 	Camera*							camera;
 	unsigned int					currentFramebufferWidth;
 	unsigned int					currentFramebufferHeight;
-
 };
 
 

@@ -141,10 +141,13 @@ void Visualization2Renderer::render(Renderer* renderer)
         renderer->log(BRWL_CHAR_LITERAL("Failed to load volume data!"), Logger::LogLevel::Error);
     }
 
-    //-------------------
-    // swap pit images
-    //--------------------
-    
+    // todo: remove this if not needed anymore
+    hasViewChanged = renderer->anyTextureBecameResident;
+
+    ////-------------------
+    //// swap pit images
+    ////--------------------
+    //
     //for (int i = 0; i < countof(pitCollection.array); ++i)
     //{
     //    PitImage& pitImage = pitCollection.array[i];
@@ -179,7 +182,7 @@ void Visualization2Renderer::render(Renderer* renderer)
     // set textures to the front-end
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
-        const PitImage& pitImage = pitCollection.array[i];
+        const BaseTextureHandle& pitImage = pitCollection.array[i];
         v.transferFunctions.array[i].textureID = pitImage.liveTexture->state != TextureResource::State::RESIDENT ? nullptr : (ImTextureID)pitImage.liveTexture->descriptorHandle->getResident().residentGpu.ptr;
     }
 

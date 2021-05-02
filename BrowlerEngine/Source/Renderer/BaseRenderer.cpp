@@ -20,7 +20,8 @@ BaseRenderer::BaseRenderer(EventBusSwitch<Event>* eventSystem, PlatformGlobals* 
 	textureManager(nullptr),
 	appRenderer(nullptr),
 	currentFramebufferWidth(0),
-	currentFramebufferHeight(0)
+	currentFramebufferHeight(0),
+	anyTextureBecameResident(false)
 { }
 
 BaseRenderer::~BaseRenderer()
@@ -97,7 +98,7 @@ void BaseRenderer::render()
 
 	nextFrame();
 	// swap textures that are resident now
-	textureManager->promoteStagedTextures();
+	anyTextureBecameResident = textureManager->promoteStagedTextures();
 	appRender();
 }
 

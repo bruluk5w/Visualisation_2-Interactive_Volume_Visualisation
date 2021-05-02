@@ -103,6 +103,9 @@
     <ClInclude Include="Include\Renderer\BaseTextureManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Renderer\BaseTextureHandle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Renderer\Renderer_Precomp.cpp">
@@ -149,6 +152,9 @@
     </ClCompile>
     <ClCompile Include="Source\Renderer\PAL\GpuTexture.cpp">
       <Filter>Source Files\PAL</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Renderer\BaseTextureHandle.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -372,6 +372,7 @@ if not exist %compiled_folder% (
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="Include\Renderer\BaseTextureHandle.h" />
     <ClInclude Include="Include\Renderer\BaseTextureManager.h" />
     <ClInclude Include="Include\Renderer\Camera.h">
       <SubType>
@@ -427,6 +428,7 @@ if not exist %compiled_folder% (
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="Source\Renderer\BaseTextureHandle.cpp" />
     <ClCompile Include="Source\Renderer\BaseTextureManager.cpp" />
     <ClCompile Include="Source\Renderer\Camera.cpp">
       <SubType>

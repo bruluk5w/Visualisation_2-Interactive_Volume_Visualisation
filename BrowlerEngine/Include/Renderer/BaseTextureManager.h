@@ -1,17 +1,9 @@
 #pragma once
 
-#include <functional>
-
 BRWL_RENDERER_NS
 
 
 class BaseTexture;
-
-namespace PAL {
-#ifdef BRWL_PLATFORM_WINDOWS
-	class WinTextureManager;
-#endif
-}
 
 
 // All texture manager methods available through the texture handle are listed here (return type, name, (arguments), const)
@@ -20,26 +12,13 @@ namespace PAL {
 	f(virtual bool, startLoad, ()) \
 	f(virtual bool, isResident, (), const) \
 
-	//f(void, create, (uint16_t sizeX, uint16_t sizeY, uint16_t sizeZ = 1)) \
-	//f(void, clear, ()) \
-	//f(uint16_t, getSizeX, (), const) \
-	//f(uint16_t, getSizeY, (), const) \
-	//f(uint16_t, getSizeZ, (), const) \
-	//f(uint32_t, getStrideX, (), const) \
-	//f(uint32_t, getStrideY, (), const) \
-	//f(uint32_t, getStrideZ, (), const) \
-	//f(uint32_t, getStrideZ, (), const) \
-	//f(uint32_t, getBufferSize, (), const) \
-	//f(const BRWL_CHAR*, getName, (), const)
 
-
-
-struct TextureHandle;
+struct BaseTextureHandle;
 
 class BaseTextureManager
 {
 	friend class BaseTexture;
-	friend struct TextureHandle;
+	friend struct BaseTextureHandle;
 
 protected:
 	using id_type = int16_t;
@@ -52,7 +31,7 @@ public:
 
 	//! Return a handle to a new texture
 	template<typename T>
-	TextureHandle createTexture(const BRWL_CHAR* name) {
+	BaseTextureHandle createTexture(const BRWL_CHAR* name) {
 		static_assert(std::is_base_of_v<BaseTexture, T>, "Texture type must be a subtype of BaseTexture.");
 		BRWL_EXCEPTION(registry.index.size() < std::numeric_limits<id_type>::max(), BRWL_CHAR_LITERAL("Too many textures. Increase id_type."));
 		BaseTexture* t = new T(name);
@@ -60,7 +39,7 @@ public:
 	};
 
 	//! Get the underlying CPU texture. 
-	BaseTexture* get(const TextureHandle& handle, id_type* idx=nullptr) const;
+	BaseTexture* get(const BaseTextureHandle& handle, id_type* idx=nullptr) const;
 
 	//! Remove and destroy all textures managed by the texture manager
 	virtual void destroyAll();
@@ -68,16 +47,16 @@ public:
 #pragma region Texture handle methods
 	 
 	//! Remove and destroy the texture of this handle
-	virtual void destroy(TextureHandle& handle);
+	virtual void destroy(BaseTextureHandle& handle);
 
 	//! Dispatch loading the texture
 	/**
 	 * Implicitly initializes GPU resources if they don't exist yet.
 	 **/
-	virtual bool startLoad(const TextureHandle& handle) = 0;
+	virtual bool startLoad(const BaseTextureHandle& handle) = 0;
 	
 	//! Returns true if the GPU resources are resident in GPU memory
-	virtual bool isResident(const TextureHandle& handle) const = 0;
+	virtual bool isResident(const BaseTextureHandle& handle) const = 0;
 
 #pragma endregion Texture handle methods
 
@@ -91,8 +70,9 @@ public:
 	//! Promotes staged textures to live textures
 	/**
 	 * Swaps pointers to staged textures with pointers to live textures if staged textures are resident.
+	 * return True if any staged texture became resident and has been promoted to live.
 	 */
-	virtual void promoteStagedTextures() = 0;
+	virtual bool promoteStagedTextures() = 0;
 
 	//! Blocks until all resources are synchronized with the GPU.
 	//virtual void waitForPendingUploads() = 0;
@@ -103,7 +83,7 @@ protected:
 	void remove(BaseTexture* tex);
 	BaseTexture* remove(id_type id);
 	
-	void checkHandle(const TextureHandle& handle) const;
+	void checkHandle(const BaseTextureHandle& handle) const;
 	static void checkTextureId(const BaseTextureManager::id_type id);
 	id_type getIndex(const id_type id) const;
 
@@ -115,45 +95,6 @@ protected:
 		mutable std::recursive_mutex registryLock;  // todo: replace with normal mutex and unguarded private impl methods
 	} registry;
 };
-
-#define BRWL_CHECK_NULL_MGR_ BRWL_EXCEPTION(mgr, nullptr)
-
-#define HANDLE_IMPL(ret_type, f_name, args, ...) \
-	ret_type f_name(BRWL_STRIP_PARENTHESIS(args)) BRWL_FIRST_ARG(__VA_ARGS__) { \
-		BRWL_IF_DEBUG(BRWL_CHECK_NULL_MGR); \
-		return mgr->f_name(*this BRWL_APPEND_ARGS(args)); \
-	}
-
-struct TextureHandle
-{
-	friend class BaseTextureManager;
-#ifdef BRWL_PLATFORM_WINDOWS
-	friend class PAL::WinTextureManager;
-#endif
-
-	FOR_EACH_TEXTURE_HANDLE_METHOD(HANDLE_IMPL)
-	
-	static const TextureHandle Invalid;
-
-	TextureHandle(BaseTextureManager* mgr, BaseTextureManager::id_type id) : mgr(mgr), id(id) { }
-
-	bool operator==(const TextureHandle& other) const { return memcmp(this, &other, sizeof(TextureHandle)); }
-	bool operator!=(const TextureHandle& other) const { return !(*this == other); }
-
-	BaseTexture* operator->() { BRWL_IF_DEBUG(BRWL_CHECK_NULL_MGR); return mgr->get(*this); }
-	const BaseTexture* operator->() const { BRWL_IF_DEBUG(BRWL_CHECK_NULL_MGR); return mgr->get(*this); }
-	BaseTexture& operator*() { BRWL_IF_DEBUG(BRWL_CHECK_NULL_MGR); return *mgr->get(*this); }
-	const BaseTexture& operator*() const { BRWL_IF_DEBUG(BRWL_CHECK_NULL_MGR); return *mgr->get(*this); }
-
-private:
-	BaseTextureManager* mgr;
-	BaseTextureManager::id_type id;
-};
-
-#undef HANDL_IMPL
-#undef BRWL_CHECK_NULL_MGR_
-
-
 
 
 BRWL_RENDERER_NS_END

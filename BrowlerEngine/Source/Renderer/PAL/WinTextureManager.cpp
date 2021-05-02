@@ -1,6 +1,7 @@
 #include "PAL/WinTextureManager.h"
 
 #include "BaseTexture.h"
+#include "BaseTextureHandle.h"
 #include "Renderer/PAL/d3dx12.h"
 #include "Renderer.h"
 
@@ -73,7 +74,7 @@ namespace PAL
 		std::scoped_lock l(registry.registryLock);
 		if (!std::any_of(gpuTextures.begin(), gpuTextures.end(), [](const GpuTexture* p) { return p != nullptr && p->liveTexture != nullptr; }))
 		{
-			BRWL_CHECK(std::all_of(gpuTexIndex.begin(), gpuTexIndex.end(), [](const id_type i) { return i == TextureHandle::Invalid.id; }), nullptr);
+			BRWL_CHECK(std::all_of(gpuTexIndex.begin(), gpuTexIndex.end(), [](const id_type i) { return i == BaseTextureHandle::Invalid.id; }), nullptr);
 		}
 		else
 		{
@@ -97,7 +98,7 @@ namespace PAL
 		BaseTextureManager::destroyAll(); 
 	}
 
-	void WinTextureManager::destroy(TextureHandle& handle)
+	void WinTextureManager::destroy(BaseTextureHandle& handle)
 	{
 		checkHandle(handle);
 		if (handle.id < gpuTexIndex.size())
@@ -116,13 +117,13 @@ namespace PAL
 			
 			// then we can kill it
 			t->destroy();
-			idx = TextureHandle::Invalid.id;
+			idx = BaseTextureHandle::Invalid.id;
 		}
 
 		BaseTextureManager::destroy(handle);
 	}
 
-	bool WinTextureManager::startLoad(const TextureHandle& handle)
+	bool WinTextureManager::startLoad(const BaseTextureHandle& handle)
 	{
 		std::scoped_lock l(registry.registryLock);
 		id_type idx;
@@ -133,11 +134,11 @@ namespace PAL
 		{
 			// TODO: replace data structure or improve growing behaviour
 			// also currently the gpu resource index grows equally with the cpu texture registry. If there are many more cpu textures than textures promoted to gpu textures, then we might want to decouple this
-			gpuTexIndex.resize(handle.id + 20, TextureHandle::Invalid.id);
+			gpuTexIndex.resize(handle.id + 20, BaseTextureHandle::Invalid.id);
 		}
 
 		GpuTexture* gpuTex;
-		if (gpuTexIndex[handle.id] == TextureHandle::Invalid.id)
+		if (gpuTexIndex[handle.id] == BaseTextureHandle::Invalid.id)
 		{	// This texture is now on the GPU, assign new GPU texture
 			// TODO: replace data structure or at least track next free GPU texture
 			auto it = std::find_if(gpuTextures.begin(), gpuTextures.end(), [](const GpuTexture* t) { return t->liveTexture == nullptr; });
@@ -235,7 +236,7 @@ namespace PAL
 
 
 
-	bool WinTextureManager::isResident(const TextureHandle& handle) const
+	bool WinTextureManager::isResident(const BaseTextureHandle& handle) const
 	{
 		checkTextureId(handle.id);
 		std::scoped_lock l(registry.registryLock);
@@ -251,10 +252,11 @@ namespace PAL
 	bool WinTextureManager::update()
 	{
 		std::scoped_lock l(registry.registryLock);
-		id_type id = 0;
-		for(id_type idx : gpuTexIndex)
+		bool modified = false;
+		for (id_type id = 0; id < gpuTexIndex.size(); ++id)
 		{
-			if (idx == TextureHandle::Invalid.id)
+			const id_type idx = gpuTexIndex[id];
+			if (idx == BaseTextureHandle::Invalid.id)
 				continue;
 
 			GpuTexture* t = gpuTextures[idx];
@@ -265,7 +267,7 @@ namespace PAL
 			BaseTexture* texture = registry.store[registry.index[id]];
 
 			// TODO: encapsulate this in GpuTexture and TextureResource
-			D3D12_SUBRESOURCE_DATA textureData {
+			D3D12_SUBRESOURCE_DATA textureData{
 				texture->getPtr(),
 				texture->getStrideY(),
 				texture->getBufferSize()
@@ -287,7 +289,7 @@ namespace PAL
 				t->stagedTexture->texture = nullptr;
 				t->stagedTexture->uploadHeap = nullptr;
 				t->stagedTexture->state = TextureResource::State::FAILED;
-				return false;
+				continue;
 			}
 
 			// Create a SRV for the texture
@@ -311,10 +313,14 @@ namespace PAL
 
 			device->CreateShaderResourceView(t->stagedTexture->texture.Get(), &srvDesc, t->stagedTexture->descriptorHandle->getNonResident().cpu);
 
-			t->stagedTexture->state = TextureResource::State::LOADING;
-			return true;
+			modified = true;
 
-			where does the descriptor come from?
+			t->stagedTexture->state = TextureResource::State::LOADING;
+		}
+		
+		return modified;
+	}
+			//where does the descriptor come from?
 
 		// we always need the volume texture so ensure we have it first.
 		// this stalls the pipeline until the copy is complete but maybe we don't care 
@@ -432,29 +438,42 @@ namespace PAL
 	//	return true;
 	//}
 
-	void WinTextureManager::promoteStagedTextures()
+	bool WinTextureManager::promoteStagedTextures()
 	{
-		for (int i = 0; i < countof(pitCollection.array); ++i)
+		bool promoted = false;
+		std::scoped_lock l(registry.registryLock);
+		for (id_type id = 0; id < gpuTexIndex.size(); ++id)
 		{
-			PitImage& pitImage = pitCollection.array[i];
-			const uint64_t completed = pitImage.fence->GetCompletedValue();
+			const id_type idx = gpuTexIndex[id];
+			if (idx == BaseTextureHandle::Invalid.id)
+				continue;
 
-			// swap texture if ready
-			if (pitImage.stagedTexture->state == TextureResource::State::LOADING && completed >= pitImage.uploadFenceValue)
+			GpuTexture* t = gpuTextures[idx];
+
+			if (!t || !t->stagedTexture || t->stagedTexture->state != TextureResource::State::LOADING)
+				continue;
+
+			if (!t->isUploading())
 			{
-				pitImage.stagedTexture->state = TextureResource::State::RESIDENT;
-				pitImage.stagedTexture->uploadHeap = nullptr; // free some resources
+				t->stagedTexture->state = TextureResource::State::RESIDENT;
+				t->stagedTexture->uploadHeap = nullptr; // free some resources
+				std::swap(t->stagedTexture, t->liveTexture);
 				// We might still have some frames in flight with the old texture
-				// We have to wait until we are sure we that are the only one tampering with resources
+				// We have to wait until we are sure that we are the only one tampering with resources
+				// todo: instead of this, add texture to a delete queue defer deletion to when the staged texture has to be reused and check for dependent commands
 				renderer->waitForLastSubmittedFrame();
-				std::swap(pitImage.stagedTexture, pitImage.liveTexture);
 				// release old texture
-				pitImage.stagedTexture->destroy();
+				t->stagedTexture->destroy();
 				// Indicate new resource to be used by a compute shader.
-				renderer->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pitImage.liveTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-				hasViewChanged = true;
+				// todo: optimize by calling just once after loop with multiple barriers
+				renderer->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(t->liveTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+				// todo: add mechanism for application to check which textures have been updated/become resident since the last frame
+				//hasViewChanged = true;
+				promoted = true;
 			}
 		}
+
+		return promoted;
 	}
 
 
