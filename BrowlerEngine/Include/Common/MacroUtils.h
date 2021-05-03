@@ -25,8 +25,8 @@
 // BRWL_IF_NDEBUG works the same for the inverse case
 #ifdef _DEBUG
 #define BRWL_IF_DEBUG(m, ...) m##_(__VA_ARGS__)
-#define BRWL_IF_NDEBUG(m) BRWL_NOP
+#define BRWL_IF_NDEBUG(m, ...) BRWL_NOP
 #else
-	#define BRWL_IF_DEBUG(m) BRWL_NOP
-	#define BRWL_IF_NDEBUG(m) m##_
+	#define BRWL_IF_DEBUG(m, ...) BRWL_NOP
+	#define BRWL_IF_NDEBUG(m, ...) m##_
 #endif
