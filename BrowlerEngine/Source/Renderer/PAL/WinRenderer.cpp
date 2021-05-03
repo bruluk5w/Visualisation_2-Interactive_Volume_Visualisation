@@ -679,6 +679,13 @@ namespace PAL
 
     bool WinRenderer::internalInit(const WinRendererParameters rendererParameters)
     {
+#ifdef BRWL_USE_DEAR_IM_GUI
+        IMGUI_CHECKVERSION();
+        // Setup Dear ImGui context
+        // has to be done before createDevice because create Device calls DX12 initialization on ImGUI which sets some global state
+        ImGui::CreateContext();
+#endif
+
         // Initialize Direct3D
         if (!createDevice(rendererParameters.hWnd, rendererParameters.initialDimensions.width, rendererParameters.initialDimensions.height))
         {
@@ -694,9 +701,6 @@ namespace PAL
         } pseudoFrame(&srvHeap);
 
 #ifdef BRWL_USE_DEAR_IM_GUI
-        IMGUI_CHECKVERSION();
-        // Setup Dear ImGui context
-        ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.Fonts->AddFontDefault();
 
