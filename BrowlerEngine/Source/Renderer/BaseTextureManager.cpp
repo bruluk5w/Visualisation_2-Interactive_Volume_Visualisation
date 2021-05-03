@@ -9,7 +9,6 @@ BRWL_RENDERER_NS
 BaseTextureManager::BaseTextureManager() : registry{ { }, { }, { } }
 {
     static_assert(std::is_base_of_v<BaseTextureManager, TextureManager>, "The platform texture manager has to be derived from BaseTextureManager.");
-    derivedThis = dynamic_cast<TextureManager*>(this);
 }
 
 BaseTextureManager::~BaseTextureManager()

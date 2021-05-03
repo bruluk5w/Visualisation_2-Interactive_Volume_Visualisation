@@ -14,7 +14,7 @@ template<SampleFormat S>
 class DataSet : public Texture<S>
 {
 public:
-	template<SampleFormat S>
+	
 	DataSet(const BRWL_CHAR* name) : Texture<S>(name),
 		sourcePath(),
 		bbox({}, {})

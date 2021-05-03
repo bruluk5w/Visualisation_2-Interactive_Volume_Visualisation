@@ -37,7 +37,8 @@ namespace PAL
 		DescriptorHeap& getSrvHeap() { return srvHeap; }
 		ID3D12GraphicsCommandList* getCommandList() { return commandList.Get(); }
 	protected:
-		virtual bool internalInit(const WinRendererParameters params) override;
+		virtual bool internalInitStep0(const WinRendererParameters params) override;
+		virtual bool internalInitStep1(const WinRendererParameters params) override;
 		virtual void nextFrame() override;
 		virtual void appRender() override;
 

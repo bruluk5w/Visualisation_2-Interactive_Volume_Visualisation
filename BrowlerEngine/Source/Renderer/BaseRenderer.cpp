@@ -43,13 +43,14 @@ bool BaseRenderer::init(const RendererParameters params)
 
 	if (!initialized)
 	{
-		return internalInit(params);
+		// tdodo: pass params without copy
+		return internalInitStep0(params) && internalInitStep1(params);
 	}
 
 	return false;
 }
 
-bool BaseRenderer::internalInit(const RendererParameters params)
+bool BaseRenderer::internalInitStep0(const RendererParameters params)
 {
 	if (BRWL_VERIFY(!initialized, nullptr))
 	{
@@ -66,7 +67,15 @@ bool BaseRenderer::internalInit(const RendererParameters params)
 				OnFramebufferResize();
 				return false;
 			});
+	}
 
+	return true;
+}
+
+bool BaseRenderer::internalInitStep1(const RendererParameters params)
+{
+	if (BRWL_VERIFY(!initialized, nullptr))
+	{
 		if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(appRenderer->rendererInit(static_cast<Renderer*>(this)), BRWL_CHAR_LITERAL("Failed to initialize the app renderer")))
 		{
 			destroy(true);

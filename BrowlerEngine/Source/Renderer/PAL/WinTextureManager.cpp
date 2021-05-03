@@ -84,7 +84,9 @@ namespace PAL
 		uploadSubmitted(),
 		waitHandles(),
 		promoted(false)
-	{ }
+	{
+		derivedThis = this;
+	}
 
 	WinTextureManager::~WinTextureManager()
 	{

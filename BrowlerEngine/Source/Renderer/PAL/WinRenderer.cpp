@@ -134,6 +134,54 @@ namespace PAL
 
 #define DR(expression) HandleDeviceRemoved(expression, device.Get(), logger.get())
 
+    bool WinRenderer::internalInitStep0(const WinRendererParameters params)
+    {
+#ifdef BRWL_USE_DEAR_IM_GUI
+        IMGUI_CHECKVERSION();
+        // Setup Dear ImGui context
+        // has to be done before createDevice because create Device calls DX12 initialization on ImGUI which sets some global state
+        ImGui::CreateContext();
+#endif
+
+        // Initialize Direct3D
+        if (!createDevice(params.hWnd, params.initialDimensions.width, params.initialDimensions.height))
+        {
+            destroyDevice();
+            return false;
+        }
+
+        return BaseRenderer::internalInitStep0(params);
+    }
+
+    bool WinRenderer::internalInitStep1(const WinRendererParameters params)
+    {
+        // wrap initialization in a resource frame for preloading resources like the font texture
+        ResourceFrame resourceFrame(&srvHeap);
+        
+        // wrap initialization in a resource frame since we might create gpu resources
+        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, g_RenderTargetFormat, &srvHeap);
+
+        if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(appRenderer->rendererInit(this), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))
+        {
+            return false;
+        }
+
+#ifdef BRWL_USE_DEAR_IM_GUI
+        ImGuiIO& io = ImGui::GetIO();
+        io.Fonts->AddFontDefault();
+
+        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+        ImGui::StyleColorsDark();
+        //ImGui::StyleColorsClassic();
+
+        ImGui_ImplWin32_Init(params.hWnd);
+#endif // BRWL_USE_DEAR_IM_GUI
+
+        return BaseRenderer::internalInitStep1(params);
+    }
+
     void WinRenderer::nextFrame()
     {
 #ifdef _DEBUG
@@ -162,86 +210,88 @@ namespace PAL
     void WinRenderer::draw()
     {
         ++frameIndex;
-        // todo: move this  into methods frame completed method in base renderer
-        struct CompleteFrame {
-            CompleteFrame(DescriptorHeap* srvHeap) : srvHeap(srvHeap) { }
-            ~CompleteFrame() { srvHeap->notifyOldFrameCompleted(); }
-            DescriptorHeap* srvHeap;
-        } completeFrame (&srvHeap);
-
-        if (!currentFramebufferHeight || !currentFramebufferWidth)
         {
-            logger->info(BRWL_CHAR_LITERAL("Nothing to draw, framebuffer too small."));
-            return;
-        }
+            // todo: move this  into methods frame completed method in base renderer
+            struct CompleteFrame {
+                CompleteFrame(DescriptorHeap* srvHeap) : srvHeap(srvHeap) { }
+                ~CompleteFrame() { srvHeap->notifyOldFrameCompleted(); }
+                DescriptorHeap* srvHeap;
+            } completeFrame(&srvHeap);
 
-        SCOPED_CPU_EVENT(50, 50, 50, "DRAW CPU");
+            if (!currentFramebufferHeight || !currentFramebufferWidth)
+            {
+                logger->info(BRWL_CHAR_LITERAL("Nothing to draw, framebuffer too small."));
+                return;
+            }
 
-        UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();
+            SCOPED_CPU_EVENT(50, 50, 50, "DRAW CPU");
 
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition.pResource = mainRenderTargetResource[backBufferIdx].Get();
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();
 
-        commandList->ResourceBarrier(1, &barrier);
-        commandList->ClearRenderTargetView(mainRenderTargetDescriptor[backBufferIdx].cpu, (float*)&clearColor, 0, nullptr);
-        commandList->OMSetRenderTargets(1, &mainRenderTargetDescriptor[backBufferIdx].cpu, FALSE, nullptr);
-        commandList->SetDescriptorHeaps(1, srvHeap.getPointerAddress());
+            D3D12_RESOURCE_BARRIER barrier = {};
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource = mainRenderTargetResource[backBufferIdx].Get();
+            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-        // ========= START DRAW SCENE ========= //
+            commandList->ResourceBarrier(1, &barrier);
+            commandList->ClearRenderTargetView(mainRenderTargetDescriptor[backBufferIdx].cpu, (float*)&clearColor, 0, nullptr);
+            commandList->OMSetRenderTargets(1, &mainRenderTargetDescriptor[backBufferIdx].cpu, FALSE, nullptr);
+            commandList->SetDescriptorHeaps(1, srvHeap.getPointerAddress());
 
-        // TODO: add option to toggle shader optimization during application run
-        //SetBackgroundProcessingMode(
-        //    D3D12_BACKGROUND_PROCESSING_MODE_ALLOW_INTRUSIVE_MEASUREMENTS,
-        //    D3D_MEASUREMENTS_ACTION_KEEP_ALL,
-        //    nullptr, nullptr);
+            // ========= START DRAW SCENE ========= //
 
-        //// Here, prime the system by rendering some typical content.
-        //// For example, a level flythrough.
+            // TODO: add option to toggle shader optimization during application run
+            //SetBackgroundProcessingMode(
+            //    D3D12_BACKGROUND_PROCESSING_MODE_ALLOW_INTRUSIVE_MEASUREMENTS,
+            //    D3D_MEASUREMENTS_ACTION_KEEP_ALL,
+            //    nullptr, nullptr);
 
-        //SetBackgroundProcessingMode(
-        //    D3D12_BACKGROUND_PROCESSING_MODE_ALLOWED,
-        //    D3D12_MEASUREMENTS_ACTION_COMMIT_RESULTS,
-        //    nullptr, nullptr);
+            //// Here, prime the system by rendering some typical content.
+            //// For example, a level flythrough.
 
-         // Draw Scene
-        BaseRenderer::draw();
-        // Draw Gui
+            //SetBackgroundProcessingMode(
+            //    D3D12_BACKGROUND_PROCESSING_MODE_ALLOWED,
+            //    D3D12_MEASUREMENTS_ACTION_COMMIT_RESULTS,
+            //    nullptr, nullptr);
+
+             // Draw Scene
+            BaseRenderer::draw();
+            // Draw Gui
 #ifdef BRWL_USE_DEAR_IM_GUI
-        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 #endif // BRWL_USE_DEAR_IM_GUI
 
-        // =========  END DRAW SCENE  ========= //
+            // =========  END DRAW SCENE  ========= //
 
-        // Dispatch command list execution
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-        commandList->ResourceBarrier(1, &barrier);
-        DR(commandList->Close());
+            // Dispatch command list execution
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+            commandList->ResourceBarrier(1, &barrier);
+            DR(commandList->Close());
 
-        ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
-        commandQueue->ExecuteCommandLists(1, ppCommandLists);
+            ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
+            commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-        // Dispatch presentation of frame
-        if (vSync)
-        {
-            DR(swapChain->Present(1, 0));
+            // Dispatch presentation of frame
+            if (vSync)
+            {
+                DR(swapChain->Present(1, 0));
+            }
+            else
+            {
+
+                DR(swapChain->Present(0, 0));
+
+            }
+
+            ++frameIndex;
+            ++frameFenceLastValue;
+            DR(commandQueue->Signal(frameFence.Get(), frameFenceLastValue));
+            getCurrentFrameContext()->FenceValue = frameFenceLastValue;
         }
-        else
-        {
-
-            DR(swapChain->Present(0, 0));
-        
-        }
-
-        ++frameIndex;
-        ++frameFenceLastValue;
-        DR(commandQueue->Signal(frameFence.Get(), frameFenceLastValue));
-        getCurrentFrameContext()->FenceValue = frameFenceLastValue;
 
         if (!dxgiFactory->IsCurrent())
         {
@@ -509,13 +559,6 @@ namespace PAL
         currentFramebufferWidth = framebufferWidth;
         currentFramebufferHeight = framebufferHeight;
 
-        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, g_RenderTargetFormat, &srvHeap);
-
-        if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(appRenderer->rendererInit(this), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))
-        {
-            return false;
-        }
-
         return true;
     }
 
@@ -675,50 +718,6 @@ namespace PAL
 
         //swapChainWaitableObject = swapChain->GetFrameLatencyWaitableObject();
         assert(swapChainWaitableObject != NULL);
-    }
-
-    bool WinRenderer::internalInit(const WinRendererParameters rendererParameters)
-    {
-#ifdef BRWL_USE_DEAR_IM_GUI
-        IMGUI_CHECKVERSION();
-        // Setup Dear ImGui context
-        // has to be done before createDevice because create Device calls DX12 initialization on ImGUI which sets some global state
-        ImGui::CreateContext();
-#endif
-
-        // Initialize Direct3D
-        if (!createDevice(rendererParameters.hWnd, rendererParameters.initialDimensions.width, rendererParameters.initialDimensions.height))
-        {
-            destroyDevice();
-            return false;;
-        }
-
-        // wrap initialization in a pseudo frame for preloading resources like the font texture
-        struct RAII {
-            RAII(DescriptorHeap* h) : h(h) { h->notifyNewFrameStarted(); }
-            ~RAII() { h->notifyOldFrameCompleted(); }
-            DescriptorHeap* h;
-        } pseudoFrame(&srvHeap);
-
-#ifdef BRWL_USE_DEAR_IM_GUI
-        ImGuiIO& io = ImGui::GetIO();
-        io.Fonts->AddFontDefault();
-
-        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-        ImGui::StyleColorsDark();
-        //ImGui::StyleColorsClassic();
-
-        ImGui_ImplWin32_Init(rendererParameters.hWnd);
-#endif // BRWL_USE_DEAR_IM_GUI
-
-        if (!BRWL_VERIFY(BaseRenderer::internalInit(rendererParameters), BRWL_CHAR_LITERAL("Failed to init BaseRenderer")))
-        {
-            return false;
-        }
-
-        return true;
     }
 
     void WinRenderer::OnFramebufferResize()

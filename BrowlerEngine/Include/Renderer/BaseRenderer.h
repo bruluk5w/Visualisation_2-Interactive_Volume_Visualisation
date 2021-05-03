@@ -61,7 +61,8 @@ public:
 	bool anyTextureBecameResident;
 
 protected:
-	virtual bool internalInit(const RendererParameters params); //!< returns true if succeeded else false
+	virtual bool internalInitStep0(const RendererParameters params); //!< returns true if succeeded else false;
+	virtual bool internalInitStep1(const RendererParameters params); //!< returns true if succeeded else false;
 	virtual void nextFrame() { };
 	virtual void appRender();
 	virtual void OnFramebufferResize() = 0;

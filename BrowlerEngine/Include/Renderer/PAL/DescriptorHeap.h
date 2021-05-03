@@ -110,15 +110,20 @@ namespace PAL
         int lastFree; // relative to cpu heap
         bool created;
 
-#ifdef _DEBUG
     public:
         bool isFrameActive() { return frameActive; }
     private:
-        bool frameActive; // tracks the active frame to check that the heap is only manipulated during an active frame
-#endif
+        unsigned int frameActive; // tracks the active frames to check that the heap is only manipulated during an active frame
     };
 
-
+    /**
+     * RAII helper to close a resource frame whenever the function returns
+     */
+    struct ResourceFrame {
+        ResourceFrame(DescriptorHeap* h) : h(h) { h->notifyNewFrameStarted(); }
+        ~ResourceFrame() { h->notifyOldFrameCompleted(); }
+        DescriptorHeap* h;
+    };
 }
 
 BRWL_RENDERER_NS_END

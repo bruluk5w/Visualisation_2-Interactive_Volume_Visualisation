@@ -74,6 +74,11 @@ bool Visualization2Renderer::init(Renderer* r)
 
 bool Visualization2Renderer::ReloadVolumeAsset(BRWL::Renderer::Renderer* r)
 {
+    if (dataSetHandle == BaseTextureHandle::Invalid)
+    {
+        BaseTextureHandle h = r->getTextureManager()->createTexture<DataSetS16>(BRWL_CHAR_LITERAL("Volume Data Set"));
+        dataSetHandle = *h.asPlatformHandle();
+    }
     DataSetS16* dataSet = dynamic_cast<DataSetS16*>(&*dataSetHandle);
     bool needsRefresh = dataSet->isValid();
     BRWL_STR file;
