@@ -105,8 +105,8 @@ using ComPtr = Microsoft::WRL::ComPtr<T>;
 #include "Utilities.h"
 #include "Exception.h"
 
+#include "Logger.h"
 #include "BrwlMath.h"
-#
 
 #include "MacroUtils.h"
 

@@ -46,7 +46,9 @@ protected:
 	::BRWL::BBox bbox;
 };
 
-typedef DataSet<SampleFormat::S16> DataSetS16;
+#define BRWL_TYPEDEF_(format) typedef DataSet<SampleFormat::format> DataSet ## format;
+BRWL_FOR_ALL_SAMPLE_FORMATS(BRWL_TYPEDEF_)
+#undef BRWL_TYPEDEF_
 
 
 

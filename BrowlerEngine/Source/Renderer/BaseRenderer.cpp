@@ -1,6 +1,5 @@
 #include "BaseRenderer.h"
 #include "RendererParameters.h"
-#include "Common/Logger.h"
 #include "TextureManager.h"
 #include "AppRenderer.h"
 
@@ -46,6 +45,8 @@ bool BaseRenderer::init(const RendererParameters params)
 	{
 		return internalInit(params);
 	}
+
+	return false;
 }
 
 bool BaseRenderer::internalInit(const RendererParameters params)
@@ -100,6 +101,7 @@ void BaseRenderer::render()
 	// swap textures that are resident now
 	anyTextureBecameResident = textureManager->promoteStagedTextures();
 	appRender();
+	textureManager->update();
 }
 
 void BaseRenderer::appRender()

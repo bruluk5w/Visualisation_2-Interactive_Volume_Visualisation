@@ -3,7 +3,6 @@
 //
 
 #include "Core/BrowlerEngine.h"
-#include "Common/Logger.h"
 #include "LogHandler.h"
 
 #include "framework.h"

@@ -1,6 +1,5 @@
 #include "ComputeBuffers.h"
 #include "Core/BrowlerEngine.h"
-#include "Common/Logger.h"
 
 BRWL_RENDERER_NS
 

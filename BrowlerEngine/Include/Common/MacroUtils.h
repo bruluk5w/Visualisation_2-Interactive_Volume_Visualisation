@@ -24,7 +24,7 @@
 // BRWL_IF_DEBUG(MY_MACRO) gets replaced with the contents of MY_MACRO_ if _DEBUG is defined else a null operation is emitted
 // BRWL_IF_NDEBUG works the same for the inverse case
 #ifdef _DEBUG
-#define BRWL_IF_DEBUG(m) m##_
+#define BRWL_IF_DEBUG(m, ...) m##_(__VA_ARGS__)
 #define BRWL_IF_NDEBUG(m) BRWL_NOP
 #else
 	#define BRWL_IF_DEBUG(m) BRWL_NOP

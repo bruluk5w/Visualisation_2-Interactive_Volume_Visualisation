@@ -1,74 +1,99 @@
 #include "PAL/WinTextureManager.h"
 
+#ifdef BRWL_PLATFORM_WINDOWS
+
 #include "BaseTexture.h"
 #include "BaseTextureHandle.h"
-#include "Renderer/PAL/d3dx12.h"
+#include "PAL/d3dx12.h"
+#include "PAL/TextureResource.h"
+#include "PAL/GpuTexture.h"
+#include "PAL/WinTextureHandle.h"
 #include "Renderer.h"
 
-#include <algorithm>
-#include <array>
-
-#ifdef BRWL_PLATFORM_WINDOWS
 
 BRWL_RENDERER_NS
 
-
-namespace
-{
-	D3D12_RESOURCE_DIMENSION texDimToResourceDim[ENUM_CLASS_TO_NUM(TextureDimension::MAX)]
-	{
-		D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-		D3D12_RESOURCE_DIMENSION_TEXTURE3D
-	};
-
-	D3D12_SRV_DIMENSION texDimToSrvDim[ENUM_CLASS_TO_NUM(TextureDimension::MAX)]
-	{
-		D3D12_SRV_DIMENSION_TEXTURE2D,
-		D3D12_SRV_DIMENSION_TEXTURE3D
-	};
-
-	// todo: remove if not necessary
-	//template<SampleFormat S> struct WinSampleFormatTrait : public SampleFormatTrait<S> {
-	//	// some type trait prevents the static assertion from being triggered
-	//	static_assert(S && false, "No DXGI_FORMAT found for sample type enum.");
-	//};
-
-	//template<> struct WinSampleFormatTrait<SampleFormat::F32> {
-	//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32_FLOAT;
-	//};
-
-	//template<> struct WinSampleFormatTrait<SampleFormat::F64> {
-	//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32G32_UINT;
-	//};
-
-	//template<> struct WinSampleFormatTrait<SampleFormat::S16> {
-	//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R16_SINT;
-	//};
-
-	//template<> struct WinSampleFormatTrait<SampleFormat::U16> {
-	//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R16_UINT;
-	//};
-
-	//template<> struct WinSampleFormatTrait<SampleFormat::S32> {
-	//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32_SINT;
-	//};
-
-	//template<> struct WinSampleFormatTrait<SampleFormat::U32> {
-	//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32_UINT;
-	//};
-
-	DXGI_FORMAT sampleFormatToDxgiFormat[ENUM_CLASS_TO_NUM(SampleFormat::MAX)]{
-		DXGI_FORMAT_R32_FLOAT,
-		DXGI_FORMAT_R32G32_UINT,
-		DXGI_FORMAT_R16_SINT,
-		DXGI_FORMAT_R16_UINT,
-		DXGI_FORMAT_R32_SINT,
-		DXGI_FORMAT_R32_UINT,
-	};
-}
-
 namespace PAL
 {
+	
+
+	namespace
+	{
+		D3D12_RESOURCE_DIMENSION texDimToResourceDim[ENUM_CLASS_TO_NUM(TextureDimension::MAX)]
+		{
+			D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+			D3D12_RESOURCE_DIMENSION_TEXTURE3D
+		};
+
+		D3D12_SRV_DIMENSION texDimToSrvDim[ENUM_CLASS_TO_NUM(TextureDimension::MAX)]
+		{
+			D3D12_SRV_DIMENSION_TEXTURE2D,
+			D3D12_SRV_DIMENSION_TEXTURE3D
+		};
+
+		// todo: remove if not necessary
+		//template<SampleFormat S> struct WinSampleFormatTrait : public SampleFormatTrait<S> {
+		//	// some type trait prevents the static assertion from being triggered
+		//	static_assert(S && false, "No DXGI_FORMAT found for sample type enum.");
+		//};
+
+		//template<> struct WinSampleFormatTrait<SampleFormat::F32> {
+		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32_FLOAT;
+		//};
+
+		//template<> struct WinSampleFormatTrait<SampleFormat::F64> {
+		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32G32_UINT;
+		//};
+
+		//template<> struct WinSampleFormatTrait<SampleFormat::S16> {
+		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R16_SINT;
+		//};
+
+		//template<> struct WinSampleFormatTrait<SampleFormat::U16> {
+		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R16_UINT;
+		//};
+
+		//template<> struct WinSampleFormatTrait<SampleFormat::S32> {
+		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32_SINT;
+		//};
+
+		//template<> struct WinSampleFormatTrait<SampleFormat::U32> {
+		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32_UINT;
+		//};
+
+		DXGI_FORMAT sampleFormatToDxgiFormat[ENUM_CLASS_TO_NUM(SampleFormat::MAX)]{
+			DXGI_FORMAT_R32_FLOAT,
+			DXGI_FORMAT_R32G32_UINT,
+			DXGI_FORMAT_R16_SINT,
+			DXGI_FORMAT_R16_UINT,
+			DXGI_FORMAT_R32_SINT,
+			DXGI_FORMAT_R32_UINT,
+		};
+	}
+
+
+	WinTextureManager::WinTextureManager(ID3D12Device* device, DescriptorHeap* descriptorHeap, Renderer* renderer) :
+		BaseTextureManager(),
+		device(device),
+		descriptorHeap(descriptorHeap),
+		uploadCommandQueue(nullptr),
+		uploadCommandAllocator(nullptr),
+		uploadCommandList(nullptr),
+		isCommandListReset(true),
+		renderer(renderer),
+		uploadSubmitted(),
+		waitHandles(),
+		promoted(false)
+	{ }
+
+	WinTextureManager::~WinTextureManager()
+	{
+		for (GpuTexture* t : gpuTextures)
+		{
+			delete t;
+		}
+	}
+
 	void WinTextureManager::destroyAll()
 	{
 		std::scoped_lock l(registry.registryLock);
@@ -107,7 +132,7 @@ namespace PAL
 			GpuTexture* t = gpuTextures[idx];
 			// In case destroy is called after some commands have been issued that are using this texture which is currently still uploading,
 			// we have wait for the upload to finish.
-			t->waitForUploads();
+			t->finishUpload();
 			// todo: get rid of this and the renderer pointer member 
 			// currently we have to do this because any texture might be currently used on the gpu;
 			// we could also add it do a delete queue, and make sure in the destructor that the queue gets emptied before letting the texutre manager die
@@ -130,11 +155,11 @@ namespace PAL
 		BaseTexture* texture = get(handle, &idx);
 		BRWL_EXCEPTION(!texture->isValid(), BRWL_CHAR_LITERAL("Texture cannot be loaded to the GPU. It is invalid and will not have any data associated.")); // !BRWL_VERIFY(texture.	 == TextureResource::State::REQUESTING_UPLOAD, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
 
-		if (handle.id < gpuTexIndex.size())
+		if (handle.id >= gpuTexIndex.size())
 		{
 			// TODO: replace data structure or improve growing behaviour
 			// also currently the gpu resource index grows equally with the cpu texture registry. If there are many more cpu textures than textures promoted to gpu textures, then we might want to decouple this
-			gpuTexIndex.resize(handle.id + 20, BaseTextureHandle::Invalid.id);
+			gpuTexIndex.push_back(BaseTextureHandle::Invalid.id);
 		}
 
 		GpuTexture* gpuTex;
@@ -234,25 +259,35 @@ namespace PAL
 		return true;
 	}
 
-
-
 	bool WinTextureManager::isResident(const BaseTextureHandle& handle) const
 	{
 		checkTextureId(handle.id);
 		std::scoped_lock l(registry.registryLock);
-		id_type idx = getIndex(handle.id);
-		if (idx >= gpuTexIndex.size())
+		if (handle.id < gpuTexIndex.size())
 		{
-			return false;
+			const id_type idx = gpuTexIndex[handle.id];
+			if (idx != BaseTextureHandle::Invalid.id && idx >= 0 && idx < gpuTextures.size())
+			{
+				return gpuTextures[idx]->isResident();
+			}
 		}
 
-		return gpuTextures[gpuTexIndex[idx]]->isResident();
+		return false;
 	}
 
+	//todo: get the logger into these HandleDeviceRemoved calls
 	bool WinTextureManager::update()
 	{
 		std::scoped_lock l(registry.registryLock);
-		bool modified = false;
+		if (!isCommandListReset) {
+			PAL::HandleDeviceRemoved(
+				uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr),
+				renderer->getDevice()
+			);
+			isCommandListReset = true;
+		}
+
+		uploadSubmitted.clear();
 		for (id_type id = 0; id < gpuTexIndex.size(); ++id)
 		{
 			const id_type idx = gpuTexIndex[id];
@@ -311,137 +346,141 @@ namespace PAL
 				break;
 			}
 
+			if (!t->stagedTexture->descriptorHandle)
+				t->stagedTexture->descriptorHandle = this->descriptorHeap->allocateOne(texture->getName());
+
 			device->CreateShaderResourceView(t->stagedTexture->texture.Get(), &srvDesc, t->stagedTexture->descriptorHandle->getNonResident().cpu);
 
-			modified = true;
+			uploadSubmitted.push_back(idx);
 
 			t->stagedTexture->state = TextureResource::State::LOADING;
 		}
-		
-		return modified;
+
+		if (!uploadSubmitted.empty())
+		{
+			PAL::HandleDeviceRemoved(
+				uploadCommandList->Close(),
+				renderer->getDevice()
+			);
+			ID3D12CommandList* const ppCommandLists[] = { uploadCommandList.Get() };
+			uploadCommandQueue->ExecuteCommandLists(1, ppCommandLists);
+			isCommandListReset = false;
+
+			for (id_type idx : uploadSubmitted)
+			{
+				GpuTexture* tex = gpuTextures[idx];
+				++tex->uploadFenceValue;
+
+				PAL::HandleDeviceRemoved(
+					uploadCommandQueue->Signal(tex->fence.Get(), tex->uploadFenceValue),
+					renderer->getDevice()
+				);
+			}
+		}
+
+		return !uploadSubmitted.empty();
 	}
-			//where does the descriptor come from?
-
-		// we always need the volume texture so ensure we have it first.
-		// this stalls the pipeline until the copy is complete but maybe we don't care 
-		// because this is the data we want to visualize and if we don't have it we see nothing anyways
-		// if (volumeTexture.state == TextureResource::State::REQUESTING_UPLOAD)
-		// {
-		//     BRWL_EXCEPTION(dataSet.isValid(), BRWL_CHAR_LITERAL("Invalid state of data set."));
-		//     uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr);
-
-		  // Since the volume texture is not double buffered, we have to wait unil all frames still rendering from the volume texture have finished
-	//    r->waitForLastSubmittedFrame();
-	//
-	//    volumeTexture.descriptorHandle = r->srvHeap.allocateOne(BRWL_CHAR_LITERAL("VolumeTexture"));
-	//    if (!BRWL_VERIFY(LoadVolumeTexture(r->device.Get(), uploadCommandList.Get(), &dataSet, volumeTexture), BRWL_CHAR_LITERAL("Failed to load the volume texture to the GPU.")))
-	//    {   // we expect the function to clean up everything necessary
-	//        return;
-	//    };
-	//
-	//    DR(uploadCommandList->Close());
-	//    ID3D12CommandList* const ppCommandLists[] = { uploadCommandList.Get() };
-	//    uploadCommandQueue->ExecuteCommandLists(1, ppCommandLists);
-	//
-	//    // wait synchronously for the upload to complete
-	//    ++volumeTextureFenceValue;
-	//    DR(uploadCommandQueue->Signal(volumeTextureUploadFence.Get(), volumeTextureFenceValue));
-	//    DR(volumeTextureUploadFence->SetEventOnCompletion(volumeTextureFenceValue, uploadFenceEvent));
-	//    WaitForSingleObject(uploadFenceEvent, INFINITE);
-	//    volumeTexture.state = TextureResource::State::RESIDENT;
-	//    volumeTexture.uploadHeap = nullptr;  // free resources
-	//
-	//    // indicate new resource to be used by a compute shader
-	//    r->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(volumeTexture.texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-	//    hasViewChanged = true;
-	//    //}
-	//    {
-	//        bool descriptorHeapChanged = false;
-	//        uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr);
-	//        std::scoped_lock(registryAccess);
-	//        for (BaseTexture* const tex : registry)
-	//        {
-	//            if (!tex) continue;
-	//            if (tex->gpu.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD)
-	//            {
-	//                BRWL_EXCEPTION(tex->isValid(), BRWL_CHAR_LITERAL("Texture is requesting upload but has no CPU buffer set."));
-	//
-	//            }
-	//        }
-	//    }
-	//
-	//}
-	//
-	//void TextureManager::waitForPendingUploads(BaseTexture**, int count)
-	//{
-	//    // (wait for ongoing upload to finish +) request upload
-	////-------------------
-	//
-	//// Check if textures should be recomputed
-	//    bool mustRecompute[countof(*((decltype(pitCollection.array)*)nullptr))] = { false };
-	//    bool blocked[countof(mustRecompute)] = { false };
-	//    for (int i = 0; i < countof(pitCollection.array); ++i)
-	//    {
-	//        PitImage& pitImage = pitCollection.array[i];
-	//
-	//        mustRecompute[i] = true;
-	//        // If staged texture is not free, wait for upload to complete
-	//        if (pitImage.stagedTexture->state != TextureResource::State::NONE)
-	//        {
-	//            blocked[i] = true;
-	//            // if the staged resource is currently upoading then the fence value has do be lower than the one which we remembered
-	//            // but only do a weak check since it could theoretically finish in this very moment
-	//            uint64_t completedValue = pitImage.fence->GetCompletedValue();
-	//            BRWL_CHECK(completedValue <= pitImage.uploadFenceValue, BRWL_CHAR_LITERAL("Invalid fence/staged resource state."));
-	//            uint64_t x = pitImage.fence->GetCompletedValue();
-	//            if (!BRWL_VERIFY(pitImage.stagedTexture->state != TextureResource::State::FAILED, BRWL_CHAR_LITERAL("Invalid state for staged pitTexture.")))
-	//            {
-	//                continue;
-	//            }
-	//
-	//            // prepare for waiting 
-	//            pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, pitImage.uploadEvent);
-	//        }
-	//    }
-	//}
-	//
-	//// gather all events we still have to wait for
-	//HANDLE waitHandles[countof(blocked)] = { NULL };
-	//unsigned int numWaitHandles = 0;
-	//for (int i = 0; i < countof(pitCollection.array); ++i)
-	//{
-	//    if (blocked[i])
-	//    {
-	//        PitImage& pitImage = pitCollection.array[i];
-	//        waitHandles[numWaitHandles] = pitImage.uploadEvent;
-	//        ++numWaitHandles;
-	//    }
-	//}
-	//
-	//// wait and clean up event state 
-	//if (numWaitHandles)
-	//{
-	//    WaitForMultipleObjects(numWaitHandles, waitHandles, true, INFINITE);
-	//}
-	//
-	//for (int i = 0; i < countof(pitCollection.array); ++i)
-	//{
-	//    if (blocked[i])
-	//    {
-	//        PitImage& pitImage = pitCollection.array[i];
-	//        ResetEvent(pitImage.uploadEvent);
-	//        // Since the live texture is currently in use in the front-end we do not swap but immediately recycle the staged texture.
-	//        // This means that a texture change is only visible to the user if there is one frame without a change that requires recomputation.
-	//        pitImage.stagedTexture->destroy();
-	//    }
-	//}
-	//	return true;
-	//}
 
 	bool WinTextureManager::promoteStagedTextures()
 	{
-		bool promoted = false;
 		std::scoped_lock l(registry.registryLock);
+
+		promoteStagedTexturesInternal();
+
+		bool didPromote = promoted;
+		promoted = false;
+		return didPromote;
+	}
+
+	void WinTextureManager::waitForPendingUploads(BaseTextureHandle* handles, id_type numHandles)
+	{
+		std::scoped_lock l(registry.registryLock);
+#ifdef _DEBUG
+		BRWL_EXCEPTION(descriptorHeap->isFrameActive(), BRWL_CHAR_LITERAL("This method may only be called within an active resource frame."));
+#endif
+		BRWL_EXCEPTION(waitHandles.empty(), nullptr); // gathers all events we still have to wait for
+		for (id_type i = 0; i < numHandles; ++i)
+		{
+			BaseTextureHandle* handle = handles[i].asPlatformHandle();
+			checkTextureId(handle->id);
+			id_type idx = getGpuIndex(handle->id);
+
+			GpuTexture* tex = gpuTextures[idx];
+			if (!tex->isReadyForUpload())
+			{
+				// if the staged texture is currently upoading then the fence value has do be lower than the one which we remembered
+				// but only do a weak check since it could theoretically finish in this very moment
+				uint64_t completedValue = tex->fence->GetCompletedValue();
+				BRWL_CHECK(completedValue <= tex->uploadFenceValue, BRWL_CHAR_LITERAL("Invalid fence/staged texture state."));
+				uint64_t x = tex->fence->GetCompletedValue(); // helpful for debugging to see if it actually uploaded now
+				if (!BRWL_VERIFY(!tex->isFailed(), BRWL_CHAR_LITERAL("Invalid state for staged texture.")))
+				{
+					continue;
+				}
+
+				// prepare for waiting 
+				tex->fence->SetEventOnCompletion(tex->uploadFenceValue, tex->uploadEvent);
+				waitHandles.push_back(tex->uploadEvent);
+			}
+		}
+
+		// wait and clean up event state 
+		if (waitHandles.size())
+		{
+			WaitForMultipleObjects(waitHandles.size(), waitHandles.data(), true, INFINITE);
+			for (const HANDLE& handle : waitHandles)
+			{
+				ResetEvent(handle);
+			}
+
+			waitHandles.clear();
+
+			promoteStagedTexturesInternal(); // swap textures
+		}
+	}
+
+	const DescriptorHandle* WinTextureManager::getDescriptorHandle(const WinTextureHandle& handle) const
+	{
+		checkTextureId(handle.id);
+		std::scoped_lock l(registry.registryLock);
+		id_type idx = getGpuIndex(handle.id);
+
+		GpuTexture* tex = gpuTextures[gpuTexIndex[idx]];
+		BRWL_EXCEPTION(tex->isResident(), BRWL_CHAR_LITERAL("Trying to retrieve descriptor for non-resident texture"));
+		return tex->liveTexture->descriptorHandle;
+	}
+
+	bool WinTextureManager::isReadyForUpload(const WinTextureHandle& handle) const
+	{
+		checkTextureId(handle.id);
+		std::scoped_lock l(registry.registryLock);
+		id_type idx = getGpuIndex(handle.id);
+		if (idx >= gpuTexIndex.size())
+		{
+			return false;
+		}
+
+		return gpuTextures[gpuTexIndex[idx]]->isReadyForUpload();
+	}
+
+	ID3D12Resource* WinTextureManager::getLiveResource(const WinTextureHandle& handle)
+	{
+		checkTextureId(handle.id);
+		std::scoped_lock l(registry.registryLock);
+		id_type idx = getGpuIndex(handle.id);
+
+		GpuTexture* tex = gpuTextures[gpuTexIndex[idx]];
+		BRWL_EXCEPTION(tex->isResident(), BRWL_CHAR_LITERAL("Invalid state!"));
+
+		return tex->liveTexture->texture.Get();
+	}
+
+
+	void WinTextureManager::promoteStagedTexturesInternal()
+	{
+#ifdef _DEBUG
+		BRWL_EXCEPTION(descriptorHeap->isFrameActive(), BRWL_CHAR_LITERAL("This method may only be called within an active resource frame."));
+#endif
 		for (id_type id = 0; id < gpuTexIndex.size(); ++id)
 		{
 			const id_type idx = gpuTexIndex[id];
@@ -466,24 +505,24 @@ namespace PAL
 				t->stagedTexture->destroy();
 				// Indicate new resource to be used by a compute shader.
 				// todo: optimize by calling just once after loop with multiple barriers
-				renderer->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(t->liveTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+				CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(t->liveTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+				renderer->getCommandList()->ResourceBarrier(1, &barrier);
 				// todo: add mechanism for application to check which textures have been updated/become resident since the last frame
 				//hasViewChanged = true;
 				promoted = true;
 			}
 		}
-
-		return promoted;
 	}
 
-
-
-
-
-
+	BaseTextureManager::id_type WinTextureManager::getGpuIndex(const id_type id) const
+	{
+		BRWL_EXCEPTION(id < gpuTexIndex.size(), BRWL_CHAR_LITERAL("Texture ID out of bounds."));
+		const id_type idx = gpuTexIndex[id];
+		BRWL_CHECK(idx != BaseTextureHandle::Invalid.id && idx >= 0 && idx < gpuTextures.size(), nullptr);
+		return idx;
+	}
 
 } // namespace PAL
-
 
 BRWL_RENDERER_NS_END
 

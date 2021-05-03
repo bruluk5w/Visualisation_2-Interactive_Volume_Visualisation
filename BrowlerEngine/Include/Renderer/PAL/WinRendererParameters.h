@@ -8,6 +8,7 @@ BRWL_RENDERER_NS
 namespace PAL
 {
 
+
 	struct WinRendererParameters
 	{
 		HWND hWnd;
@@ -15,6 +16,7 @@ namespace PAL
 			int width, height;
 		} initialDimensions;
 	};
+
 
 }
 

@@ -1,12 +1,12 @@
 #pragma once // (c) 2020 Lukas Brunner
 
-#include "Common/PAL/DescriptorHeap.h"
+#include "Renderer/PAL/DescriptorHeap.h"
+#include "Renderer/TextureHandleFwd.h"
 
 BRWL_RENDERER_NS
 
 class ComputeBuffers;
 union PitCollection;
-struct TextureResource;
 
 class PropagationShader final
 {
@@ -31,7 +31,7 @@ public:
 #pragma pack(pop)
     // propagates light and viewing rays through the volume and returns the amount of slices which was not yet able to process, returns also the last written 
     // color buffer via outColorBufferResource and outColorBufferDescriptorHandle
-    unsigned int draw(ID3D12GraphicsCommandList* cmd, const DrawData& data, ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture,
+    unsigned int draw(ID3D12GraphicsCommandList* cmd, const DrawData& data, ComputeBuffers* computeBuffers, PitCollection& pitCollection, TextureHandle& volumeTexture,
         ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle);
 
 private:

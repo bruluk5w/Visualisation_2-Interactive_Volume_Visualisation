@@ -5,6 +5,7 @@
 #include "Renderer/DataSet.h"
 #include "PitCollection.h"
 #include "Renderer/RendererFwd.h"
+#include "Renderer/TextureHandle.h"
 
 #ifndef BRWL_USE_DEAR_IM_GUI
 #error The project requires Dear ImGui

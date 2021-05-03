@@ -1,14 +1,24 @@
 #include "PAL/GpuTexture.h"
 
-#include "PAL/WinRenderer.h"
-
 #ifdef BRWL_PLATFORM_WINDOWS
+
+#include "PAL/WinRenderer.h"
+#include "PAL/TextureResource.h"
+
 
 BRWL_RENDERER_NS
 
-
 namespace PAL
 {
+
+
+	GpuTexture::GpuTexture():
+		fence(nullptr),
+		uploadFenceValue(0),
+		uploadEvent(NULL),
+		liveTexture(nullptr),
+		stagedTexture(nullptr)
+	{ }
 
 	GpuTexture::~GpuTexture()
 	{
@@ -74,32 +84,40 @@ namespace PAL
 		return stagedTexture->state == TextureResource::State::NONE;
 	}
 
+	bool GpuTexture::isUploading() const
+	{
+		return fence && uploadFenceValue < fence->GetCompletedValue();
+	}
+
+	bool GpuTexture::isFailed() const
+	{
+		return stagedTexture->state != TextureResource::State::FAILED;
+	}
+
+
 	void GpuTexture::requestUpload()
 	{
 		BRWL_EXCEPTION(isReadyForUpload(), BRWL_CHAR_LITERAL("TextureResource was not in the expected state."));
 		stagedTexture->state = TextureResource::State::REQUESTING_UPLOAD;
 	}
 
-	bool GpuTexture::isUploading() const
-	{
-		return fence && uploadFenceValue < fence->GetCompletedValue();
-	}
-
-	void GpuTexture::waitForUploads()
+	void GpuTexture::finishUpload()
 	{
 		if (isUploading())
 		{
 			ID3D12Device* device = nullptr;
 			fence->GetDevice(IID_ID3D12Device, reinterpret_cast<void**>(&device));
 			HandleDeviceRemoved(
-				fence->SetEventOnCompletion(uploadFenceValue, uploadEvent), device);
+				fence->SetEventOnCompletion(uploadFenceValue, uploadEvent),
+				device
+			);
 			WaitForSingleObject(uploadEvent, INFINITE);
 			ResetEvent(uploadEvent);
 		}
 	}
 
-}
 
+} // namespace PAL
 
 BRWL_RENDERER_NS_END
 

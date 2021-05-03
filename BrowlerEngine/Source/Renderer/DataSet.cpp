@@ -20,7 +20,7 @@ void DataSet<S>::loadFromFile(const BRWL_CHAR* relativePath)
 	catch (std::filesystem::filesystem_error& e)
 	{
 		BRWL_CHAR buf[256];
-		BRWL_SNPRINTF(buf, BRWL::countof(buf), BRWL_CHAR_LITERAL("Failed to get file size of asset: %s\nError:\n%hs"), relativePath.c_str(), e.what());
+		BRWL_SNPRINTF(buf, BRWL::countof(buf), BRWL_CHAR_LITERAL("Failed to get file size of asset: %s\nError:\n%hs"), relativePath, e.what());
 		BRWL_EXCEPTION(false, buf);
 		return;
 	}
@@ -45,7 +45,7 @@ void DataSet<S>::loadFromFile(const BRWL_CHAR* relativePath)
 	this->create(sizeX, sizeY, sizeZ, TextureDimension::TEXTURE_3D, TextureCreationParams::NONE);
 
 
-	if (!BRWL_VERIFY(this->size - sizeof(this->sizeX) - sizeof(this->sizeY) - sizeof(this->sizeZ) >= this->bufferSize, BRWL_CHAR_LITERAL("File too short for data content.")))
+	if (!BRWL_VERIFY(size - sizeof(this->sizeX) - sizeof(this->sizeY) - sizeof(this->sizeZ) >= this->bufferSize, BRWL_CHAR_LITERAL("File too short for data content.")))
 	{
 		sourcePath = nullptr;
 		this->bufferSize = this->strideX = this->strideY = this->strideZ = this->sizeX = this->sizeY = this->sizeZ = 0;
@@ -62,6 +62,10 @@ void DataSet<S>::loadFromFile(const BRWL_CHAR* relativePath)
 
 	this->valid = true;
 }
+
+#define BRWL_INSTANTIATE_(format) template class DataSet<SampleFormat::format>;
+BRWL_FOR_ALL_SAMPLE_FORMATS(BRWL_INSTANTIATE_)
+#undef BRWL_INSTANTIATE_
 
 
 BRWL_RENDERER_NS_END

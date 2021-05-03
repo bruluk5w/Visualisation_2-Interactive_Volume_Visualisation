@@ -8,6 +8,7 @@
 
 BRWL_NS
 
+
 void earlyStaticInit()
 {  
     ::std::setlocale(LC_ALL, "en_US.utf8");
@@ -24,5 +25,6 @@ void lateStaticDestroy() {
     SymCleanup(process);
     #endif
 }
+
 
 BRWL_NS_END

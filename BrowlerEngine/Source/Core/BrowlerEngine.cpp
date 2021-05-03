@@ -1,6 +1,5 @@
 #include "BrowlerEngine.h"
 
-#include "Common/Logger.h"
 #include "Timer.h"
 #include "Window.h"
 #include "Renderer/Renderer.h"

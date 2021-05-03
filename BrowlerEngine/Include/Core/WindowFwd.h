@@ -1,6 +1,5 @@
 #pragma once // (c) 2020 Lukas Brunner
 
-
 #ifdef BRWL_PLATFORM_WINDOWS
 
 BRWL_PAL_NS

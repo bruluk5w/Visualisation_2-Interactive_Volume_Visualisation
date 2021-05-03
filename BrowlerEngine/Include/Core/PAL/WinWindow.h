@@ -1,12 +1,14 @@
 #pragma once // (c) 2020 Lukas Brunner
 
 #ifdef BRWL_PLATFORM_WINDOWS
+
 #include "Common/GlobalsFwd.h"
 #include "Common/EventSystem.h"
 #include "Events.h"
 #include "Renderer/RendererFwd.h"
 
 BRWL_PAL_NS
+
 
 struct WinWindowImpl;
 

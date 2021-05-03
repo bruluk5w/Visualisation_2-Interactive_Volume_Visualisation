@@ -6,6 +6,12 @@
 BRWL_RENDERER_NS
 
 
+BaseTextureManager::BaseTextureManager() : registry{ { }, { }, { } }
+{
+    static_assert(std::is_base_of_v<BaseTextureManager, TextureManager>, "The platform texture manager has to be derived from BaseTextureManager.");
+    derivedThis = dynamic_cast<TextureManager*>(this);
+}
+
 BaseTextureManager::~BaseTextureManager()
 {
     destroyAll();
@@ -110,7 +116,7 @@ void BaseTextureManager::checkTextureId(const BaseTextureManager::id_type id)
 
 BaseTextureManager::id_type BaseTextureManager::getIndex(const id_type id) const
 {
-    BRWL_EXCEPTION(id < registry.index.size(), BRWL_CHAR_LITERAL("Texture ID out  of bounds."));
+    BRWL_EXCEPTION(id < registry.index.size(), BRWL_CHAR_LITERAL("Texture ID out of bounds."));
     const id_type idx = registry.index[id];
     BRWL_CHECK(idx >= 0 && idx < registry.store.size(), nullptr);
     return idx;

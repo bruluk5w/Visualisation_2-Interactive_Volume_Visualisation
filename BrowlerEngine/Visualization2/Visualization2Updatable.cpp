@@ -7,7 +7,6 @@
 #include "Core/Window.h"
 #include "Core/Hierarchy.h"
 #include "Core/Input.h"
-#include "Common/Logger.h"
 
 BRWL_NS
 

@@ -395,6 +395,7 @@ if not exist %compiled_folder% (
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="Include\Renderer\PAL\WinTextureHandle.h" />
     <ClInclude Include="Include\Renderer\PAL\WinTextureManager.h" />
     <ClInclude Include="Include\Renderer\Renderer.h" />
     <ClInclude Include="Include\Renderer\RendererFwd.h" />
@@ -409,6 +410,8 @@ if not exist %compiled_folder% (
     <ClInclude Include="Include\Renderer\Renderer_Precomp.h" />
     <ClInclude Include="Include\Renderer\targetver.h" />
     <ClInclude Include="Include\Renderer\Texture.h" />
+    <ClInclude Include="Include\Renderer\TextureHandle.h" />
+    <ClInclude Include="Include\Renderer\TextureHandleFwd.h" />
     <ClInclude Include="Include\Renderer\TextureManager.h">
       <SubType>
       </SubType>
@@ -440,6 +443,8 @@ if not exist %compiled_folder% (
     <ClCompile Include="Source\Renderer\PAL\imgui_impl_dx12.cpp" />
     <ClCompile Include="Source\Renderer\PAL\imgui_impl_win32.cpp" />
     <ClCompile Include="Source\Renderer\PAL\RtvDescriptorHeap.cpp" />
+    <ClCompile Include="Source\Renderer\PAL\TextureResource.cpp" />
+    <ClCompile Include="Source\Renderer\PAL\WinTextureHandle.cpp" />
     <ClCompile Include="Source\Renderer\PAL\WinTextureManager.cpp" />
     <ClCompile Include="Source\Renderer\Renderer_Precomp.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -450,6 +455,7 @@ if not exist %compiled_folder% (
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Source\Renderer\PAL\WinRenderer.cpp" />
+    <ClCompile Include="Source\Renderer\TextureHandle.cpp" />
     <ClCompile Include="Source\Renderer\TextureManager.cpp">
       <SubType>
       </SubType>

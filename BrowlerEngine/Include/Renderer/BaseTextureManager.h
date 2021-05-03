@@ -1,16 +1,18 @@
 #pragma once // (c) 2020 Lukas Brunner
 
+#include "TextureManagerFwd.h"
+
 BRWL_RENDERER_NS
 
 
 class BaseTexture;
 
 
-// All texture manager methods available through the texture handle are listed here (return type, name, (arguments), const)
-#define FOR_EACH_TEXTURE_HANDLE_METHOD(f) \
+// All texture manager methods available through the base texture handle are listed here (return type, name, (arguments), const)
+#define FOR_EACH_BASE_TEXTURE_HANDLE_METHOD(f) \
 	f(void, destroy, ()) \
-	f(virtual bool, startLoad, ()) \
-	f(virtual bool, isResident, (), const) \
+	f(bool, startLoad, ()) \
+	f(bool, isResident, (), const) \
 
 
 struct BaseTextureHandle;
@@ -20,12 +22,9 @@ class BaseTextureManager
 	friend class BaseTexture;
 	friend struct BaseTextureHandle;
 
-protected:
-	using id_type = int16_t;
-
 public:
-	BaseTextureManager() : registry{ { }, { }, { } }
-	{ }
+	using id_type = int16_t;
+	BaseTextureManager();
 
 	virtual ~BaseTextureManager();
 
@@ -74,8 +73,8 @@ public:
 	 */
 	virtual bool promoteStagedTextures() = 0;
 
-	//! Blocks until all resources are synchronized with the GPU.
-	//virtual void waitForPendingUploads() = 0;
+	//! Blocks until a staged texture becomes available to the CPU.
+	virtual void waitForPendingUploads(BaseTextureHandle* handles, id_type numHandles) = 0;
 
 protected:
 
@@ -94,6 +93,8 @@ protected:
 		// todo: rename because it's actually a lock for the whole texture manager
 		mutable std::recursive_mutex registryLock;  // todo: replace with normal mutex and unguarded private impl methods
 	} registry;
+
+	TextureManager* derivedThis;
 };
 
 

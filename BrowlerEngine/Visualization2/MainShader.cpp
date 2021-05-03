@@ -16,13 +16,13 @@
 
 #include "PitCollection.h"
 #include "Common/BoundingBox.h"
-#include "Common/Logger.h"
 #include "ComputeBuffers.h"
 #include "InitializationShader.h"
 #include "PropagationShader.h"
 #include "DxHelpers.h"
 #include "ImposterShader.h"
 #include "Renderer/DataSet.h"
+#include "Renderer/TextureHandle.h"
 
 namespace
 {
@@ -445,7 +445,7 @@ bool MainShader::create(Renderer* renderer)
 void MainShader::render()
 { }
 
-void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, const MainShader::DrawData& data)
+void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, MainShader::DrawData& data)
 {
     SCOPED_GPU_EVENT(cmd, 0, 128, 128, "Main Draw");
     unsigned int width, height;
@@ -471,7 +471,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
 
     // positioning of the viewing plane
     const Mat4 viewingVolumeOrientation = inverse(makeLookAtTransform(VEC3_ZERO, -camPos));
-    const DataSetS16* dataSet = dynamic_cast<const DataSetS16*>(&*(*data.volumeTexturehandle));
+    const DataSetS16* dataSet = dynamic_cast<const DataSetS16*>(&*data.volumeTexturehandle);
     const BBox& bbox = dataSet->getBoundingBox();
     const BBox viewingVolumeUnscaled = bbox.getOBB(viewingVolumeOrientation);
     const Vec3 viewingVolumeDimensions = viewingVolumeUnscaled.dim() * volumeScale;
@@ -560,15 +560,15 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
 
         //computeBuffers->swap(cmd);
 
-        transitionResourceFromPixelToComputeShader(cmd, data.volumeTexturehandle- texture.Get());
-        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.mediumColorPit.liveTexture->texture.Get());
-        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.opacityPit.liveTexture->texture.Get());
-        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.particleColorPit.liveTexture->texture.Get());
-        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection->tables.refractionPit.liveTexture->texture.Get());
+        transitionResourceFromPixelToComputeShader(cmd, data.volumeTexturehandle.getLiveResource());
+        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection.tables.mediumColorPit.asPlatformHandle()->getLiveResource());
+        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection.tables.opacityPit.asPlatformHandle()->getLiveResource());
+        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection.tables.particleColorPit.asPlatformHandle()->getLiveResource());
+        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection.tables.refractionPit.asPlatformHandle()->getLiveResource());
 
         ID3D12Resource* colorBuffer;
         PAL::DescriptorHandle::ResidentHandles colorBufferDescriptorHandle;
-        remainingSlices = propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexture, colorBuffer, colorBufferDescriptorHandle);
+        remainingSlices = propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexturehandle, colorBuffer, colorBufferDescriptorHandle);
 
 
         // draw result, no matter how far we are
@@ -600,11 +600,11 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
 
         cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
 
-        transitionResourceFromComputeToPixelShader(cmd, data.volumeTexture->texture.Get());
-        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.mediumColorPit.liveTexture->texture.Get());
-        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.opacityPit.liveTexture->texture.Get());
-        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.particleColorPit.liveTexture->texture.Get());
-        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection->tables.refractionPit.liveTexture->texture.Get());
+        transitionResourceFromComputeToPixelShader(cmd, data.volumeTexturehandle.getLiveResource());
+        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection.tables.mediumColorPit.asPlatformHandle()->getLiveResource());
+        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection.tables.opacityPit.asPlatformHandle()->getLiveResource());
+        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection.tables.particleColorPit.asPlatformHandle()->getLiveResource());
+        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection.tables.refractionPit.asPlatformHandle()->getLiveResource());
 
         transitionResourceFromPixelToComputeShader(cmd, colorBuffer);
     }
@@ -639,10 +639,10 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         // Set all textures
         for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
         {
-            cmd->SetGraphicsRootDescriptorTable(2 + i, data.pitCollection->array[i].liveTexture->descriptorHandle->getResident().residentGpu);
+            cmd->SetGraphicsRootDescriptorTable(2 + i, data.pitCollection.array[i].asPlatformHandle()->getDescriptorHandle()->getResident().residentGpu);
         }
 
-        cmd->SetGraphicsRootDescriptorTable(2 + ENUM_CLASS_TO_NUM(PitTex::MAX), data.volumeTexture->descriptorHandle->getResident().residentGpu);
+        cmd->SetGraphicsRootDescriptorTable(2 + ENUM_CLASS_TO_NUM(PitTex::MAX), data.volumeTexturehandle.getDescriptorHandle()->getResident().residentGpu);
 
         cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
     }
@@ -655,7 +655,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, cons
         cmd->SetGraphicsRootSignature(guidesRootSignature.Get());
         if (data.drawAssetBounds)
         {
-            Mat4 mat = makeAffineTransform(VEC3_ZERO, Quaternion::identity, data.volumeDimensions->dim() * volumeScale);
+            Mat4 mat = makeAffineTransform(VEC3_ZERO, Quaternion::identity, bbox.dim() * volumeScale);
             mat = mat * viewProjection;
             cmd->SetGraphicsRoot32BitConstants(0, 16, &mat, 0);
             cmd->DrawInstanced(assetBounds.vertexBufferLength, 1, 0, 0);

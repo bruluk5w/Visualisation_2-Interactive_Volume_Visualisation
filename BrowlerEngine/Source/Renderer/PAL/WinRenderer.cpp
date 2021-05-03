@@ -2,7 +2,6 @@
 
 #ifdef BRWL_PLATFORM_WINDOWS
 
-#include "Common/Logger.h"
 
 // DX12 additional headers
 #include "PAL/d3dx12.h"
@@ -741,4 +740,3 @@ namespace PAL
 BRWL_RENDERER_NS_END
 
 #endif // BRWL_PLATFORM_WINDOWS
-

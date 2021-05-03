@@ -23,17 +23,22 @@ enum class TextureCreationParams : uint8_t
 
 DEFINE_ENUM_CLASS_OPERATORS(TextureCreationParams)
 
+#define BRWL_FOR_ALL_SAMPLE_FORMATS(f) \
+	f(F32) \
+	f(F64) \
+	f(S16) \
+	f(U16) \
+	f(S32) \
+	f(U32) \
+
+#define BRWL_MAKE_ENUM_(e) e,
 enum class SampleFormat : uint8_t
 {
-	F32 = 0,
-	F64,
-	S16,
-	U16,
-	S32,
-	U32,
+	BRWL_FOR_ALL_SAMPLE_FORMATS(BRWL_MAKE_ENUM_)
 	MAX,
 	MIN = 0
 };
+#undef BRWL_MAKE_ENUM_
 
 
 //!  The main texture class

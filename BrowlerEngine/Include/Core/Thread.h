@@ -8,7 +8,7 @@
 BRWL_PAL_NS
 
 
-// putting this into PAL namespace beause Thread should be used instead of PlatformThread
+// putting this into PAL namespace because Thread should be used instead of PlatformThread
 #ifdef BRWL_PLATFORM_WINDOWS
 template<class returnType>
 using PlatformThread = WinThread<returnType>;

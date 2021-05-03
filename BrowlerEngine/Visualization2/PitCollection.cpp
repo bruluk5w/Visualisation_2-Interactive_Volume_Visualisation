@@ -9,10 +9,10 @@ BRWL_RENDERER_NS
 
 PitCollection::PitCollection() :
 	tables {
-		TextureHandle::Invalid,
-		TextureHandle::Invalid,
-		TextureHandle::Invalid,
-		TextureHandle::Invalid
+		BaseTextureHandle::Invalid,
+		BaseTextureHandle::Invalid,
+		BaseTextureHandle::Invalid,
+		BaseTextureHandle::Invalid
 	}
 { }
 
@@ -31,20 +31,11 @@ void PitCollection::create(BaseTextureManager* mgr)
 		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Opacity PIT")),
 		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Medium Color PIT"))
 	};
-
-	//todo: remvove
-	//for (int i = 0; i < countof(array); ++i)
-	//{
-	//	TextureHandle& pit = array[i];
-	//	if (!pit->create()) {
-	//		return false;
-	//	}
-	//}
 }
 
 bool PitCollection::isResident() const
 {
-	return std::all_of(array, array + countof(array), [](const TextureHandle& p) { return p.isResident(); });
+	return std::all_of(array, array + countof(array), [](const BaseTextureHandle& p) { return p.isResident(); });
 }
 
 void PitCollection::destroy()

@@ -43,7 +43,7 @@ namespace PAL
 {
 
 	DescriptorHandle::DescriptorHandle() :
-		nativeHandles{ {0}, {0} },
+		nativeHandles{ {0}, {0}, {0} },
 		owningHeap(nullptr),
 		offset(0),
 		count(0),
@@ -255,8 +255,8 @@ namespace PAL
 		++numOccupiedDescriptors;
 
 		if (forceUpdate) {
-			notifyNewFrameStarted();
 			notifyOldFrameCompleted();
+			notifyNewFrameStarted();
 		}
 		return handle;
 	}

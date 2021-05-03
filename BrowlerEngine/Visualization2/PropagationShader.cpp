@@ -4,8 +4,9 @@
 
 #include "ComputeBuffers.h"
 #include "DxHelpers.h"
-#include "TextureResource.h"
+#include "Renderer/PAL/TextureResource.h"
 #include "PitCollection.h"
+#include "Renderer/TextureHandle.h"
 
 #include "Core/BrowlerEngine.h"
 #include "Core/Timer.h"
@@ -140,7 +141,7 @@ PropagationShader::~PropagationShader()
     destroy();
 }
 
-unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data, ComputeBuffers* computeBuffers, const PitCollection* pitCollection, const TextureResource* volumeTexture,
+unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data, ComputeBuffers* computeBuffers, PitCollection& pitCollection, TextureHandle& volumeTexture,
     ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle)
 {
     SCOPED_GPU_EVENT(cmd, 0, 255, 0, "Propagation Compute Shader");
@@ -171,11 +172,11 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
         // Set preintegration tables
         for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
         {
-            cmd->SetComputeRootDescriptorTable(3 + i, pitCollection->array[i].liveTexture->descriptorHandle->getResident().residentGpu);
+            cmd->SetComputeRootDescriptorTable(3 + i, pitCollection.array[i].asPlatformHandle()->getDescriptorHandle()->getResident().residentGpu);
         }
 
         // set volume texture
-        cmd->SetComputeRootDescriptorTable(3 + ENUM_CLASS_TO_NUM(PitTex::MAX), volumeTexture->descriptorHandle->getResident().residentGpu);
+        cmd->SetComputeRootDescriptorTable(3 + ENUM_CLASS_TO_NUM(PitTex::MAX), volumeTexture.getDescriptorHandle()->getResident().residentGpu);
 
         // Only propagate without the buffered outer region. This only works for directional lights where the the out-of-bounds
         // default values are constant.

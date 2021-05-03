@@ -1,7 +1,7 @@
 #pragma once // (c) 2020 Lukas Brunner
 
+#include "Renderer/BaseTextureHandle.h"
 #include "Renderer/Texture.h"
-#include "Renderer/BaseTextureManager.h"
 
 BRWL_RENDERER_NS
 
@@ -18,14 +18,14 @@ union PitCollection
 	void destroy();
 
 	// All our reintegration tables
-	TextureHandle array[4];
+	BaseTextureHandle array[4];
 	
 	// aliases to distinguish in the rest of the code
 	struct Aliases {
-		TextureHandle refractionPit;
-		TextureHandle particleColorPit;
-		TextureHandle opacityPit;
-		TextureHandle mediumColorPit;
+		BaseTextureHandle refractionPit;
+		BaseTextureHandle particleColorPit;
+		BaseTextureHandle opacityPit;
+		BaseTextureHandle mediumColorPit;
 	} tables;
 
 	static_assert(sizeof(tables) == sizeof(array));

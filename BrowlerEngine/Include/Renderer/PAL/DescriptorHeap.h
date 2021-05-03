@@ -47,10 +47,10 @@ namespace PAL
         bool isResident() { return resident && !remove; }
         void release();
 
-        ResidentHandles getResident(int idx);
-        NonResidentHandles getNonResident(int idx);
-        ResidentHandles getResident() const;
-        NonResidentHandles getNonResident() const;
+        ResidentHandles getResident(int idx); //!< for rendering
+        NonResidentHandles getNonResident(int idx); //!< for view creation
+        ResidentHandles getResident() const;  //!< for rendering
+        NonResidentHandles getNonResident() const; //!< for view creation
 
     };
 
@@ -111,6 +111,9 @@ namespace PAL
         bool created;
 
 #ifdef _DEBUG
+    public:
+        bool isFrameActive() { return frameActive; }
+    private:
         bool frameActive; // tracks the active frame to check that the heap is only manipulated during an active frame
 #endif
     };

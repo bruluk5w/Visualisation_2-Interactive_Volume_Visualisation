@@ -1,6 +1,5 @@
 #include "Visualization2Renderer.h"
 
-#include "Common/Logger.h"
 #include "Common/BoundingBox.h"
 #include "Core/BrowlerEngine.h"
 #include "Preintegration.h"
@@ -16,7 +15,7 @@ Visualization2Renderer::Visualization2Renderer() :
     uiResultIdx(0),
     uiResults{ {},{} },
     fonts{ 0 },
-    dataSetHandle(TextureHandle::Invalid),
+    dataSetHandle(*BaseTextureHandle::Invalid.asPlatformHandle()),
     pitCollection(),
     assetPathMutex(),
     assetPath(BRWL_CHAR_LITERAL("./Assets/DataSets/stagbeetle832x832x494.dat")),
@@ -138,37 +137,11 @@ void Visualization2Renderer::render(Renderer* renderer)
 
     if (!ReloadVolumeAsset(renderer))
     {
-        renderer->log(BRWL_CHAR_LITERAL("Failed to load volume data!"), Logger::LogLevel::Error);
+        renderer->log(BRWL_CHAR_LITERAL("Failed to load volume data!"), Logger::LogLevel::ERROR);
     }
 
     // todo: remove this if not needed anymore
     hasViewChanged = renderer->anyTextureBecameResident;
-
-    ////-------------------
-    //// swap pit images
-    ////--------------------
-    //
-    //for (int i = 0; i < countof(pitCollection.array); ++i)
-    //{
-    //    PitImage& pitImage = pitCollection.array[i];
-    //    const uint64_t completed = pitImage.fence->GetCompletedValue();
-
-    //    // swap texture if ready
-    //    if (pitImage.stagedTexture->state == TextureResource::State::LOADING && completed >= pitImage.uploadFenceValue)
-    //    {
-    //        pitImage.stagedTexture->state = TextureResource::State::RESIDENT;
-    //        pitImage.stagedTexture->uploadHeap = nullptr; // free some resources
-    //        // We might still have some frames in flight with the old texture
-    //        // We have to wait until we are sure we that are the only one tampering with resources
-    //        renderer->waitForLastSubmittedFrame();
-    //        std::swap(pitImage.stagedTexture, pitImage.liveTexture);
-    //        // release old texture
-    //        pitImage.stagedTexture->destroy();
-    //        // Indicate new resource to be used by a compute shader.
-    //        renderer->commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pitImage.liveTexture->texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-    //        hasViewChanged = true;
-    //    }
-    //}
 
     //---------------------
     // UI
@@ -183,7 +156,7 @@ void Visualization2Renderer::render(Renderer* renderer)
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
         const BaseTextureHandle& pitImage = pitCollection.array[i];
-        v.transferFunctions.array[i].textureID = pitImage.liveTexture->state != TextureResource::State::RESIDENT ? nullptr : (ImTextureID)pitImage.liveTexture->descriptorHandle->getResident().residentGpu.ptr;
+        v.transferFunctions.array[i].textureID = pitImage.isResident() ? (ImTextureID)pitImage.asPlatformHandle()->getDescriptorHandle()->getResident().residentGpu.ptr : nullptr;
     }
 
     v.remainingSlices = mainShader.getNumRemainingSlices();
@@ -203,94 +176,51 @@ void Visualization2Renderer::render(Renderer* renderer)
 
     // Check if textures should be recomputed
     bool mustRecompute[countof(*((decltype(pitCollection.array)*)nullptr))] = { false };
-    bool blocked[countof(mustRecompute)] = { false };
+    bool anyRecompute = false;
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
-        PitImage& pitImage = pitCollection.array[i];
+        BaseTextureHandle& pitImage = pitCollection.array[i];
         UIResult::TransferFunction& tFuncValue = v.transferFunctions.array[i];
         UIResult::TransferFunction& tFuncResult = r.transferFunctions.array[i];
-        if (!pitImage.cpuImage.isValid() || tFuncValue.bitDepth != tFuncResult.bitDepth ||
+        if (!pitImage->isValid() || tFuncValue.bitDepth != tFuncResult.bitDepth ||
             memcmp(tFuncValue.transferFunction, tFuncResult.transferFunction, tFuncValue.getArrayLength() * sizeof(UIResult::TransferFunction::sampleT)) != 0)
         {
-            mustRecompute[i] = true;
-            // If staged texture is not free, wait for upload to complete
-            if (pitImage.stagedTexture->state != TextureResource::State::NONE)
-            {
-                blocked[i] = true;
-                // if the staged resource is currently upoading then the fence value has do be lower than the one which we remembered
-                // but only do a weak check since it could theoretically finish in this very moment
-                uint64_t completedValue = pitImage.fence->GetCompletedValue();
-                BRWL_CHECK(completedValue <= pitImage.uploadFenceValue, BRWL_CHAR_LITERAL("Invalid fence/staged resource state."));
-                uint64_t x = pitImage.fence->GetCompletedValue();
-                if (!BRWL_VERIFY(pitImage.stagedTexture->state != TextureResource::State::FAILED, BRWL_CHAR_LITERAL("Invalid state for staged pitTexture.")))
-                {
-                    continue;
-                }
+            mustRecompute[i] = anyRecompute = true;
+        }
+    }
 
-                // prepare for waiting 
-                pitImage.fence->SetEventOnCompletion(pitImage.uploadFenceValue, pitImage.uploadEvent);
+    if (anyRecompute)
+    {
+        renderer->getTextureManager()->waitForPendingUploads(pitCollection.array, countof(pitCollection.array));
+
+        // Recompute
+        for (int i = 0; i < countof(pitCollection.array); ++i)
+        {
+            if (mustRecompute[i])
+            {
+                BaseTextureHandle& pitImage = pitCollection.array[i];
+                UIResult::TransferFunction& tFuncValue = v.transferFunctions.array[i];
+                UIResult::TransferFunction& tFuncResult = r.transferFunctions.array[i];
+                // Recompute texture
+                const int tableSize = tFuncResult.getArrayLength();
+
+                if (!pitImage->isValid() || pitImage->getSizeX() != tableSize)
+                    pitImage->create(tableSize, tableSize);
+                else
+                    pitImage->zero();
+
+                makePreintegrationTable<>(*dynamic_cast<PitCollection::PitImage*>(&*pitImage), tFuncResult.transferFunction, tFuncResult.getArrayLength());
+
+                pitImage.startLoad();
+
+                // set front-end request satisfied
+                memcpy(tFuncValue.transferFunction, tFuncResult.transferFunction, sizeof(tFuncValue.transferFunction));
+                tFuncValue.bitDepth = tFuncResult.bitDepth;
+                tFuncValue.controlPoints = tFuncResult.controlPoints;
             }
         }
     }
 
-    // gather all events we still have to wait for
-    HANDLE waitHandles[countof(blocked)] = { NULL };
-    unsigned int numWaitHandles = 0;
-    for (int i = 0; i < countof(pitCollection.array); ++i)
-    {
-        if (blocked[i])
-        {
-            PitImage& pitImage = pitCollection.array[i];
-            waitHandles[numWaitHandles] = pitImage.uploadEvent;
-            ++numWaitHandles;
-        }
-    }
-
-    // wait and clean up event state 
-    if (numWaitHandles)
-    {
-        WaitForMultipleObjects(numWaitHandles, waitHandles, true, INFINITE);
-    }
-
-    for (int i = 0; i < countof(pitCollection.array); ++i)
-    {
-        if (blocked[i])
-        {
-            PitImage& pitImage = pitCollection.array[i];
-            ResetEvent(pitImage.uploadEvent);
-            // Since the live texture is currently in use in the front-end we do not swap but immediately recycle the staged texture.
-            // This means that a texture change is only visible to the user if there is one frame without a change that requires recomputation.
-            pitImage.stagedTexture->destroy();
-        }
-    }
-
-    // Recompute
-    for (int i = 0; i < countof(pitCollection.array); ++i)
-    {
-        if(mustRecompute[i])
-        {
-            PitImage& pitImage = pitCollection.array[i];
-            UIResult::TransferFunction& tFuncValue = v.transferFunctions.array[i];
-            UIResult::TransferFunction& tFuncResult = r.transferFunctions.array[i];
-            // Recompute texture
-            const int tableSize = tFuncResult.getArrayLength();
-
-            if (!pitImage.cpuImage.isValid() || pitImage.cpuImage.getSizeX() != tableSize)
-                pitImage.cpuImage.create(tableSize, tableSize);
-            else
-                pitImage.cpuImage.clear();
-
-            makePreintegrationTable(pitImage.cpuImage, tFuncResult.transferFunction, tFuncResult.getArrayLength());
-
-            // upload in draw()
-            pitImage.stagedTexture->state = TextureResource::State::REQUESTING_UPLOAD;
-
-            // set front-end request satisfied
-            memcpy(tFuncValue.transferFunction, tFuncResult.transferFunction, sizeof(tFuncValue.transferFunction));
-            tFuncValue.bitDepth = tFuncResult.bitDepth;
-            tFuncValue.controlPoints = tFuncResult.controlPoints;
-        }
-    }
     if (v.settings.vsync != r.settings.vsync)
     {
         renderer->setVSync(r.settings.vsync);
@@ -350,9 +280,9 @@ void Visualization2Renderer::draw(Renderer* r)
     // If we have all resources then we draw else we wait another frame
     if (pitCollection.isResident() && dataSetHandle.isResident())
     {
-        const MainShader::DrawData drawData {
-            &dataSetHandle,
-            &pitCollection,
+        MainShader::DrawData drawData {
+            dataSetHandle,
+            pitCollection,
             uiResults[0].settings.voxelsPerCm,
             uiResults[0].settings.numSlicesPerVoxel,
             uiResults[0].settings.drawAssetBoundaries,
@@ -367,46 +297,6 @@ void Visualization2Renderer::draw(Renderer* r)
         };
         hasViewChanged = false;
         mainShader.draw(r->getDevice(), r->getCommandList(), drawData);
-    }
-
-    // check if we have to start uploading textures
-    bool hasUpload = std::any_of(pitCollection.array, pitCollection.array + countof(pitCollection.array), [](const PitImage& p) {
-        return p.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD;
-        });
-
-    if (hasUpload)
-    {
-        DR(uploadCommandList->Reset(uploadCommandAllocator.Get(), nullptr));
-        bool uploading[countof(*((decltype(pitCollection.array)*)nullptr))] = { false };
-
-        for (int i = 0; i < countof(pitCollection.array); ++i)
-        {
-            PitImage& pitImage = pitCollection.array[i];
-            if (pitImage.stagedTexture->state == TextureResource::State::REQUESTING_UPLOAD)
-            {
-                uploading[i] = true;
-                pitImage.stagedTexture->descriptorHandle = r->srvHeap.allocateOne(BRWL_CHAR_LITERAL("StagedPitTexture"));
-                if (!BRWL_VERIFY(LoadFloatTexture2D(r->device.Get(), uploadCommandList.Get(), &pitImage.cpuImage, *pitImage.stagedTexture), BRWL_CHAR_LITERAL("Failed to load the pitImage texture to the GPU.")))
-                {   // we expect the function to clean up everything necessary
-                    continue;
-                };
-            }
-        }
-
-        DR(uploadCommandList->Close());
-        ID3D12CommandList* const ppCommandLists[] = { uploadCommandList.Get() };
-        uploadCommandQueue->ExecuteCommandLists(1, ppCommandLists);
-
-        for (int i = 0; i < countof(pitCollection.array); ++i)
-        {
-            if (uploading[i])
-            {
-                PitImage& pitImage = pitCollection.array[i];
-                ++pitImage.uploadFenceValue;
-                DR(uploadCommandQueue->Signal(pitImage.fence.Get(), pitImage.uploadFenceValue));
-                // instead of waiting here, we check the completion state in render()
-            }
-        }
     }
 }
 

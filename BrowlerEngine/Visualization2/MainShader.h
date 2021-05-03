@@ -1,6 +1,7 @@
 #pragma once // (c) 2020 Lukas Brunner
 
 #include "Renderer/RendererFwd.h"
+#include "Renderer/TextureHandleFwd.h"
 
 BRWL_NS
 struct BBox;
@@ -63,8 +64,8 @@ public:
 
     struct DrawData {
         static const unsigned int gatherTextureSize = 1024;
-        const TextureHandle* volumeTexturehandle;
-        const PitCollection* pitCollection;
+        TextureHandle& volumeTexturehandle;
+        PitCollection& pitCollection;
         const float voxelsPerCm;
         const float numSlicesPerVoxel;
         bool drawAssetBounds;
@@ -82,7 +83,7 @@ public:
         } light;
     };
 
-    void draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, const DrawData& data);
+    void draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, DrawData& data);
     unsigned int getNumRemainingSlices() const { return remainingSlices; }
 private:
     void bindVertexBuffer(ID3D12GraphicsCommandList* cmd, const TriangleList& list);
