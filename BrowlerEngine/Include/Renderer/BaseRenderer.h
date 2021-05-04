@@ -79,6 +79,8 @@ protected:
 	Camera*							camera;
 	unsigned int					currentFramebufferWidth;
 	unsigned int					currentFramebufferHeight;
+
+	bool skipDraw; //!< If set then next call to draw(...) of app renderer will be skipped
 };
 
 

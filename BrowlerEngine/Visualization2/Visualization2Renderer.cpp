@@ -21,7 +21,6 @@ Visualization2Renderer::Visualization2Renderer() :
     assetPath(BRWL_CHAR_LITERAL("./Assets/DataSets/stagbeetle832x832x494.dat")),
     mainShader(),
     initialized(false),
-    skipFrame(false),
     hasViewChanged(true),
     hasCameraMovedListenerHandle(0)
 {
@@ -80,7 +79,7 @@ bool Visualization2Renderer::ReloadVolumeAsset(BRWL::Renderer::Renderer* r)
         dataSetHandle = *h.asPlatformHandle();
     }
     DataSetS16* dataSet = dynamic_cast<DataSetS16*>(&*dataSetHandle);
-    bool needsRefresh = dataSet->isValid();
+    bool needsRefresh = !dataSet->isValid();
     BRWL_STR file;
     {
         std::scoped_lock(assetPathMutex);
@@ -128,18 +127,6 @@ void Visualization2Renderer::render(Renderer* renderer)
 {
     if (!initialized) return;
 
-#ifdef BRWL_USE_DEAR_IM_GUI
-    if (!g_FontDescHandle->isResident())
-    {
-        skipFrame = true;
-        return;
-    }
-    else
-    {
-        ::ImGui::GetIO().Fonts->TexID = (ImTextureID)g_FontDescHandle->getResident().residentGpu.ptr;
-    }
-#endif
-
     if (!ReloadVolumeAsset(renderer))
     {
         renderer->log(BRWL_CHAR_LITERAL("Failed to load volume data!"), Logger::LogLevel::ERROR);
@@ -171,8 +158,6 @@ void Visualization2Renderer::render(Renderer* renderer)
     ImGui::PushFont(fonts[ENUM_CLASS_TO_NUM(r.settings.font)]);
     renderAppUI(r, v);
     ImGui::PopFont();
-
-    ImGui::Render();
 
     //-------------------
     // recompute PIT images
@@ -269,9 +254,8 @@ void Visualization2Renderer::render(Renderer* renderer)
 // but then remove public getters for srvHeap, command list etc.
 void Visualization2Renderer::draw(Renderer* r)
 {
-    if (!initialized || skipFrame)
+    if (!initialized)
     {
-        skipFrame = false;
         return;
     }
 

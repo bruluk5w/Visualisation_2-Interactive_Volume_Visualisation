@@ -39,11 +39,16 @@ namespace PAL {
 #include <wrl/client.h>
 #include <d3d12.h>
 #include <dxgi1_6.h>
-#ifndef SUBMISSION
-#define ENABLE_GRAPHICS_DEBUG_FEATURES 1
+
+#define ENABLE_PIX 0
+
+// if debugging with pix, don't touch the debug interfaces
+#if ENABLE_PIX || defined(SUBMISSION)
+	#define ENABLE_GRAPHICS_DEBUG_FEATURES 0
+#else
+	#define ENABLE_GRAPHICS_DEBUG_FEATURES 1
 #endif
 
-#define FORCE_ENABLE_PIX 0
 
 #if ENABLE_GRAPHICS_DEBUG_FEATURES
 #include <dxgidebug.h>
@@ -88,7 +93,7 @@ using ComPtr = Microsoft::WRL::ComPtr<T>;
 #define BRWL_NEWLINE BRWL_CHAR_LITERAL("\r\n")
 #endif
 
-#if defined(BRWL_PLATFORM_WINDOWS) && ENABLE_GRAPHICS_DEBUG_FEATURES || FORCE_ENABLE_PIX
+#if defined(BRWL_PLATFORM_WINDOWS) && ENABLE_PIX
 #define USE_PIX
 #include "pix3.h"
 #define SCOPED_CPU_EVENT(r, g, b, label, ...) PIXScopedEvent(PIX_COLOR(r, g, b), BRWL_CHAR_LITERAL(label), ## __VA_ARGS__)

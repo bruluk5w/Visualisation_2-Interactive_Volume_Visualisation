@@ -79,7 +79,7 @@ namespace PAL
 		uploadCommandQueue(nullptr),
 		uploadCommandAllocator(nullptr),
 		uploadCommandList(nullptr),
-		isCommandListReset(true),
+		isCommandListReset(false),
 		renderer(renderer),
 		uploadSubmitted(),
 		waitHandles(),
@@ -94,6 +94,50 @@ namespace PAL
 		{
 			delete t;
 		}
+	}
+
+	bool WinTextureManager::init()
+	{
+		this->destroy();
+
+		{
+			D3D12_COMMAND_QUEUE_DESC desc = {};
+			desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+			desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+			desc.NodeMask = 1;
+			if (!BRWL_VERIFY(SUCCEEDED(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&uploadCommandQueue))), BRWL_CHAR_LITERAL("Failed to create upload command queue.")))
+			{
+				return false;
+			}
+
+			uploadCommandQueue->SetName(L"Upload Command Queue");
+		}
+
+		if (!BRWL_VERIFY(SUCCEEDED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&uploadCommandAllocator))), BRWL_CHAR_LITERAL("Failed to create direct command allocator.")))
+		{
+			return false;
+		}
+
+		if (!BRWL_VERIFY(SUCCEEDED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, uploadCommandAllocator.Get(), NULL, IID_PPV_ARGS(&uploadCommandList))), BRWL_CHAR_LITERAL("Failed to create upload command list.")))
+		{
+			return false;
+		}
+
+		if (!BRWL_VERIFY(SUCCEEDED(uploadCommandList->Close()), BRWL_CHAR_LITERAL("Failed to close upload command list.")))
+		{
+			return false;
+		}
+
+		isCommandListReset = false;
+
+		return BaseTextureManager::init();
+	}
+
+	void WinTextureManager::destroy()
+	{
+		uploadCommandAllocator = nullptr;
+		uploadCommandList = nullptr;
+		uploadCommandQueue = nullptr;
 	}
 
 	void WinTextureManager::destroyAll()
@@ -155,13 +199,13 @@ namespace PAL
 		std::scoped_lock l(registry.registryLock);
 		id_type idx;
 		BaseTexture* texture = get(handle, &idx);
-		BRWL_EXCEPTION(!texture->isValid(), BRWL_CHAR_LITERAL("Texture cannot be loaded to the GPU. It is invalid and will not have any data associated.")); // !BRWL_VERIFY(texture.	 == TextureResource::State::REQUESTING_UPLOAD, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
+		BRWL_EXCEPTION(texture->isValid(), BRWL_CHAR_LITERAL("Texture cannot be loaded to the GPU. It is invalid and will not have any data associated.")); // !BRWL_VERIFY(texture.	 == TextureResource::State::REQUESTING_UPLOAD, BRWL_CHAR_LITERAL("Invalid texture resouce state.")))
 
 		if (handle.id >= gpuTexIndex.size())
 		{
 			// TODO: replace data structure or improve growing behaviour
 			// also currently the gpu resource index grows equally with the cpu texture registry. If there are many more cpu textures than textures promoted to gpu textures, then we might want to decouple this
-			gpuTexIndex.push_back(BaseTextureHandle::Invalid.id);
+			gpuTexIndex.resize(handle.id + 1, BaseTextureHandle::Invalid.id);
 		}
 
 		GpuTexture* gpuTex;
@@ -172,11 +216,13 @@ namespace PAL
 			if (it == gpuTextures.end())
 			{	// create new GPU texture obect
 				// TODO: replace data structure 
+				gpuTexIndex[handle.id] = (decltype(gpuTexIndex)::value_type)gpuTextures.size();
 				gpuTextures.push_back(new GpuTexture());
 				gpuTex = gpuTextures.back();
 			}
 			else
 			{	// reuse existing free GPU texture object
+				gpuTexIndex[handle.id] = (decltype(gpuTexIndex)::value_type)(it - gpuTextures.begin());
 				gpuTex = *it;
 			}
 
@@ -184,7 +230,6 @@ namespace PAL
 			// TODO: we can make this more efficient by keeping some things in GpuTexture that are not tailored to one specific texture
 			// such as the fence and upload event 
 			gpuTex->init(this->device);
-			gpuTexIndex[handle.id] = it - gpuTextures.begin();
 		}
 		else
 		{	// This texture is being updated and we have already a GPU texture object
@@ -307,7 +352,7 @@ namespace PAL
 			D3D12_SUBRESOURCE_DATA textureData{
 				texture->getPtr(),
 				texture->getStrideY(),
-				texture->getBufferSize()
+				texture->getStrideZ()
 			};
 
 			// TODO: see if things can be optimized by removing allocating d3dx12 helper
@@ -405,7 +450,13 @@ namespace PAL
 		{
 			BaseTextureHandle* handle = handles[i].asPlatformHandle();
 			checkTextureId(handle->id);
-			id_type idx = getGpuIndex(handle->id);
+			if (handle->id < gpuTexIndex.size())
+				continue;
+
+			const id_type idx = gpuTexIndex[handle->id];
+
+			if (idx == BaseTextureHandle::Invalid.id || idx < 0 || idx >= gpuTextures.size(), nullptr)
+				continue;
 
 			GpuTexture* tex = gpuTextures[idx];
 			if (!tex->isReadyForUpload())

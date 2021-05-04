@@ -28,6 +28,12 @@ namespace PAL
 
 		virtual ~WinTextureManager();
 
+		//! Initialize this texture manager
+		virtual bool init() override;
+
+		//! Destroy this texture manager. This is the opposite of init.
+		virtual void destroy() override;
+
 		ID3D12Device* getDevice() const { return device; }
 
 		//! Remove and destroy all textures managed by the texture manager

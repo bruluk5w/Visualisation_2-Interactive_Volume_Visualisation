@@ -28,8 +28,8 @@ void BaseTexture::create(uint16_t sizeX, uint16_t sizeY, uint16_t sizeZ, Texture
 	this->sizeZ = sizeZ;
 	strideX = getSampleByteSize();
 	strideY = sizeX * strideX;
-	strideZ = sizeZ * strideY;
-	bufferSize = strideZ * sizeZ;
+	strideZ = sizeY * strideY;
+	bufferSize = sizeZ * strideZ;
 
 	data = std::unique_ptr<uint8_t[]>(new uint8_t[bufferSize]);
 	if (!!(params & TextureCreationParams::INIT_ZERO_MEMORY))

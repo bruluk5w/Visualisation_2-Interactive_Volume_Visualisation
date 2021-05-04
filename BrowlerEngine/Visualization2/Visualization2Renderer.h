@@ -46,10 +46,6 @@ protected:
 	UIResult uiResults[2];
 	ImFont* fonts[ENUM_CLASS_TO_NUM(UIResult::Settings::Font::MAX)];
 
-	ComPtr<ID3D12CommandQueue> uploadCommandQueue;
-	ComPtr<ID3D12CommandAllocator> uploadCommandAllocator;
-	ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
-
 	// The main data set
 	std::mutex assetPathMutex;
 	BRWL_STR assetPath; // set from different thread
@@ -60,7 +56,6 @@ protected:
 	MainShader mainShader;
 
 	bool initialized;
-	bool skipFrame;
 	bool hasViewChanged;
 	size_t hasCameraMovedListenerHandle;
 };

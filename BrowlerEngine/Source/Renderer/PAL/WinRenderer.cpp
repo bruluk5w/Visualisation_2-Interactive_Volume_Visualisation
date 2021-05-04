@@ -158,15 +158,9 @@ namespace PAL
         // wrap initialization in a resource frame for preloading resources like the font texture
         ResourceFrame resourceFrame(&srvHeap);
         
-        // wrap initialization in a resource frame since we might create gpu resources
-        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, g_RenderTargetFormat, &srvHeap);
-
-        if (appRenderer && !appRenderer->isInitalized() && !BRWL_VERIFY(appRenderer->rendererInit(this), BRWL_CHAR_LITERAL("Failed to initialize the app renderer.")))
-        {
-            return false;
-        }
-
 #ifdef BRWL_USE_DEAR_IM_GUI
+
+        ImGui_ImplDX12_Init(device, NUM_FRAMES_IN_FLIGHT, g_RenderTargetFormat, &srvHeap);
         ImGuiIO& io = ImGui::GetIO();
         io.Fonts->AddFontDefault();
 
@@ -204,12 +198,27 @@ namespace PAL
     void WinRenderer::appRender()
     {
         SCOPED_CPU_EVENT(0, 255, 0, "RENDER CPU");
+
+#ifdef BRWL_USE_DEAR_IM_GUI
+        if (!g_FontDescHandle->isResident())
+        {
+            skipDraw = true;
+        }
+        else
+        {
+            ::ImGui::GetIO().Fonts->TexID = (ImTextureID)g_FontDescHandle->getResident().residentGpu.ptr;
+        }
+#endif
+
         BaseRenderer::appRender();
+
+#ifdef BRWL_USE_DEAR_IM_GUI
+        ImGui::Render(); // render the draw data from any gui created in the app renderer
+#endif
     }
 
     void WinRenderer::draw()
     {
-        ++frameIndex;
         {
             // todo: move this  into methods frame completed method in base renderer
             struct CompleteFrame {
@@ -217,6 +226,14 @@ namespace PAL
                 ~CompleteFrame() { srvHeap->notifyOldFrameCompleted(); }
                 DescriptorHeap* srvHeap;
             } completeFrame(&srvHeap);
+
+            if (skipDraw)
+            {
+                skipDraw = false;
+                return;
+            }
+
+            ++frameIndex;
 
             if (!currentFramebufferHeight || !currentFramebufferWidth)
             {
@@ -259,6 +276,7 @@ namespace PAL
 
              // Draw Scene
             BaseRenderer::draw();
+
             // Draw Gui
 #ifdef BRWL_USE_DEAR_IM_GUI
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
@@ -297,8 +315,14 @@ namespace PAL
         {
             // TODO: FLUSH?
             logger->warning(BRWL_CHAR_LITERAL("Graphics adapters changed! Rescanning..."));
-            destroyDevice();
-            createDevice(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
+            // todo: does the full recreation of the renderer instead of just the device work as expected?
+            // This is to fully and correctly initalize everything again since things outside of the WinRenderer might
+            // relay on the device, such as the texture manager held by the base renderer
+            //destroyDevice();
+            //createDevice(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
+            RendererParameters params = *this->params.get();
+            destroy();
+            init(params);
             // Output information is cached on the DXGI Factory. If it is stale we need to create a new factory.
         }
     }
@@ -456,7 +480,6 @@ namespace PAL
                 return false;
             }
         }
-#endif // defined(ENABLE_GRAPHICS_DEBUG_FEATURES)
 
         ComPtr<ID3D12DebugDevice1> debugDevice;
         if (BRWL_VERIFY(SUCCEEDED(device.As(&debugDevice)), BRWL_CHAR_LITERAL("Failed to get debug device.")))
@@ -468,6 +491,7 @@ namespace PAL
             debugDevice->SetDebugParameter(D3D12_DEBUG_DEVICE_PARAMETER_GPU_BASED_VALIDATION_SETTINGS, &gpuValidationSettings, sizeof(gpuValidationSettings));
         }
 
+#endif // defined(ENABLE_GRAPHICS_DEBUG_FEATURES)
         
         if (!rtvHeap.create(device.Get(), numBackBuffers))
         {

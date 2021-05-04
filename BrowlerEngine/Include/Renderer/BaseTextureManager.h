@@ -28,6 +28,11 @@ public:
 
 	virtual ~BaseTextureManager();
 
+	//! Initialize this texture manager
+	virtual bool init() { return true; };
+	//! Destroy this texture manager. This is the opposite of init.
+	virtual void destroy() { };
+
 	//! Return a handle to a new texture
 	template<typename T>
 	BaseTextureHandle createTexture(const BRWL_CHAR* name) {

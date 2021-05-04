@@ -58,6 +58,13 @@ bool BaseRenderer::internalInitStep0(const RendererParameters params)
 
 		this->textureManager = makeTextureManager();
 
+		if (!textureManager->init())
+		{
+			textureManager->destroy();
+			this->params = nullptr;
+			return false;
+		}
+
 		windowResizeEventHandle = eventSystem->registerListener(Event::WINDOW_RESIZE, [this](Event, void* param) -> bool
 			{
 				logger->info(BRWL_CHAR_LITERAL("Resizing Framebuffer"));
@@ -125,11 +132,13 @@ void BaseRenderer::appRender()
 
 void BaseRenderer::draw()
 {
-	if (appRenderer)
+	if (!skipDraw, appRenderer)
 	{
 		BRWL_EXCEPTION(appRenderer->isInitalized(), BRWL_CHAR_LITERAL("Invalid renderer state."));
 		appRenderer->draw(static_cast<Renderer*>(this));
 	}
+
+	skipDraw = false;
 }
 
 void BaseRenderer::destroy(bool force /*= false*/)

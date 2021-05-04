@@ -6,7 +6,7 @@
 
 #ifdef BRWL_PLATFORM_WINDOWS
 
-#include <DirectXMath.h>
+#include "DirectXMath.h"
 
 BRWL_NS
 
@@ -28,23 +28,23 @@ extern const Vec4 VEC4_RIGHT;
 inline Vec3 toVec3(const Vec4& x) { return Vec3(x.x, x.y, x.z); }
 
 using namespace ::DirectX;
-inline Vec2& normalize(Vec2& x) { XMStoreFloat2(&x, XMVector2Normalize(XMVectorSet(x.x, x.y, 0.f, 0.f))); return x; }
-inline Vec2 normalized(Vec2 x) { XMStoreFloat2(&x, XMVector2Normalize(XMVectorSet(x.x, x.y, 0.f, 0.f))); return x; }
-inline Vec3& normalize(Vec3& x) { XMStoreFloat3(&x, XMVector3Normalize(XMVectorSet(x.x, x.y, x.z, 0.f))); return x; }
-inline Vec3 normalized(Vec3 x) { XMStoreFloat3(&x, XMVector3Normalize(XMVectorSet(x.x, x.y, x.z, 0.f))); return x; }
-inline float length(const Vec3& x) { float y;  XMStoreFloat(&y, XMVector3Length(XMVectorSet(x.x, x.y, x.z, 0.f))); return y; }
-inline float lengthSq(const Vec3& x) { float y;  XMStoreFloat(&y, XMVector3LengthSq(XMVectorSet(x.x, x.y, x.z, 0.f))); return y; }
-inline Vec3 cross(Vec3 x, const Vec3& y) { XMStoreFloat3(&x, XMVector3Cross(XMVectorSet(x.x, x.y, x.z, 0.f), XMVectorSet(y.x, y.y, y.z, 0.f))); return x; }
+inline Vec2& normalize(Vec2& x) { XMStoreFloat2(&x, XMVector2Normalize(XMLoadFloat2(&x))); return x; }
+inline Vec2 normalized(Vec2 x) { XMStoreFloat2(&x, XMVector2Normalize(XMLoadFloat2(&x))); return x; }
+inline Vec3& normalize(Vec3& x) { XMStoreFloat3(&x, XMVector3Normalize(XMLoadFloat3(&x))); return x; }
+inline Vec3 normalized(Vec3 x) { XMStoreFloat3(&x, XMVector3Normalize(XMLoadFloat3(&x))); return x; }
+inline float length(const Vec3& x) { float y;  XMStoreFloat(&y, XMVector3Length(XMLoadFloat3(&x))); return y; }
+inline float lengthSq(const Vec3& x) { float y;  XMStoreFloat(&y, XMVector3LengthSq(XMLoadFloat3(&x))); return y; }
+inline Vec3 cross(Vec3 x, const Vec3& y) { XMStoreFloat3(&x, XMVector3Cross(XMLoadFloat3(&x), XMLoadFloat3(&y))); return x; }
 inline Vec4 extractColumn4(const Mat4& x, size_t idx) { idx &= 0x3;  Vec4 y; y.x = ((float*)&x.r[0])[idx]; y.y = ((float*)&x.r[1])[idx]; y.z = ((float*)&x.r[2])[idx]; y.w = ((float*)&x.r[3])[idx]; return y; }
 inline Vec3 extractColumn3(const Mat4& x, size_t idx) { idx &= 0x3;  Vec3 y; y.x = ((float*)&x.r[0])[idx]; y.y = ((float*)&x.r[1])[idx]; y.z = ((float*)&x.r[2])[idx]; return y; }
 inline Vec3 extractPosition(const Mat4& x) { return Vec3(((float*)&x.r)[12], ((float*)&x.r)[13], ((float*)&x.r)[14]); }
-inline Vec3 min(const Vec3& a, const Vec3& b) { Vec3 res; XMStoreFloat3(&res, XMVectorMin(XMVectorSet(a.x, a.y, a.z, 0.f), XMVectorSet(b.x, b.y, b.z, 0.f))); return res; }
-inline Vec3& storeMin(Vec3& a, const Vec3& b) { XMStoreFloat3(&a, XMVectorMin(XMVectorSet(a.x, a.y, a.z, 0.f), XMVectorSet(b.x, b.y, b.z, 0.f))); return a; }
-inline Vec3 max(const Vec3& a, const Vec3& b) { Vec3 res; XMStoreFloat3(&res, XMVectorMax(XMVectorSet(a.x, a.y, a.z, 0.f), XMVectorSet(b.x, b.y, b.z, 0.f))); return res; }
-inline Vec3& storeMax(Vec3& a, const Vec3& b) { XMStoreFloat3(&a, XMVectorMax(XMVectorSet(a.x, a.y, a.z, 0.f), XMVectorSet(b.x, b.y, b.z, 0.f))); return a; }
+inline Vec3 min(const Vec3& a, const Vec3& b) { Vec3 res; XMStoreFloat3(&res, XMVectorMin(XMLoadFloat3(&a), XMLoadFloat3(&b))); return res; }
+inline Vec3& storeMin(Vec3& a, const Vec3& b) { XMStoreFloat3(&a, XMVectorMin(XMLoadFloat3(&a), XMLoadFloat3(&b))); return a; }
+inline Vec3 max(const Vec3& a, const Vec3& b) { Vec3 res; XMStoreFloat3(&res, XMVectorMax(XMLoadFloat3(&a), XMLoadFloat3(&b))); return res; }
+inline Vec3& storeMax(Vec3& a, const Vec3& b) { XMStoreFloat3(&a, XMVectorMax(XMLoadFloat3(&a), XMLoadFloat3(&b))); return a; }
 inline Mat4 makePerspective(float fovY, float aspect, float near, float far) { return XMMatrixPerspectiveFovLH(fovY, aspect, near, far); }
 inline Mat4 makeOrthographic(float width, float height, float near, float far) { return XMMatrixOrthographicLH(width, height, near, far); }
-inline Mat4 makeAffineTransform(const Vec3& pos, const Vec3& rot, const Vec3& scale) { return XMMatrixAffineTransformation(XMVectorSet(scale.x, scale.y, scale.z, 0), XMVectorSet(0, 0, 0, 0), XMQuaternionRotationRollPitchYawFromVector(XMVectorSet(rot.x, rot.y, rot.z, 0)), XMVectorSet(pos.x, pos.y, pos.z, 0)); }
+inline Mat4 makeAffineTransform(const Vec3& pos, const Vec3& rot, const Vec3& scale) { return XMMatrixAffineTransformation(XMLoadFloat3(&scale), XMVectorSplatConstantInt(0), XMQuaternionRotationRollPitchYawFromVector(XMLoadFloat3(&rot)), XMLoadFloat3(&pos)); }
 inline Mat4 makeAffineTransform(const Vec3& pos = VEC3_ZERO, const Quaternion& rot = Quaternion::identity, const Vec3& scale = Vec3(1, 1, 1))
 {
 	const float xx = rot.x * rot.x;
@@ -63,12 +63,11 @@ inline Mat4 makeAffineTransform(const Vec3& pos = VEC3_ZERO, const Quaternion& r
 		pos.x, pos.y, pos.z, 1.0f
 	) * XMMatrixScalingFromVector(XMVectorSet(scale.x, scale.y, scale.z, 1.0));
 }
-inline Mat4 makeLookAtTransform(const Vec3& from, const Vec3& to, const Vec3& up = VEC3_UP) { return XMMatrixLookAtLH(XMVectorSet(from.x, from.y, from.z, 0.f), XMVectorSet(to.x, to.y, to.z, 0.f), XMVectorSet(up.x, up.y, up.z, 0.f)); }
-inline Mat4 makeRotationMatrix(const Vec4& q) { return XMMatrixRotationQuaternion(XMVectorSet(q.x, q.y, q.z, q.w)); }
+inline Mat4 makeLookAtTransform(const Vec3& from, const Vec3& to, const Vec3& up = VEC3_UP) { return XMMatrixLookAtLH(XMLoadFloat3(&from), XMLoadFloat3(&to), XMLoadFloat3(&up)); }
+inline Mat4 makeRotationMatrix(const Vec4& q) { return XMMatrixRotationQuaternion(XMLoadFloat4(&q)); }
 inline Mat4 inverse(const Mat4& m) { return XMMatrixInverse(nullptr, m); }
-inline Mat4 identity() { return XMMatrixIdentity(); }
-
-
+inline Mat3 inverse(const Mat3& m) { Mat3 n; XMStoreFloat3x3(&n, XMMatrixInverse(nullptr, XMLoadFloat3x3(&m))); return n; }
+inline Mat3 transpose(const Mat3& m) { Mat3 n; XMStoreFloat3x3(&n, XMMatrixTranspose(XMLoadFloat3x3(&m))); return n; }
 
 BRWL_NS_END
 
@@ -121,8 +120,13 @@ namespace DirectX
 		return lhs;
 	}
 
-	inline ::BRWL::Vec2 operator*(float rhs, ::BRWL::Vec2 lhs) {
-		XMStoreFloat2(&lhs, XMVectorMultiply(XMVectorSet((float)lhs.x, (float)lhs.y, 0.f, 0.f), XMVectorSet(rhs, rhs, 0.f, 0.f)));
+	inline ::BRWL::Vec2 operator*(float lhs, ::BRWL::Vec2 rhs) {
+		XMStoreFloat2(&rhs, XMVectorMultiply(XMVectorSet((float)rhs.x, (float)rhs.y, 0.f, 0.f), XMVectorSet(lhs, lhs, 0.f, 0.f)));
+		return rhs;
+	}
+
+	inline ::BRWL::Vec2 operator/(::BRWL::Vec2 lhs, ::BRWL::Vec2 rhs) {
+		XMStoreFloat2(&lhs, XMVectorDivide(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
 		return lhs;
 	}
 
