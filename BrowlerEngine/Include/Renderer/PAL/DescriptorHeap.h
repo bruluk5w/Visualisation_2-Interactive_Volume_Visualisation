@@ -117,7 +117,7 @@ namespace PAL
     };
 
     /**
-     * RAII helper to close a resource frame whenever the function returns
+     * RAII helper to open a resource frame and close it whenever the scope end or the function returns
      */
     struct ResourceFrame {
         ResourceFrame(DescriptorHeap* h) : h(h) { h->notifyNewFrameStarted(); }

@@ -6,7 +6,7 @@
 BRWL_RENDERER_NS
 
 
-const BaseTextureHandle BaseTextureHandle::Invalid = { nullptr, -1 };
+const BaseTextureHandle BaseTextureHandle::Invalid(nullptr, -1);
 
 #define HANDLE_TYPE_ BaseTextureHandle
 FOR_EACH_BASE_TEXTURE_HANDLE_METHOD(TEXTURE_HANDLE_METHOD_IMPL)

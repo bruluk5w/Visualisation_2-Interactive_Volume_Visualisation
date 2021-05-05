@@ -219,27 +219,14 @@ namespace PAL
 
     void WinRenderer::draw()
     {
+        if (!currentFramebufferHeight || !currentFramebufferWidth)
         {
-            // todo: move this  into methods frame completed method in base renderer
-            struct CompleteFrame {
-                CompleteFrame(DescriptorHeap* srvHeap) : srvHeap(srvHeap) { }
-                ~CompleteFrame() { srvHeap->notifyOldFrameCompleted(); }
-                DescriptorHeap* srvHeap;
-            } completeFrame(&srvHeap);
+            logger->info(BRWL_CHAR_LITERAL("Nothing to draw, framebuffer too small."));
+            skipDraw = true;
+        }
 
-            if (skipDraw)
-            {
-                skipDraw = false;
-                return;
-            }
-
-            ++frameIndex;
-
-            if (!currentFramebufferHeight || !currentFramebufferWidth)
-            {
-                logger->info(BRWL_CHAR_LITERAL("Nothing to draw, framebuffer too small."));
-                return;
-            }
+        if (!skipDraw)
+        {
 
             SCOPED_CPU_EVENT(50, 50, 50, "DRAW CPU");
 
@@ -274,7 +261,7 @@ namespace PAL
             //    D3D12_MEASUREMENTS_ACTION_COMMIT_RESULTS,
             //    nullptr, nullptr);
 
-             // Draw Scene
+                // Draw Scene
             BaseRenderer::draw();
 
             // Draw Gui
@@ -283,16 +270,24 @@ namespace PAL
 #endif // BRWL_USE_DEAR_IM_GUI
 
             // =========  END DRAW SCENE  ========= //
-
-            // Dispatch command list execution
             barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
             barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
             commandList->ResourceBarrier(1, &barrier);
-            DR(commandList->Close());
+        }
 
-            ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
-            commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
+        DR(commandList->Close());
+
+        // Dispatch command list execution
+        ID3D12CommandList* const ppCommandLists[] = { commandList.Get() };
+        commandQueue->ExecuteCommandLists(1, ppCommandLists);
+
+        if (skipDraw)
+        {
+            skipDraw = false;
+        }
+        else
+        {
             // Dispatch presentation of frame
             if (vSync)
             {
@@ -304,12 +299,14 @@ namespace PAL
                 DR(swapChain->Present(0, 0));
 
             }
-
-            ++frameIndex;
-            ++frameFenceLastValue;
-            DR(commandQueue->Signal(frameFence.Get(), frameFenceLastValue));
-            getCurrentFrameContext()->FenceValue = frameFenceLastValue;
         }
+
+        ++frameIndex;
+        ++frameFenceLastValue;
+        DR(commandQueue->Signal(frameFence.Get(), frameFenceLastValue));
+        getCurrentFrameContext()->FenceValue = frameFenceLastValue;
+
+        srvHeap.notifyOldFrameCompleted();
 
         if (!dxgiFactory->IsCurrent())
         {
@@ -317,7 +314,7 @@ namespace PAL
             logger->warning(BRWL_CHAR_LITERAL("Graphics adapters changed! Rescanning..."));
             // todo: does the full recreation of the renderer instead of just the device work as expected?
             // This is to fully and correctly initalize everything again since things outside of the WinRenderer might
-            // relay on the device, such as the texture manager held by the base renderer
+            // rely on the device, such as the texture manager held by the base renderer
             //destroyDevice();
             //createDevice(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
             RendererParameters params = *this->params.get();
@@ -712,7 +709,7 @@ namespace PAL
             // TODO: FLUSH?
             logger->warning(BRWL_CHAR_LITERAL("Graphics adapters changed! Rescanning..."));
             destroyDevice();
-            createDevice(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
+            createDevice(params->hWnd, width, height);
             // Output information is cached on the DXGI Factory. If it is stale we need to create a new factory.
             return;
         }
@@ -749,7 +746,10 @@ namespace PAL
         waitForLastSubmittedFrame();
         ImGui_ImplDX12_InvalidateDeviceObjects();
         resizeSwapChain(params->hWnd, currentFramebufferWidth, currentFramebufferHeight);
-        ImGui_ImplDX12_CreateDeviceObjects();
+        {
+            ResourceFrame f(&srvHeap);
+            ImGui_ImplDX12_CreateDeviceObjects();
+        }
 
         preRender();
         render();

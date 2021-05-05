@@ -68,8 +68,8 @@ bool BaseRenderer::internalInitStep0(const RendererParameters params)
 		windowResizeEventHandle = eventSystem->registerListener(Event::WINDOW_RESIZE, [this](Event, void* param) -> bool
 			{
 				logger->info(BRWL_CHAR_LITERAL("Resizing Framebuffer"));
-				currentFramebufferWidth = Utils::max<unsigned int>(currentFramebufferWidth, 1);
-				currentFramebufferHeight = Utils::max<unsigned int>(currentFramebufferHeight, 1);
+				currentFramebufferWidth = Utils::max<unsigned int>(castParam<Event::WINDOW_RESIZE>(param)->width, 1);
+				currentFramebufferHeight = Utils::max<unsigned int>(castParam<Event::WINDOW_RESIZE>(param)->height, 1);
 
 				OnFramebufferResize();
 				return false;

@@ -31,8 +31,11 @@ struct BaseTextureHandle
 	static const BaseTextureHandle Invalid;
 
 	BaseTextureHandle(BaseTextureManager* mgr, BaseTextureManager::id_type id) : mgr(mgr), id(id) { }
+	BaseTextureHandle(const BaseTextureHandle& other) : mgr(other.mgr), id(other.id) { }
 
-	bool operator==(const BaseTextureHandle& other) const { return memcmp(this, &other, sizeof(BaseTextureHandle)); }
+	bool operator==(const BaseTextureHandle& other) const {
+		return id == other.id && mgr == other.mgr;
+	}
 	bool operator!=(const BaseTextureHandle& other) const { return !(*this == other); }
 
 	BaseTexture* operator->() { BRWL_IF_DEBUG(BRWL_CHECK_NULLPTR, mgr); return mgr->get(*this); }

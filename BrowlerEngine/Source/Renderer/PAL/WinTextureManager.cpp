@@ -31,36 +31,6 @@ namespace PAL
 			D3D12_SRV_DIMENSION_TEXTURE3D
 		};
 
-		// todo: remove if not necessary
-		//template<SampleFormat S> struct WinSampleFormatTrait : public SampleFormatTrait<S> {
-		//	// some type trait prevents the static assertion from being triggered
-		//	static_assert(S && false, "No DXGI_FORMAT found for sample type enum.");
-		//};
-
-		//template<> struct WinSampleFormatTrait<SampleFormat::F32> {
-		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32_FLOAT;
-		//};
-
-		//template<> struct WinSampleFormatTrait<SampleFormat::F64> {
-		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32G32_UINT;
-		//};
-
-		//template<> struct WinSampleFormatTrait<SampleFormat::S16> {
-		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R16_SINT;
-		//};
-
-		//template<> struct WinSampleFormatTrait<SampleFormat::U16> {
-		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R16_UINT;
-		//};
-
-		//template<> struct WinSampleFormatTrait<SampleFormat::S32> {
-		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32_SINT;
-		//};
-
-		//template<> struct WinSampleFormatTrait<SampleFormat::U32> {
-		//	static const DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R32_UINT;
-		//};
-
 		DXGI_FORMAT sampleFormatToDxgiFormat[ENUM_CLASS_TO_NUM(SampleFormat::MAX)]{
 			DXGI_FORMAT_R32_FLOAT,
 			DXGI_FORMAT_R32G32_UINT,
@@ -234,8 +204,8 @@ namespace PAL
 		else
 		{	// This texture is being updated and we have already a GPU texture object
 			gpuTex = gpuTextures[gpuTexIndex[handle.id]];
-			// todo: remove this line
-			//BRWL_EXCEPTION(gpuTex->isReadyForUpload(), BRWL_CHAR_LITERAL("Texture "));
+			// todo: remove this line if not needed. do we have to wait for 
+			BRWL_EXCEPTION(gpuTex->isReadyForUpload(), BRWL_CHAR_LITERAL("Texture "));
 		}
 
 
@@ -292,7 +262,6 @@ namespace PAL
 			IID_PPV_ARGS(&gpuTex->stagedTexture->uploadHeap)
 		);
 
-
 		if (!BRWL_VERIFY(SUCCEEDED(hr), BRWL_CHAR_LITERAL("Failed to create committed resource for the volume texture upload heap.")))
 		{
 			gpuTex->stagedTexture->texture = nullptr;
@@ -300,6 +269,8 @@ namespace PAL
 			gpuTex->stagedTexture->state = TextureResource::State::FAILED;
 			return false;
 		}
+
+		gpuTex->stagedTexture->uploadHeap->SetName(BRWL_CHAR_LITERAL("Texture Upload Heap"));
 
 		gpuTex->requestUpload();
 
@@ -450,7 +421,7 @@ namespace PAL
 		{
 			BaseTextureHandle* handle = handles[i].asPlatformHandle();
 			checkTextureId(handle->id);
-			if (handle->id < gpuTexIndex.size())
+			if (handle->id >= gpuTexIndex.size())
 				continue;
 
 			const id_type idx = gpuTexIndex[handle->id];
@@ -547,13 +518,14 @@ namespace PAL
 
 			if (!t->isUploading())
 			{
-				t->stagedTexture->state = TextureResource::State::RESIDENT;
-				t->stagedTexture->uploadHeap = nullptr; // free some resources
-				std::swap(t->stagedTexture, t->liveTexture);
 				// We might still have some frames in flight with the old texture
 				// We have to wait until we are sure that we are the only one tampering with resources
 				// todo: instead of this, add texture to a delete queue defer deletion to when the staged texture has to be reused and check for dependent commands
 				renderer->waitForLastSubmittedFrame();
+				// swap staged to live
+				t->stagedTexture->state = TextureResource::State::RESIDENT;
+				t->stagedTexture->uploadHeap = nullptr; // free some resources
+				std::swap(t->stagedTexture, t->liveTexture);
 				// release old texture
 				t->stagedTexture->destroy();
 				// Indicate new resource to be used by a compute shader.

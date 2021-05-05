@@ -50,7 +50,7 @@ protected:
 	std::mutex assetPathMutex;
 	BRWL_STR assetPath; // set from different thread
 
-	TextureHandle dataSetHandle;
+	BaseTextureHandle dataSetHandle;
 	PitCollection pitCollection;
 
 	MainShader mainShader;

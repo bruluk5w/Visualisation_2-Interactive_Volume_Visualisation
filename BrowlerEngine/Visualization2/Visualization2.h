@@ -39,6 +39,8 @@ public:
 	void OpenFile(const BRWL_CHAR* file);
 
 protected:
+	void init();
+
 	std::unique_ptr<BRWL::MetaEngine> metaEngine;
 
 	std::unique_ptr<BRWL::PAL::WinGlobals> globals;

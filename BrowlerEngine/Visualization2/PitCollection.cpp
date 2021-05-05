@@ -43,7 +43,10 @@ void PitCollection::destroy()
 	for (int i = 0; i < countof(array); ++i)
 	{
 		// destroy gpu resources
-		array[i].destroy();
+		if (array[i] != BaseTextureHandle::Invalid)
+		{
+			array[i].destroy();
+		}
 	}
 }
 

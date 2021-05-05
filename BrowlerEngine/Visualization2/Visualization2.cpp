@@ -79,13 +79,6 @@ CVisualization2App::CVisualization2App() :
 	readOnlyGlobals = std::make_unique<BRWL::PAL::ReadOnlyWinGlobals>(*globals);
 
 	metaEngine = std::make_unique<BRWL::MetaEngine>(readOnlyGlobals.get());
-	metaEngine->initialize();
-	BRWL::MetaEngine::EngineHandle handle = metaEngine->getDefaultEngineHandle();
-	metaEngine->setEngineRunMode(handle, BRWL::MetaEngine::EngineRunMode::DETATCHED);
-	BRWL::Engine* engine = metaEngine->getEngine(handle);
-	engine->createUpdatable<::BRWL::Visualization2Updatable>();
-	BRWL_EXCEPTION(engine->renderer != nullptr, BRWL_CHAR_LITERAL("Renderer not set up."));
-	engine->renderer->createAppRenderer<BRWL::RENDERER::Visualization2Renderer>();
 }
 
 CVisualization2App::~CVisualization2App()
@@ -98,6 +91,16 @@ CVisualization2App::~CVisualization2App()
 
 CVisualization2App app;
 
+void CVisualization2App::init()
+{
+	metaEngine->initialize();
+	BRWL::MetaEngine::EngineHandle handle = metaEngine->getDefaultEngineHandle();
+	metaEngine->setEngineRunMode(handle, BRWL::MetaEngine::EngineRunMode::DETATCHED);
+	BRWL::Engine* engine = metaEngine->getEngine(handle);
+	engine->createUpdatable<::BRWL::Visualization2Updatable>();
+	BRWL_EXCEPTION(engine->renderer != nullptr, BRWL_CHAR_LITERAL("Renderer not set up."));
+	engine->renderer->createAppRenderer<BRWL::RENDERER::Visualization2Renderer>();
+}
 
 // CVisualization2App initialization
 
@@ -135,7 +138,10 @@ BOOL CVisualization2App::InitInstance()
 
 	CVisualization2Dlg dlg;
 	m_pMainWnd = &dlg;
-	INT_PTR nResponse = dlg.DoModal();
+
+	init();
+
+	INT_PTR nResponse = dlg.DoModal();  //<-- starts the console and calls the first update which spawns the thread for the engine loop
 	if (nResponse == IDOK)
 	{
 		// TODO: Place code here to handle when the dialog is
@@ -183,3 +189,5 @@ void CVisualization2App::OpenFile(const BRWL_CHAR* file)
 		renderer->setFilePath(file);
 	}
 }
+
+
