@@ -2,7 +2,7 @@ import numpy as np
 import struct
 from plotly import graph_objects as go
 
-INPUT = r'E:\repos\browler_engine\BrowlerEngine\Assets\DataSets\Sphere.dat'
+INPUT = r'D:\repos\browler_engine\BrowlerEngine\Assets\DataSets\Sphere.dat'
 
 
 def main():

@@ -3,7 +3,6 @@
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_plot.h"
 #include "Common/Spline.h"
-#include <algorithm>
 
 
 BRWL_NS
@@ -31,13 +30,13 @@ const char* UIResult::TransferFunctionCollection::transferFuncNames[] = {
 UIResult::UIResult() :
     settings {
         UIResult::Settings::Font::OPEN_SANS_REGULAR, // font
-        30, // fontSize
+        22, // fontSize
         300, // voxelsPerCm
-        0.1f, // numSlicesPerVoxel
+        1.0f, // numSlicesPerVoxel
         false, // vsync
         false, // freeCamMovement
         true, // drawAssetBoundaries
-        true, // drawViewingVolumeBoundaries
+        false, // drawViewingVolumeBoundaries
         false, // drawOrthographicXRay
     },
     transferFunctions{},
@@ -64,7 +63,7 @@ UIResult::TransferFunctionCollection::~TransferFunctionCollection()
 
 UIResult::TransferFunction::TransferFunction()  :
     bitDepth(UIResult::TransferFunction::BitDepth::BIT_DEPTH_8_BIT),
-    controlPoints{ {0,0}, {1,1} },
+    controlPoints(),
     transferFunction { 0 },
     textureID(nullptr)
 {
@@ -86,22 +85,31 @@ int UIResult::TransferFunction::getArrayLength() const
     return 0;
 }
 
+
+
 void UIResult::TransferFunction::updateFunction()
-{
-    const int numPoints = (int)controlPoints.size();
+{   
+    const int numPoints = (int)controlPoints.points.size();
+
+    thread_local std::vector<Vec2> vBuf;
+    vBuf.reserve(numPoints);
+
+    for (const size_t ref : controlPoints.refs)
+        vBuf.push_back(controlPoints.points[ref].pt);
+
     if (!BRWL_VERIFY(numPoints >= 2, nullptr)) return;
 
     // evaluate the spline at non-uniform locations
-    if (!BRWL_VERIFY(controlPoints[0].x == 0 && controlPoints[numPoints - 1].x == 1, nullptr)) {
+    if (!BRWL_VERIFY(vBuf[0].x == 0 && vBuf[numPoints - 1].x == 1, nullptr)) {
         return;
     }
-    Vec2 first(controlPoints[0] - (controlPoints[1] - controlPoints[0]));
-    Vec2 last(controlPoints[numPoints - 1] + (controlPoints[numPoints - 1] - controlPoints[numPoints - 2]));
+    Vec2 first(vBuf[0] - (vBuf[1] - vBuf[0]));
+    Vec2 last(vBuf[numPoints - 1] + (vBuf[numPoints - 1] - vBuf[numPoints - 2]));
     const int numSamples = getArrayLength();
     const int numSubdivisions = 30;
     const int numTessellatedPoints = (numPoints - 1) * numSubdivisions + 1;
     std::unique_ptr<Vec2[]> tessellatedPoints = std::unique_ptr<Vec2[]>(new Vec2[numTessellatedPoints]);
-    Splines::CentripetalCatmullRom(first, controlPoints.data(), last, controlPoints.size(), tessellatedPoints.get(), numSubdivisions, numTessellatedPoints);
+    Splines::CentripetalCatmullRom(first, vBuf.data(), last, vBuf.size(), tessellatedPoints.get(), numSubdivisions, numTessellatedPoints);
 
     // Interpolate along segments for approximation of uniform intervals along the x axis
     int cursor = 1;
@@ -121,6 +129,7 @@ void UIResult::TransferFunction::updateFunction()
 
     transferFunction[numSamples - 1] = tessellatedPoints[numTessellatedPoints - 1].y;
 
+    vBuf.clear();
 }
 
 using namespace ImGui;
@@ -136,13 +145,13 @@ using namespace ImGui;
 #define SLIDER_FIX(id, numLines) ImGui::BeginChild(#id, ImVec2(ImGui::GetWindowWidth(), ImGui::GetTextLineHeightWithSpacing() * numLines), false);
 #define SLIDER_FIX_END() EndChild();
 
-void drawHints();
+void drawHints(const UIResult& values);
 
 void renderAppUI(UIResult& result, const UIResult& values)
 {
 #ifdef BRWL_USE_DEAR_IM_GUI
 
-    drawHints();
+    drawHints(values);
 
     const ImGuiIO& io = GetIO();
 
@@ -241,10 +250,11 @@ void renderAppUI(UIResult& result, const UIResult& values)
             if (lockAspect) { SameLine(); if (Button("Reset")) plotWidth = plotHeight = 1; }
             thread_local bool showCoordinatesTooltip = true;
             Checkbox(" Show Tooltip in Graph", &showCoordinatesTooltip);
-            thread_local float ctrlPtointScale = 1;
+            thread_local float ctrlPtointScale = 2.2f;
             SLIDER_FIX(4, 2);
                 Text("Control Point Size: ");
                 SliderFloat("", &ctrlPtointScale, 0.2f, 3.f);
+                bool forcePlotHovered = ImGui::IsItemHovered();
             SLIDER_FIX_END();
 
             // Passing a bool* to BeginTabItem() is similar to passing one to Begin():
@@ -257,8 +267,14 @@ void renderAppUI(UIResult& result, const UIResult& values)
             {
                 for (int i = 0; i < ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::MAX); i++)
                 {
-                    if (ImGui::BeginTabItem(UIResult::TransferFunctionCollection::transferFuncNames[i], nullptr, ImGuiTabItemFlags_None))
+                    // initially autoselect opacity tab whenopening for the first time
+                    thread_local bool openedDefault = false;
+                    ImGuiTabItemFlags flags = openedDefault || i != ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::OPACITY) ? ImGuiTabItemFlags_None : ImGuiTabItemFlags_SetSelected;
+                    if (ImGui::BeginTabItem(UIResult::TransferFunctionCollection::transferFuncNames[i], nullptr, flags))
                     {
+                        if (flags == ImGuiTabItemFlags_SetSelected)
+                            openedDefault = true;
+
                         Text(UIResult::TransferFunctionCollection::transferFuncNames[i]);
                         const UIResult::TransferFunction& valueTFunc = values.transferFunctions.array[i];
                         UIResult::TransferFunction& resultTFunc = result.transferFunctions.array[i];
@@ -268,7 +284,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
                         conf.values.count = resultTFunc.getArrayLength();
                         conf.values.ys = resultTFunc.transferFunction; // use ys_list to draw several lines simultaneously
                         conf.values.ys_count = 1;
-                        const ImU32 graphColor(ImColor(0, 255, 0));
+                        const ImU32 graphColor = ImColor(0, 255, 0);
                         conf.values.colors = &graphColor;
                         conf.scale.min = 0;
                         conf.scale.max = 1;
@@ -281,7 +297,6 @@ void renderAppUI(UIResult& result, const UIResult& values)
                         conf.grid_y.size = 1.0f;
                         conf.grid_y.subticks = 5;
                         conf.selection.show = false;
-                        conf.ctrlPoints = &valueTFunc.controlPoints;
                         conf.ctrlPointSize = ctrlPtointScale;
                         conf.values.ctrlPoints = &resultTFunc.controlPoints;
                         conf.values.ctrlPointsChanged = &ctrlPointsChanged;
@@ -295,20 +310,15 @@ void renderAppUI(UIResult& result, const UIResult& values)
                         {
                             conf.useBackGroundTextrue = true;
                             conf.texID = valueTFunc.textureID;
-                            conf.maxTexVal = 1;// (float)texSideLength;
+                            conf.maxTexVal = 1;
                         }
 
-                        ImGui::Plot("plot1", conf);
+                        ImGui::Plot("plot1", conf, forcePlotHovered);
                         ctrlPointsChanged |= valueTFunc.bitDepth != resultTFunc.bitDepth;
                         if (ctrlPointsChanged)
                         {
-                            decltype(resultTFunc.controlPoints)& array = resultTFunc.controlPoints;
-                            std::sort(array.begin(), array.end(), [](const Vec2& a, const Vec2& b) {return a.x < b.x; });
-                            if (array.size() >= 2)
-                            {
-                                // remove duplicates
-                                array.erase(std::remove_if(array.begin() + 1, array.end(), [&array](::BRWL::Vec2& v){return v.x == array[&v - array.data() - 1].x; }), array.end());
-                            }
+                            //::ImGui::CtrlPointGroup& g = resultTFunc.controlPoints;
+                            //resultTFunc.controlPoints.sortRefs();
 
                             resultTFunc.updateFunction();
                         }
@@ -332,10 +342,15 @@ void renderAppUI(UIResult& result, const UIResult& values)
     {
         Begin("Light Settings", &showLightSettings);
         Text("Light direction (relative to camera):");
-        InputFloat3("", &result.light.coords.x);
-        normalize(result.light.coords);
+        SLIDER_FIX(10, 1)
+            SliderFloat3("", &result.light.coords.x, -1, 1);
+            result.light.coords.z = BRWL::Utils::max(result.light.coords.z, 0.1f);
+        SLIDER_FIX_END()
         Text("Light Color:");
-        ColorEdit4("test", &result.light.color.x, ImGuiColorEditFlags_HDR);
+        float col[4]{ values.light.color.x, values.light.color.y, values.light.color.z };
+        ColorEdit4("", col, ImGuiColorEditFlags_HDR);
+        Vec3 hue = Vec3(Utils::clamp(col[0], 0.f, 1.f), Utils::clamp(col[1], 0.f, 1.f), Utils::clamp(col[2], 0.f, 1.f));
+        result.light.color = Vec4(hue.x, hue.y, hue.z, Utils::max(0.f, col[3]));
         End();
     }
 
@@ -345,7 +360,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
 
 #ifdef BRWL_USE_DEAR_IM_GUI
 
-void drawHints()
+void drawHints(const UIResult& values)
 {
     const ImGuiIO& io = GetIO();
     //io.DisplaySize
@@ -371,7 +386,15 @@ void drawHints()
         {
             SetNextWindowPos(ImVec2(io.DisplaySize.x, io.DisplaySize.y), ImGuiCond_Always, ImVec2(1.f, 1.f));
             Begin("HintWindowBottom", nullptr, dummyFlags);
-            Text("Strave: <WSAD> | Up: <E> | Down: <Q> | Rotate FPS view: <MOUSE LEFT>");
+            if (values.settings.freeCamMovement)
+            {
+                Text("Strave: <WSAD> | Up: <E> | Down: <Q> | Rotate FPS view: <MOUSE LEFT>");
+            }
+            else
+            {
+                Text("Orbit View: <WSAD> or <LeftMouse> + <Drag> | Zoom: <Q/E>");
+            }
+
             End();
         }
     }

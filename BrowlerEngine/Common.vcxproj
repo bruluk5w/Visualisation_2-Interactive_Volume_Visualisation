@@ -231,7 +231,8 @@
       <AdditionalDependencies>Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -259,7 +260,8 @@
       <AdditionalDependencies>Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -291,7 +293,8 @@
       <AdditionalDependencies>Dbghelp.lib;</AdditionalDependencies>
     </Lib>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|Win32'">
@@ -322,7 +325,8 @@
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -354,7 +358,8 @@
       <AdditionalDependencies>Dbghelp.lib;</AdditionalDependencies>
     </Lib>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">
@@ -385,7 +390,8 @@
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
     <PostBuildEvent>
-      <Command>robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

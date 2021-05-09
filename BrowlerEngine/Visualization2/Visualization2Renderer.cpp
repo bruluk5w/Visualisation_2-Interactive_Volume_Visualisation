@@ -189,14 +189,13 @@ void Visualization2Renderer::render(Renderer* renderer)
         // Recompute
         for (int i = 0; i < countof(pitCollection.array); ++i)
         {
+            UIResult::TransferFunction& tFuncValue = v.transferFunctions.array[i];
+            UIResult::TransferFunction& tFuncResult = r.transferFunctions.array[i];
             if (mustRecompute[i])
             {
-                BaseTextureHandle& pitImage = pitCollection.array[i];
-                UIResult::TransferFunction& tFuncValue = v.transferFunctions.array[i];
-                UIResult::TransferFunction& tFuncResult = r.transferFunctions.array[i];
                 // Recompute texture
                 const int tableSize = tFuncResult.getArrayLength();
-
+                BaseTextureHandle& pitImage = pitCollection.array[i];
                 if (!pitImage->isValid() || pitImage->getSizeX() != tableSize)
                     pitImage->create(tableSize, tableSize);
                 else
@@ -205,12 +204,11 @@ void Visualization2Renderer::render(Renderer* renderer)
                 makePreintegrationTable<>(*dynamic_cast<PitCollection::PitImage*>(&*pitImage), tFuncResult.transferFunction, tFuncResult.getArrayLength());
 
                 pitImage.startLoad();
-
-                // set front-end request satisfied
-                memcpy(tFuncValue.transferFunction, tFuncResult.transferFunction, sizeof(tFuncValue.transferFunction));
-                tFuncValue.bitDepth = tFuncResult.bitDepth;
-                tFuncValue.controlPoints = tFuncResult.controlPoints;
             }
+
+            // set front-end request satisfied
+            // todo: remove copy and maybe use only one instance of transfer function struct
+            tFuncValue = tFuncResult;
         }
     }
 

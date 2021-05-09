@@ -199,6 +199,10 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(TargetDir)Assets"  mkdir "$(TargetDir)Assets" 
+robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -219,6 +223,10 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(TargetDir)Assets"  mkdir "$(TargetDir)Assets" 
+robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -243,6 +251,10 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(TargetDir)Assets"  mkdir "$(TargetDir)Assets" 
+robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|Win32'">
     <ClCompile>
@@ -267,6 +279,10 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(TargetDir)Assets"  mkdir "$(TargetDir)Assets" 
+robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -291,6 +307,10 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(TargetDir)Assets"  mkdir "$(TargetDir)Assets" 
+robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Submission|x64'">
     <ClCompile>
@@ -315,6 +335,10 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(TargetDir)Assets"  mkdir "$(TargetDir)Assets" 
+robocopy "$(SolutionDir)Assets" "$(TargetDir)Assets" /r:5 /w:5 /MIR /np</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

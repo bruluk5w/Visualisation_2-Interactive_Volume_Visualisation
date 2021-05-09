@@ -25,7 +25,7 @@ static void cursor_to_normalized_coords(const ImVec2& pos, ImVec2& normalizedOut
     normalizedOut.y = 1 - ImClamp((pos.y - bb.Min.y) / (bb.Max.y - bb.Min.y), 0.0f, 0.9999f);
 }
 
-PlotStatus Plot(const char* label, const PlotConfig& conf)
+PlotStatus Plot(const char* label, const PlotConfig& conf, const bool forceDisplayHandles)
 {
     PlotStatus status = PlotStatus::nothing;
 
@@ -188,81 +188,7 @@ PlotStatus Plot(const char* label, const PlotConfig& conf)
             }
         }
 
-        if (conf.ctrlPoints || conf.values.ctrlPoints)
-        {
-            IM_ASSERT(conf.values.ctrlPoints != nullptr && conf.ctrlPoints != nullptr);
-            IM_ASSERT(conf.values.ctrlPoints->size() == conf.ctrlPoints->size());
-            ImVec2 mouse = GetIO().MousePos;
-            ImVec2 normalizedMous;
-            cursor_to_normalized_coords(mouse, normalizedMous, inner_bb);
-            normalizedMous.y = 1 - normalizedMous.y;
-
-            static_assert(std::is_pointer_v<decltype(conf.values.ctrlPoints)>);
-            decltype(conf.values.ctrlPoints) target = conf.values.ctrlPoints;
-
-            static_assert(std::is_pointer_v<decltype(conf.ctrlPoints)>);
-            decltype(conf.ctrlPoints) src = conf.ctrlPoints;
-
-            float maxDist = std::numeric_limits<float>::max();
-            // select point
-            int selected = -1;
-            ImVec2 v(0, 0);
-            for (int i = 0; i < src->size(); ++i)
-            {
-                const ::BRWL::Vec2& brwlVec = (*src)[i];
-                v = { brwlVec.x, 1 - brwlVec.y };
-                float norm2 = (normalizedMous.x - v.x) * (normalizedMous.x - v.x) + (normalizedMous.y - v.y) * (normalizedMous.y - v.y);
-
-                float ctrlPointSize = 8 * conf.ctrlPointSize;
-                ImColor col = ImColor(1.f, 1.f, 1.f, 0.5f);
-                const float normalizedCtrlPointSize = ctrlPointSize / inner_bb.GetWidth();
-                if (hovered && norm2 < (4 * normalizedCtrlPointSize * normalizedCtrlPointSize)) {
-                    ctrlPointSize *= 2;
-                    if (selected == -1 || norm2 < maxDist)
-                    {
-                        selected = i;
-                        maxDist = norm2;
-                    }
-                    col = ImColor(1.f, 1.f, 0.5f);
-                }
-
-                window->DrawList->AddCircleFilled(v * (inner_bb.Max - inner_bb.Min) + inner_bb.Min, ctrlPointSize, col);
-            }
-
-            if (hovered)
-            {
-                if (selected != -1)
-                {   // edit existing control point
-                    if ((mouseLeftClicked || io.MouseDown[0]))
-                    {   // move control point
-                        ::BRWL::Vec2& s = (*target)[selected];
-                        ::BRWL::Vec2 before = s;
-                        s.x = normalizedMous.x;//io.MouseDelta.x / inner_bb.GetWidth();
-                        s.y = 1.0f-normalizedMous.y;//io.MouseDelta.y / inner_bb.GetHeight();
-                        s.x = (s.x < 0 ? 0 : (s.x > 1 ? 1 : s.x));
-                        s.y = (s.y < 0 ? 0 : (s.y > 1 ? 1 : s.y));
-                        *conf.values.ctrlPointsChanged = s.x != before.x || s.y != before.y;
-                        if (selected == 0) s.x = 0;
-                        if (selected == target->size() - 1) s.x = 1;
-                    }
-                    else if (mouseRightClicked && selected != 0 && selected != target->size() - 1)
-                    {   // remove control point
-                        target->erase(target->begin() + selected);
-                        *conf.values.ctrlPointsChanged = true;
-                    }
-                }
-                else if (mouseLeftClicked)
-                {
-                    auto it = std::find_if(target->begin(), target->end(), [mouseXIdx](const ::BRWL::Vec2& v) {return v.x < mouseXIdx; });
-                    if (it != target->end())
-                    {
-                        target->insert(it, { (float)mouseXIdx / (float)item_count, mouseY });
-                        *conf.values.ctrlPointsChanged = true;
-                    }
-
-                }
-            }
-        }
+        *conf.values.ctrlPointsChanged = conf.values.ctrlPoints->update(window, hovered, inner_bb, GetIO().MousePos, conf.ctrlPointSize, forceDisplayHandles);
 
         if (conf.selection.show) {
             if (hovered) {

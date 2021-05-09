@@ -1,5 +1,7 @@
 #pragma once // (c) 2020 Lukas Brunner
 
+#include "ImGui/ImGuiHelpers.h"
+
 BRWL_NS
 
 struct UIResult
@@ -43,9 +45,15 @@ struct UIResult
 		} bitDepth;
 
 		static const char* bitDepthNames[ENUM_CLASS_TO_NUM(BitDepth::MAX)];
+		TransferFunction& operator=(const TransferFunction& o)
+		{
+			memcpy(transferFunction, o.transferFunction, sizeof(transferFunction));
+			bitDepth = o.bitDepth;
+			controlPoints = o.controlPoints;
+			return *this;
+		}
 
-
-		std::vector<Vec2> controlPoints;
+		::ImGui::CtrlPointGroup controlPoints;
 		sampleT transferFunction[1<<10];
 		void* textureID;
 		

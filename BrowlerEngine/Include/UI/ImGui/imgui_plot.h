@@ -1,7 +1,7 @@
 #pragma once // (c) 2020 Lukas Brunner
 #include "ImGui/imgui.h"
-#include <cstdint>
-#include <vector>
+
+#include "ImGui/ImGuiHelpers.h"
 
 namespace ImGui {
 // Use this structure to pass the plot data and settings into the Plot function
@@ -26,7 +26,7 @@ struct PlotConfig {
         // colors for each plot
         const ImU32* colors = nullptr;
 
-        std::vector<BRWL::Vec2>* ctrlPoints = nullptr;
+        CtrlPointGroup* ctrlPoints = nullptr;
         bool* ctrlPointsChanged;
     } values;
     struct Scale {
@@ -66,8 +66,6 @@ struct PlotConfig {
     bool useBackGroundTextrue = false;
     ImTextureID texID = nullptr;
     float maxTexVal = 1;
-
-    const std::vector<BRWL::Vec2>* ctrlPoints = nullptr;
     float ctrlPointSize = 1;
 };
 
@@ -76,5 +74,5 @@ enum class PlotStatus {
     selection_updated,
 };
 
-IMGUI_API PlotStatus Plot(const char* label, const PlotConfig& conf);
+IMGUI_API PlotStatus Plot(const char* label, const PlotConfig& conf, const bool forceHovered=false);
 }

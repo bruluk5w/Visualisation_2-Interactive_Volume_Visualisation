@@ -5,7 +5,7 @@
 #include "Quaternion.h"
 
 #ifdef BRWL_PLATFORM_WINDOWS
-
+// TODO: replace with SimpleMath types 
 #include "DirectXMath.h"
 
 BRWL_NS
@@ -74,54 +74,63 @@ BRWL_NS_END
 
 namespace DirectX
 {
+	inline bool operator==(const ::BRWL::Vec2& a, const ::BRWL::Vec2& b)
+	{
+		return XMVector3EqualR(XMLoadFloat2(&a), XMLoadFloat2(&b));
+	}
+
+	inline bool operator!=(const ::BRWL::Vec2& a, const ::BRWL::Vec2& b)
+	{
+		return !(a == b);
+	}
 
 	inline ::BRWL::Vec2& operator-=(::BRWL::Vec2& lhs, const ::BRWL::Vec2& rhs) {
-		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet((float)lhs.x, (float)lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet((float)rhs.x, (float)rhs.y, 0.f, 0.f))));
+		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet(rhs.x, rhs.y, 0.f, 0.f))));
 		return lhs;
 	}
 
 	inline ::BRWL::Vec2 operator-(::BRWL::Vec2 lhs, const ::BRWL::Vec2& rhs) {
-		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet((float)lhs.x, (float)lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet((float)rhs.x, (float)rhs.y, 0.f, 0.f))));
+		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet(rhs.x, rhs.y, 0.f, 0.f))));
 		return lhs;
 	}
 
 	inline ::BRWL::Vec2 operator-(::BRWL::Vec2 lhs, float rhs) {
-		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet((float)lhs.x, (float)lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet(rhs, rhs, 0.f, 0.f))));
+		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet(rhs, rhs, 0.f, 0.f))));
 		return lhs;
 	}
 
 	inline ::BRWL::Vec2 operator+(::BRWL::Vec2 lhs, const ::BRWL::Vec2& rhs) {
-		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet((float)lhs.x, (float)lhs.y, 0.f, 0.f), XMVectorSet((float)rhs.x, (float)rhs.y, 0.f, 0.f)));
+		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
 		return lhs;
 	}
 
 	inline ::BRWL::Vec2 operator+(::BRWL::Vec2 lhs, float rhs) {
-		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet((float)lhs.x, (float)lhs.y, 0.f, 0.f), XMVectorSet(rhs, rhs, 0.f, 0.f)));
+		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs, rhs, 0.f, 0.f)));
 		return lhs;
 	}
 
 	inline ::BRWL::Vec2& operator+=(::BRWL::Vec2& lhs, const ::BRWL::Vec2& rhs) {
-		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet((float)lhs.x, (float)lhs.y, 0.f, 0.f), XMVectorSet((float)rhs.x, (float)rhs.y, 0.f, 0.f)));
+		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
 		return lhs;
 	}
 
 	inline ::BRWL::Vec2 operator*(::BRWL::Vec2 lhs, const ::BRWL::Vec2& rhs) {
-		XMStoreFloat2(&lhs, XMVectorMultiply(XMVectorSet((float)lhs.x, (float)lhs.y, 0.f, 0.f), XMVectorSet((float)rhs.x, (float)rhs.y, 0.f, 0.f)));
+		XMStoreFloat2(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
 		return lhs;
 	}
 
 	inline ::BRWL::Vec2& operator*=(::BRWL::Vec2& lhs, const ::BRWL::Vec2& rhs) {
-		XMStoreFloat2(&lhs, XMVectorMultiply(XMVectorSet((float)lhs.x, (float)lhs.y, 0.f, 0.f), XMVectorSet((float)rhs.x, (float)rhs.y, 0.f, 0.f)));
+		XMStoreFloat2(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
 		return lhs;
 	}
 
 	inline ::BRWL::Vec2 operator*(::BRWL::Vec2 lhs, float rhs) {
-		XMStoreFloat2(&lhs, XMVectorMultiply(XMVectorSet((float)lhs.x, (float)lhs.y, 0.f, 0.f), XMVectorSet(rhs, rhs, 0.f, 0.f)));
+		XMStoreFloat2(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs, rhs, 0.f, 0.f)));
 		return lhs;
 	}
 
 	inline ::BRWL::Vec2 operator*(float lhs, ::BRWL::Vec2 rhs) {
-		XMStoreFloat2(&rhs, XMVectorMultiply(XMVectorSet((float)rhs.x, (float)rhs.y, 0.f, 0.f), XMVectorSet(lhs, lhs, 0.f, 0.f)));
+		XMStoreFloat2(&rhs, XMVectorMultiply(XMVectorSet(rhs.x, rhs.y, 0.f, 0.f), XMVectorSet(lhs, lhs, 0.f, 0.f)));
 		return rhs;
 	}
 

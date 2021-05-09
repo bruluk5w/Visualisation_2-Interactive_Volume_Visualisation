@@ -13,7 +13,7 @@ def handle_h_file(path: str):
             rest_of_file = file.readlines()
             file.seek(0)
             file.truncate(0)
-            file.write("#pragma once // (c) 2020 Lukas Brunner\n")
+            file.write("#pragma once // (c) 2021 Lukas Brunner\n")
             for line in rest_of_file:
                 file.write(line)
 

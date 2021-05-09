@@ -2,9 +2,7 @@
 
 #include "Events.h"
 
-#include <vector>
 #include <functional>
-#include <algorithm>
 
 BRWL_NS
 

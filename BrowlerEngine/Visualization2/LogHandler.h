@@ -1,7 +1,5 @@
 #pragma once // (c) 2020 Lukas Brunner
 
-#include <algorithm>
-
 class LogHandler : public BRWL::ILogHandler {
 public:
 	LogHandler(HWND target) :

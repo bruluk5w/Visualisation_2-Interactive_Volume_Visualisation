@@ -2,8 +2,6 @@
 
 #include "Renderer/TextureManager.h"
 
-#include <algorithm>
-
 BRWL_RENDERER_NS
 
 

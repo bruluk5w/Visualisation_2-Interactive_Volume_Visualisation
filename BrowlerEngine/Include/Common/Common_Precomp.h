@@ -27,6 +27,8 @@ namespace PAL {
 #include <cmath>
 #include <mutex>
 #include <vector>
+#include <algorithm>
+
 
 #ifdef BRWL_PLATFORM_WINDOWS
 

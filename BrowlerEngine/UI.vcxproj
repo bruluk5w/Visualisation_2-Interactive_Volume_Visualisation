@@ -30,6 +30,7 @@
     <ClInclude Include="Include\UI\AppUi.h" />
     <ClInclude Include="Include\UI\ImGui\imconfig.h" />
     <ClInclude Include="Include\UI\ImGui\imgui.h" />
+    <ClInclude Include="Include\UI\ImGui\ImGuiHelpers.h" />
     <ClInclude Include="Include\UI\ImGui\imgui_internal.h" />
     <ClInclude Include="Include\UI\ImGui\imgui_plot.h" />
     <ClInclude Include="Include\UI\ImGui\imstb_rectpack.h" />
@@ -40,6 +41,7 @@
   <ItemGroup>
     <ClCompile Include="Source\UI\AppUi.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui.cpp" />
+    <ClCompile Include="Source\UI\ImGui\ImGuiHelpers.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_demo.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_draw.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_plot.cpp" />
