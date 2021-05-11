@@ -139,6 +139,61 @@ namespace DirectX
 		return lhs;
 	}
 
+	//inline ::BRWL::IntVec2& operator-=(::BRWL::IntVec2& lhs, const ::BRWL::IntVec2& rhs) {
+	//	XMStoreSInt2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet(rhs.x, rhs.y, 0.f, 0.f))));
+	//	return lhs;
+	//}
+
+	//inline ::BRWL::IntVec2 operator-(::BRWL::IntVec2 lhs, const ::BRWL::IntVec2& rhs) {
+	//	XMStoreSInt2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet(rhs.x, rhs.y, 0.f, 0.f))));
+	//	return lhs;
+	//}
+
+	//inline ::BRWL::IntVec2 operator-(::BRWL::IntVec2 lhs, float rhs) {
+	//	XMStoreSInt2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet(rhs, rhs, 0.f, 0.f))));
+	//	return lhs;
+	//}
+
+	//inline ::BRWL::IntVec2 operator+(::BRWL::IntVec2 lhs, const ::BRWL::IntVec2& rhs) {
+	//	XMStoreSInt2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
+	//	return lhs;
+	//}
+
+	//inline ::BRWL::IntVec2 operator+(::BRWL::IntVec2 lhs, float rhs) {
+	//	XMStoreSInt2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs, rhs, 0.f, 0.f)));
+	//	return lhs;
+	//}
+
+	//inline ::BRWL::IntVec2& operator+=(::BRWL::IntVec2& lhs, const ::BRWL::IntVec2& rhs) {
+	//	XMStoreSInt2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
+	//	return lhs;
+	//}
+
+	//inline ::BRWL::IntVec2 operator*(::BRWL::IntVec2 lhs, const ::BRWL::IntVec2& rhs) {
+	//	XMStoreSInt2(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
+	//	return lhs;
+	//}
+
+	//inline ::BRWL::IntVec2& operator*=(::BRWL::IntVec2& lhs, const ::BRWL::IntVec2& rhs) {
+	//	XMStoreSInt2(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
+	//	return lhs;
+	//}
+
+	//inline ::BRWL::IntVec2 operator*(::BRWL::IntVec2 lhs, float rhs) {
+	//	XMStoreSInt2(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs, rhs, 0.f, 0.f)));
+	//	return lhs;
+	//}
+
+	//inline ::BRWL::IntVec2 operator*(float lhs, ::BRWL::IntVec2 rhs) {
+	//	XMStoreSInt2(&rhs, XMVectorMultiply(XMVectorSet(rhs.x, rhs.y, 0.f, 0.f), XMVectorSet(lhs, lhs, 0.f, 0.f)));
+	//	return rhs;
+	//}
+
+	//inline ::BRWL::IntVec2 operator/(::BRWL::IntVec2 lhs, ::BRWL::IntVec2 rhs) {
+	//	XMStoreSInt2(&lhs, XMVectorDivide(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
+	//	return lhs;
+	//}
+
 	inline ::BRWL::Vec3& operator-=(::BRWL::Vec3& lhs, const ::BRWL::Vec3& rhs) {
 		XMStoreFloat3(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorNegate(XMVectorSet(rhs.x, rhs.y, rhs.z, 0.f))));
 		return lhs;

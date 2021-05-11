@@ -61,7 +61,6 @@ namespace PAL
             BRWL_VERIFY(SUCCEEDED(dred->GetAutoBreadcrumbsOutput(&dredAutoBreadcrumbsOutput)), nullptr);
             BRWL_VERIFY(SUCCEEDED(dred->GetPageFaultAllocationOutput(&dredPageFaultOutput)), nullptr);
 
-
             const BRWL_CHAR* msg = nullptr;
             if (result == DXGI_ERROR_DEVICE_REMOVED) msg = BRWL_CHAR_LITERAL("DEVICE REMOVED!");
             if (result == DXGI_ERROR_DEVICE_RESET) msg = BRWL_CHAR_LITERAL("DEVICE RESET!");
@@ -97,7 +96,7 @@ namespace PAL
         frameFenceEvent(NULL),
         frameFenceLastValue(0)
     {
-#if ENABLE_GRAPHICS_DEBUG_FEATURES
+#if ENABLE_GRAPHICS_DEBUG_FEATURES || 1
         ComPtr<ID3D12Debug> debugController0;
         if (BRWL_VERIFY(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController0))), BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
         {
@@ -109,13 +108,15 @@ namespace PAL
                 debugController1->SetEnableGPUBasedValidation(true);
             }
 #endif
-            ComPtr<ID3D12DeviceRemovedExtendedDataSettings> dredSettings;
-            if (BRWL_VERIFY(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings))), BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
-            {
-                if (dredSettings != nullptr) {
-                    dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-                    dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-                }
+        }
+#endif
+#if ENABLE_GRAPHICS_DEBUG_FEATURES || FORCE_ENABLE_DRED
+        ComPtr<ID3D12DeviceRemovedExtendedDataSettings> dredSettings;
+        if (BRWL_VERIFY(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings))), BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
+        {
+            if (dredSettings != nullptr) {
+                dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+                dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
             }
         }
 #endif

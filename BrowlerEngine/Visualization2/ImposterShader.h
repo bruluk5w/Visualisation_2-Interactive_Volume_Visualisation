@@ -19,8 +19,6 @@ public:
     {
         static const unsigned int num32BitValues = 20;
         Mat4 modelviewProjection;
-        Vec2 uvOffset;
-        Vec2 uvRangeScale;
     };
 #pragma pack(pop)
 

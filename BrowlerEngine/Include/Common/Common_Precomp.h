@@ -43,12 +43,13 @@ namespace PAL {
 #include <dxgi1_6.h>
 
 #define ENABLE_PIX 0
+#define FORCE_ENABLE_DRED 1
 
 // if debugging with pix, don't touch the debug interfaces
 #if ENABLE_PIX || defined(SUBMISSION)
 	#define ENABLE_GRAPHICS_DEBUG_FEATURES 0
 #else
-	#define ENABLE_GRAPHICS_DEBUG_FEATURES 1
+	#define ENABLE_GRAPHICS_DEBUG_FEATURES 0
 #endif
 
 

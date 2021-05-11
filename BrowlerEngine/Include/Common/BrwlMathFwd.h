@@ -4,6 +4,7 @@
 namespace DirectX
 {
 	struct XMFLOAT2;
+	struct XMINT2;
 	struct XMFLOAT2A;
 	struct XMFLOAT3;
 	struct XMFLOAT3A;
@@ -20,6 +21,7 @@ BRWL_NS
 
 
 typedef DirectX::XMFLOAT2 Vec2;
+typedef DirectX::XMINT2 IntVec2;
 typedef DirectX::XMFLOAT2A Vec2a;
 typedef DirectX::XMFLOAT3  Vec3;
 typedef DirectX::XMFLOAT3A Vec3a;

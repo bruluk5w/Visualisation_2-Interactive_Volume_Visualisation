@@ -166,8 +166,8 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
 
         // constants
         cmd->SetComputeRoot32BitConstants(0, 1, &data.sliceWidth, 0);
-        const Vec3 worldSpaceToNormalizedVolume(data.voxelsPerCm / data.volumeTexelDimensions.x, data.voxelsPerCm / data.volumeTexelDimensions.y, data.voxelsPerCm / data.volumeTexelDimensions.z);
-        cmd->SetComputeRoot32BitConstants(0, 3, &worldSpaceToNormalizedVolume, 1); // the multiplier in x, y and z-direction to get into the uvw-space of the volume (offset by 0.5)
+        //const Vec3 worldSpaceToNormalizedVolume(data.voxelsPerCm / data.volumeTexelDimensions.x, data.voxelsPerCm / data.volumeTexelDimensions.y, data.voxelsPerCm / data.volumeTexelDimensions.z);
+        //cmd->SetComputeRoot32BitConstants(0, 3, &worldSpaceToNormalizedVolume, 1); // the multiplier in x, y and z-direction to get into the uvw-space of the volume (offset by 0.5)
 
         // Set preintegration tables
         for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
@@ -181,8 +181,6 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
         // Only propagate without the buffered outer region. This only works for directional lights where the the out-of-bounds
         // default values are constant.
         // point lights with falloff would need different values for the skirt on each new slice.
-        float actualResX = Utils::min<float>(data.textureResolution.x, computeBuffers->getWidth() - 2 * DrawData::bufferWidth);
-        float actualResY = Utils::min<float>(data.textureResolution.y, computeBuffers->getHeight() - 2 * DrawData::bufferWidth);
         unsigned int budgetCounter = 0;
         do {
             computeBuffers->swap(cmd);
@@ -191,8 +189,8 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
             cmd->SetComputeRootDescriptorTable(2, computeBuffers->getSourceSrv(0).residentGpu);
 
             cmd->Dispatch(
-                (unsigned int)std::ceil(actualResX / (float)DrawData::threadGroupSizeX),
-                (unsigned int)std::ceil(actualResY / (float)DrawData::threadGroupSizeY),
+                (unsigned int)std::ceil(computeBuffers->getWidth() / (float)DrawData::threadGroupSizeX),
+                (unsigned int)std::ceil(computeBuffers->getHeight() / (float)DrawData::threadGroupSizeY),
                 1
             );
             ++budgetCounter;

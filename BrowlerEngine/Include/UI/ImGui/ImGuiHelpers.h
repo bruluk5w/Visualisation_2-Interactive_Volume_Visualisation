@@ -8,7 +8,8 @@
 
 namespace ImGui
 {
-	void DrawArrow(ImGuiWindow* window, const ImRect& box, const ImVec2& normalizedShaft, const ImVec2& normalizedTip, float tipAngle=0.1f, float tipLength=0.01f, float lineStrength=1.0f);
+	void DrawArrow(ImGuiWindow* window, const ImRect box, const ImVec2 normalizedShaft, const ImVec2 normalizedTip, float tipAngle=0.1f, float tipLength=0.01f, float lineStrength=1.0f);
+    ImGuiID DrawFrame(ImGuiWindow* window, const char* label, const ImVec2 frameSize, bool border, ImRect* innerBoxOut=nullptr, bool* culled=nullptr, bool* hovered=nullptr);
 
 	struct CtrlPoint {
         CtrlPoint(ImVec2 normalizedMousePos) :
@@ -39,7 +40,7 @@ namespace ImGui
 		 * \param ptBaseSize The size of the control point in its smallest state
 		 * \returns The positive squared distance between mousePos and the control point if mousePos is near enough to also select the control point. A negative float else.
          */
-        float updateHover(ImGuiWindow* window, const ImRect box, const ImVec2& mousePos, const float ptBaseSize) const;
+        float updateHover(ImGuiWindow* window, const ImRect box, const ImVec2 mousePos, const float ptBaseSize) const;
 
         //! returns true if the control point position moved
         bool setSelected(const ImVec2& mousePos, bool selected);
@@ -53,7 +54,7 @@ namespace ImGui
     {
         CtrlPointGroup() :
             selected(-1),
-            points{{ {{0,0}}, {{1,1}} }},
+            points{{ {{0, 1}}, {{1, 0}} }},
             refs{0, 1}
         { }
 

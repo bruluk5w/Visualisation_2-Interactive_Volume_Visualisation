@@ -20,6 +20,21 @@ struct BBox
 	constexpr float dimY() const { return max.y - min.y; }
 	constexpr float dimZ() const { return max.z - min.z; }
 	constexpr Vec3 dim() const { return { dimX(), dimY(), dimZ() }; }
+
+	//! copies the maximum dimension to all axes
+	void replicateMaxDim() {
+		const float maxDim = Utils::max(Utils::max(dimX(), dimY()), dimZ());
+		const float halfDiffX = (maxDim - dimX()) * 0.5f;
+		const float halfDiffY = (maxDim - dimY()) * 0.5f;
+		const float halfDiffZ = (maxDim - dimZ()) * 0.5f;
+		min.x -= halfDiffX;
+		min.y -= halfDiffY;
+		min.z -= halfDiffZ;
+		max.x += halfDiffX;
+		max.y += halfDiffY;
+		max.z += halfDiffZ;
+	}
+
 	/*!
 	 * Returns the axis aligned bounding box relative to a coordinate system rotated by the given rotation matrix.
 	 * The matrix is expcted to only rotate points.

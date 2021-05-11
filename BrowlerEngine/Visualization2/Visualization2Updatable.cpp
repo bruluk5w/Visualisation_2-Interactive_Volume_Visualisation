@@ -22,8 +22,8 @@ bool Visualization2Updatable::init()
 	int width = engine->window->width();
 	int height = engine->window->height();
 
-	camera = std::make_unique<RENDERER::Camera>(width, height, 45.f * DEG_2_RAD_F, 0.1f, 500.f, BRWL_CHAR_LITERAL("Main Camera"));
-	camera->position() = { 0.f, 0.0f, -3.f };
+	camera = std::make_unique<RENDERER::Camera>(width, height, 45.f * DEG_2_RAD_F, 1.f, 10000.f, BRWL_CHAR_LITERAL("Main Camera"));
+	camera->position() = { 0.f, 0.0f, -1000.f };
 	engine->hierarchy->addToRoot(camera.get());
 	engine->renderer->setCamera(camera.get());
 	
@@ -73,6 +73,8 @@ void Visualization2Updatable::update(double dt)
 	if (engine->input->isKeyPressed(Key::Q)) {
 		direction.y -= 1;
 	}
+
+	direction *= 100;// length(camera->cPosition());
 
 	float dx = (float)engine->input->getMouseDeltaX();
 	float dy = (float)engine->input->getMouseDeltaY();

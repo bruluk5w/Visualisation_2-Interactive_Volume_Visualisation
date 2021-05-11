@@ -42,27 +42,11 @@ PlotStatus Plot(const char* label, const PlotConfig& conf, const bool forceDispl
         colors = &conf.values.color;
     }
 
-    const ImGuiStyle& style = GetStyle();
-    const ImGuiID id = window->GetID(label);
-
-    const ImRect inner_bb(
-        window->DC.CursorPos + style.FramePadding,
-        window->DC.CursorPos + style.FramePadding + conf.frame_size);
-    const ImRect frame_bb(
-        inner_bb.Min - style.FramePadding,
-        inner_bb.Max + style.FramePadding);
-    const ImRect total_bb = frame_bb;
-    ItemSize(total_bb, style.FramePadding.y);
-    if (!ItemAdd(total_bb, 0, &frame_bb))
+    ImRect inner_bb;
+    bool culled, hovered;
+    const ImGuiID id = DrawFrame(window, label, conf.frame_size, true, &inner_bb, &culled, &hovered);
+    if (culled)
         return status;
-    const bool hovered = ItemHoverable(frame_bb, id);
-
-    RenderFrame(
-        frame_bb.Min,
-        frame_bb.Max,
-        GetColorU32(ImGuiCol_FrameBg),
-        true,
-        style.FrameRounding);
 
     if (conf.useBackGroundTextrue)
     {
@@ -243,7 +227,7 @@ PlotStatus Plot(const char* label, const PlotConfig& conf, const bool forceDispl
     
     // Text overlay
     if (conf.overlay_text)
-        RenderTextClipped(ImVec2(frame_bb.Min.x, frame_bb.Min.y + style.FramePadding.y), frame_bb.Max, conf.overlay_text, NULL, NULL, ImVec2(0.5f, 0.0f));
+        RenderTextClipped(ImVec2(inner_bb.Min.x, inner_bb.Min.y ), inner_bb.Max, conf.overlay_text, NULL, NULL, ImVec2(0.5f, 0.0f));
 
     return status;
 }

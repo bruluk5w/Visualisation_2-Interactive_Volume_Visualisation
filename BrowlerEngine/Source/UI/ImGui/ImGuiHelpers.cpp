@@ -5,7 +5,7 @@
 namespace ImGui
 {
 
-	void DrawArrow(ImGuiWindow* window, const ImRect& box, const ImVec2& normalizedShaft, const ImVec2& normalizedTip, float tipAngle, float tipLength, float lineStrength)
+	void DrawArrow(ImGuiWindow* window, const ImRect box, const ImVec2 normalizedShaft, const ImVec2 normalizedTip, float tipAngle, float tipLength, float lineStrength)
 	{
 		if (window->SkipItems)
 			return;
@@ -23,8 +23,37 @@ namespace ImGui
 		window->DrawList->AddLine(tipLeft, tip, IM_COL32_WHITE, lineStrength);
 	}
 
+    ImGuiID DrawFrame(ImGuiWindow* window, const char* label, const ImVec2 frameSize, bool border, ImRect* innerBoxOut, bool* culled, bool* hovered)
+    {
+        const ImGuiStyle& style = GetStyle();
+        const ImGuiID id = window->GetID(label);
 
-    float CtrlPoint::updateHover(ImGuiWindow* window, const ImRect box, const ImVec2& mousePos, const float ptBaseSize) const
+        const ImRect innerBox(window->DC.CursorPos + style.FramePadding, window->DC.CursorPos + style.FramePadding + frameSize);
+        const ImRect outerBox(innerBox.Min - style.FramePadding, innerBox.Max + style.FramePadding);
+        if (innerBoxOut)
+            *innerBoxOut = innerBox;
+
+        ItemSize(outerBox, style.FramePadding.y);
+        if (!ItemAdd(outerBox, 0, &outerBox)) {
+            if (culled)
+                *culled = true;
+
+            return id;
+        }
+
+        if (culled)
+            *culled = false;
+
+        if (hovered)
+            *hovered = ItemHoverable(outerBox, id);
+
+        RenderFrame(outerBox.Min, outerBox.Max, GetColorU32(ImGuiCol_FrameBg), border, style.FrameRounding);
+
+        return id;
+    }
+
+
+    float CtrlPoint::updateHover(ImGuiWindow* window, const ImRect box, const ImVec2 mousePos, const float ptBaseSize) const
     {
         const float minDim = ImMin(box.GetWidth(), box.GetHeight());
         ImVec2 v = ImVec2(pt.x, 1-pt.y);
@@ -70,10 +99,6 @@ namespace ImGui
             decltype(pt) ptOld = pt;
             pt.x = mousePos.x + offset.x;
             pt.y = 1 - (mousePos.y + offset.y);
-            //::BRWL::Vec2& s = (*target)[selected];
-            //::BRWL::Vec2 before = s;
-            //s.x = normalizedMous.x;//io.MouseDelta.x / inner_bb.GetWidth();
-            //s.y = 1.0f - normalizedMous.y;//io.MouseDelta.y / inner_bb.GetHeight();
             pt.x = (pt.x < 0 ? 0 : (pt.x > 1 ? 1 : pt.x));
             pt.y = (pt.y < 0 ? 0 : (pt.y > 1 ? 1 : pt.y));
             return pt != ptOld;

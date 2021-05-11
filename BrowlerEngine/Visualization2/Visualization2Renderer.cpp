@@ -273,7 +273,6 @@ void Visualization2Renderer::draw(Renderer* r)
         MainShader::DrawData drawData {
             *dataSetHandle.asPlatformHandle(),
             pitCollection,
-            uiResults[0].settings.voxelsPerCm,
             uiResults[0].settings.numSlicesPerVoxel,
             uiResults[0].settings.drawAssetBoundaries,
             uiResults[0].settings.drawViewingVolumeBoundaries,

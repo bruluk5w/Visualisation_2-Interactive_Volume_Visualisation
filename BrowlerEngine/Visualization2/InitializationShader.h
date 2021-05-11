@@ -17,24 +17,22 @@ public:
 #pragma pack(push, 1)
     struct ShaderConstants
     {
-        static const unsigned int bufferWidth = 10; // has to be the same as in InitializationShader.h and the respective .hlsl files
         static const unsigned int threadGroupSizeX = 8;
         static const unsigned int threadGroupSizeY = 8;
-        static const unsigned int num32BitValues = 28;
+        static const unsigned int num32BitValues = 26;
 
-        Vec2 textureSizeWorldSpace;
-        Vec2 textureResolution;
         Vec3 horizontalPlaneDirection; // normalized
         float padding0;
         Vec3 verticalPlaneDirection;  // normalized
         float padding1;
-        Vec3 topLeft;
+        Vec3 topLeft;   // World space position of top left pixel of the viewing plane
         float padding2;
-        Vec3 eye;
+        Vec3 eye;       // Position of camera
         float padding3;
-        Vec3 lightDirection;
+        Vec3 lightDirection;    // Light direction relative to world space
         float padding4;
-        Vec4 lightColor;
+        Vec4 lightColor;        // Light color
+        Vec2 textureSizeWorldSpace; // 
     };
 #pragma pack(pop)
 

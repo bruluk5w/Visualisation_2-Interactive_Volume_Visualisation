@@ -66,7 +66,6 @@ public:
         static const unsigned int gatherTextureSize = 1024;
         TextureHandle& volumeTexturehandle;
         PitCollection& pitCollection;
-        const float voxelsPerCm;
         const float numSlicesPerVoxel;
         bool drawAssetBounds;
         bool drawViewingVolume;
