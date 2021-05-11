@@ -64,7 +64,8 @@ bool Visualization2Renderer::init(Renderer* r)
         return false;
     }
 
-    hasCameraMovedListenerHandle = r->getEventSystem()->registerListener(Event::CAM_HAS_MOVED, [this](Event, void*) { hasViewChanged = true; return true; });
+    hasCameraMovedListenerHandle = r->getEventSystem()->registerListener(Event::CAM_HAS_MOVED, [this](Event, void*) { 
+        hasViewChanged = true; return true; });
 
     hasViewChanged = initialized = true;
 
@@ -136,7 +137,7 @@ void Visualization2Renderer::render(Renderer* renderer)
     }
 
     // todo: remove this if not needed anymore
-    hasViewChanged = renderer->anyTextureBecameResident;
+    hasViewChanged |= renderer->anyTextureBecameResident;
 
     //---------------------
     // UI
