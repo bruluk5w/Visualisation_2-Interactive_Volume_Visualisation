@@ -34,7 +34,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     // ?? is this correct?
     mediumBuffer[DTid.xy].xyzw = float4(0.f, 0.f, 0.f, 0.f); // starting with no color and fully transparent
     const float2 pixelSize = textureSizeWorldSpace / (float2)texDim;
-    const float2 offset = (float2(DTid.xy) + 0.5f) * pixelSize;
+    const float2 offset = (float2(DTid.xy)) * pixelSize;
 
     const float3 pixelWorldSpace = topLeft + offset.x * horizontalPlaneDirection + offset.y * verticalPlaneDirection;
     viewingRayPositionBuffer[DTid.xy].xyz = pixelWorldSpace;

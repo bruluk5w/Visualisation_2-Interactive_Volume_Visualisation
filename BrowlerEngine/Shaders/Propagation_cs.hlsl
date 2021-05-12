@@ -1,7 +1,8 @@
 cbuffer constants : register(b0)
 {
+    float3 bboxmin;
+    float3 bboxmax;
     float sliceWidth;
-    float3 worldSpaceToNormalizedVolume;
 };
 
 SamplerState preintegrationSampler : register(s0);
@@ -55,28 +56,38 @@ float4 cookTorrance(float3 normal, float3 view, float3 light, float fromIdxOfRef
     return (distributionFactor * fresnel * geometricAttenuation) / (PI * angleOfReflection * angleOfIncidence);
 }
 
-[numthreads(8, 8, 1)]
-void main(uint3 DTid : SV_DispatchThreadID)
+float3 getUVCoordinates(float3 coordinate)
 {
-    const int3 read_idx = int3(DTid.xy, 0);
-    const uint2 write_idx = DTid.xy;
-    
-    // viewing ray propagation
-    const float3 viewingRayPositionOld = viewingRayPositionBufferRead.Load(read_idx).xyz;
-    const float3 viewingRayDirectionOld = viewingRayDirectionBufferRead.Load(read_idx).xyz;
-
-    // Advance viewing ray in world space
-    const float3 viewingRayPositionNew = viewingRayPositionOld + viewingRayDirectionOld * sliceWidth;
-    
-    // TODO: Add refraction here
-    
-    viewingRayPositionBufferWrite[write_idx].xyz = viewingRayPositionNew;
-
-    // Sampling the volume
-    // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/4 of the normalized range is utilized.
-    const float rawScalarSampleOld = volumeTexture.SampleLevel(volumeSampler, (viewingRayPositionOld * worldSpaceToNormalizedVolume) + 0.5f, 0) * 4;
-
-
-    colorBufferWrite[write_idx].xyz = viewingRayPositionNew / 400;
-    colorBufferWrite[write_idx].w = 1;
+	return (coordinate - bboxmin) / (bboxmax - bboxmin);
 }
+
+[numthreads(16, 16, 1)]
+
+	void main
+	(
+	uint3 DTid : SV_DispatchThreadID)
+    {
+		const int3 read_idx = int3(DTid.xy, 0);
+		const uint2 write_idx = DTid.xy;
+    
+        // viewing ray propagation
+		const float3 viewingRayPositionOld = viewingRayPositionBufferRead.Load(read_idx).xyz;
+		const float3 viewingRayDirectionOld = viewingRayDirectionBufferRead.Load(read_idx).xyz;
+
+        // Advance viewing ray in world space
+		const float3 viewingRayPositionNew = viewingRayPositionOld + viewingRayDirectionOld;
+	    const float3 viewingRayDirectionNew = viewingRayDirectionOld; // todo
+    
+        // TODO: Add refraction here
+    
+		viewingRayPositionBufferWrite[write_idx].xyz = viewingRayPositionNew;
+	    viewingRayDirectionBufferWrite[write_idx].xyz = viewingRayDirectionNew; // has to be normalized
+
+        // Sampling the volume
+        // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/4 of the normalized range is utilized.
+        const float rawScalarSampleOld = volumeTexture.SampleLevel(volumeSampler, getUVCoordinates(viewingRayPositionOld), 0) * 8;
+
+
+	colorBufferWrite[write_idx].xyz = ((float3) DTid) / 1024.0f;
+		colorBufferWrite[write_idx].w = 1;
+	}

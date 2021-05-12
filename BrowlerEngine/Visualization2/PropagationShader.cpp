@@ -27,16 +27,18 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
         // ping-pong buffers - write
         D3D12_DESCRIPTOR_RANGE pingPongRanges[2];
         D3D12_DESCRIPTOR_RANGE& uavRange = pingPongRanges[0];
+        memset(&uavRange, 0, sizeof(uavRange));
         uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        uavRange.NumDescriptors = 6;
+        uavRange.NumDescriptors = ComputeBuffers::numBuffers;
         uavRange.BaseShaderRegister = 0;
         uavRange.RegisterSpace = 0;
         uavRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
         // ping - pong buffers - read
         D3D12_DESCRIPTOR_RANGE& srvRange = pingPongRanges[1];
+        memset(&srvRange, 0, sizeof(srvRange));
         srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        srvRange.NumDescriptors = 6;
+        srvRange.NumDescriptors = ComputeBuffers::numBuffers;
         srvRange.BaseShaderRegister = 0;
         srvRange.RegisterSpace = 0;
         srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
@@ -44,7 +46,7 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
         D3D12_ROOT_PARAMETER param[8];
         memset(&param, 0, sizeof(param));
         param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        param[0].Constants.Num32BitValues = 4;
+        param[0].Constants.Num32BitValues = PropagationShader::DrawData::constantCount;
         param[0].Constants.ShaderRegister = 0;
         param[0].Constants.RegisterSpace = 0;
         param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -142,18 +144,17 @@ PropagationShader::~PropagationShader()
 }
 
 unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data, ComputeBuffers* computeBuffers, PitCollection& pitCollection, TextureHandle& volumeTexture,
-    ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle)
+    ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle, unsigned int remainingSlices)
 {
     SCOPED_GPU_EVENT(cmd, 0, 255, 0, "Propagation Compute Shader");
     BRWL_EXCEPTION(computeBuffers, nullptr);
     BRWL_EXCEPTION(computeBuffers->isResident(), nullptr);
 
-    unsigned int remainingSlices = data.remainingSlices;
-
     if (remainingSlices > 0)
     {
         const float targetDt = 1.0f / 60.f;
         const float currentDt = engine->time->getDeltaTime();
+        // adjust slices per invocation to framerate
         if (currentDt < targetDt - 0.02f*targetDt) {
             ++slicesPerInvocation;
         }
@@ -165,10 +166,8 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
         cmd->SetComputeRootSignature(rootSignature.Get());
 
         // constants
-        cmd->SetComputeRoot32BitConstants(0, 1, &data.sliceWidth, 0);
-        //const Vec3 worldSpaceToNormalizedVolume(data.voxelsPerCm / data.volumeTexelDimensions.x, data.voxelsPerCm / data.volumeTexelDimensions.y, data.voxelsPerCm / data.volumeTexelDimensions.z);
-        //cmd->SetComputeRoot32BitConstants(0, 3, &worldSpaceToNormalizedVolume, 1); // the multiplier in x, y and z-direction to get into the uvw-space of the volume (offset by 0.5)
-
+        cmd->SetComputeRoot32BitConstants(0, data.constantCount, &data, 0);
+        
         // Set preintegration tables
         for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
         {
@@ -198,7 +197,7 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
         } while (budgetCounter < slicesPerInvocation && remainingSlices > 0);
 
         // swap one last time to make the last written texture a normal SRV
-        if (data.remainingSlices <= 0)
+        if (remainingSlices <= 0)
         {
             computeBuffers->swap(cmd);
         }

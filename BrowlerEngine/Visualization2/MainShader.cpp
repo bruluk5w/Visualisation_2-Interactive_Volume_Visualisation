@@ -469,9 +469,6 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
     wholeScreenVp.TopLeftX = wholeScreenVp.TopLeftY = 0.0f;
     cmd->RSSetViewports(1, &wholeScreenVp);
 
-    // todo: remove volumeScale
-    //const float volumeScale = 1.f / data.voxelsPerCm;
-
     // positioning of the viewing plane
     const Mat4 viewingVolumeOrientation = inverse(makeLookAtTransform(VEC3_ZERO, -camPos));
     const DataSetS16* dataSet = dynamic_cast<const DataSetS16*>(&*data.volumeTexturehandle);
@@ -543,9 +540,9 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
         PropagationShader::DrawData propParams;
         memset(&propParams, 0, sizeof(propParams));
         {
-            propParams.remainingSlices = remainingSlices;
+            propParams.bboxmin = bbox.min;
+            propParams.bboxmax = bbox.max;
             propParams.sliceWidth = sliceWidth;
-            propParams.volumeTexelDimensions = bbox.dim();
         }
 
         //computeBuffers->swap(cmd);
@@ -558,7 +555,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
 
         ID3D12Resource* colorBuffer;
         PAL::DescriptorHandle::ResidentHandles colorBufferDescriptorHandle;
-        remainingSlices = propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexturehandle, colorBuffer, colorBufferDescriptorHandle);
+        remainingSlices = propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexturehandle, colorBuffer, colorBufferDescriptorHandle, remainingSlices);
 
 
         // draw result, no matter how far we are
