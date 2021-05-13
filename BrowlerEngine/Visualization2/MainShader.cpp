@@ -453,7 +453,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
     const DataSetS16* dataSet = dynamic_cast<const DataSetS16*>(&*data.volumeTexturehandle);
     const BBox& bbox = dataSet->getBoundingBox();
     BBox viewingVolume = bbox.getOBB(viewingVolumeOrientation);
-    viewingVolume.replicateMaxDim(); // make it a cube
+    viewingVolume.makeMaxSquareXY(); // make it a square along z axis
     const Vec3 viewingVolumeDimensions = viewingVolume.dim();
 
     const Mat4 viewingPlaneModelMatrix =

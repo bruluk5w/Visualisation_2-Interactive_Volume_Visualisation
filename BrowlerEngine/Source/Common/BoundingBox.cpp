@@ -4,6 +4,30 @@
 
 BRWL_NS
 
+void BBox::makeMaxCube()
+{
+	const float maxDim = Utils::max(Utils::max(dimX(), dimY()), dimZ());
+	const float halfDiffX = (maxDim - dimX()) * 0.5f;
+	const float halfDiffY = (maxDim - dimY()) * 0.5f;
+	const float halfDiffZ = (maxDim - dimZ()) * 0.5f;
+	min.x -= halfDiffX;
+	min.y -= halfDiffY;
+	min.z -= halfDiffZ;
+	max.x += halfDiffX;
+	max.y += halfDiffY;
+	max.z += halfDiffZ;
+}
+
+void BBox::makeMaxSquareXY()
+{
+	const float maxDim = Utils::max(dimX(), dimY());
+	const float halfDiffX = (maxDim - dimX()) * 0.5f;
+	const float halfDiffY = (maxDim - dimY()) * 0.5f;
+	min.x -= halfDiffX;
+	min.y -= halfDiffY;
+	max.x += halfDiffX;
+	max.y += halfDiffY;
+}
 
 BBox BBox::getOBB (const Mat4& orientation) const
 {
