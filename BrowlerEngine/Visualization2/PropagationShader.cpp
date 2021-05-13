@@ -24,24 +24,31 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
     // building pipeline state object and rootsignature
 
     {
-        // ping-pong buffers - write
+        unsigned int uavRegisterIdx = 0;
+        unsigned int srvRegisterIdx = 0;
+
+        // pong buffers - write
         D3D12_DESCRIPTOR_RANGE pingPongRanges[2];
         D3D12_DESCRIPTOR_RANGE& uavRange = pingPongRanges[0];
         memset(&uavRange, 0, sizeof(uavRange));
         uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
         uavRange.NumDescriptors = ComputeBuffers::numBuffers;
-        uavRange.BaseShaderRegister = 0;
+        uavRange.BaseShaderRegister = uavRegisterIdx;
         uavRange.RegisterSpace = 0;
         uavRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        
+        uavRegisterIdx += uavRange.NumDescriptors;
 
-        // ping - pong buffers - read
+        // ping buffers - read
         D3D12_DESCRIPTOR_RANGE& srvRange = pingPongRanges[1];
         memset(&srvRange, 0, sizeof(srvRange));
-        srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
         srvRange.NumDescriptors = ComputeBuffers::numBuffers;
-        srvRange.BaseShaderRegister = 0;
+        srvRange.BaseShaderRegister = uavRegisterIdx;
         srvRange.RegisterSpace = 0;
         srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        uavRegisterIdx += srvRange.NumDescriptors;
 
         D3D12_ROOT_PARAMETER param[8];
         memset(&param, 0, sizeof(param));
@@ -69,9 +76,11 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
             D3D12_DESCRIPTOR_RANGE& range = descriptorRanges[i];
             range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
             range.NumDescriptors = 1;
-            range.BaseShaderRegister = 6 + i;
+            range.BaseShaderRegister = srvRegisterIdx;
             range.RegisterSpace = 0;
             range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+            srvRegisterIdx += range.NumDescriptors;
         }
 
         for (int i = 0; i < countof(descriptorRanges); ++i)
@@ -143,8 +152,8 @@ PropagationShader::~PropagationShader()
     destroy();
 }
 
-unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data, ComputeBuffers* computeBuffers, PitCollection& pitCollection, TextureHandle& volumeTexture,
-    ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle, unsigned int remainingSlices)
+unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data, ComputeBuffers* computeBuffers, 
+    PitCollection& pitCollection, TextureHandle& volumeTexture, unsigned int remainingSlices)
 {
     SCOPED_GPU_EVENT(cmd, 0, 255, 0, "Propagation Compute Shader");
     BRWL_EXCEPTION(computeBuffers, nullptr);
@@ -155,7 +164,7 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
         const float targetDt = 1.0f / 60.f;
         const float currentDt = engine->time->getDeltaTime();
         // adjust slices per invocation to framerate
-        if (currentDt < targetDt - 0.02f*targetDt) {
+        if (currentDt < targetDt - 0.02f * targetDt) {
             ++slicesPerInvocation;
         }
         else if (currentDt > targetDt + 0.02f * targetDt) {
@@ -167,7 +176,7 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
 
         // constants
         cmd->SetComputeRoot32BitConstants(0, data.constantCount, &data, 0);
-        
+
         // Set preintegration tables
         for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
         {
@@ -182,31 +191,30 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
         // point lights with falloff would need different values for the skirt on each new slice.
         unsigned int budgetCounter = 0;
         do {
-            computeBuffers->swap(cmd);
+            computeBuffers->beforeComputeUse(cmd);
             // cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
-            cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetUav(0).residentGpu);
-            cmd->SetComputeRootDescriptorTable(2, computeBuffers->getSourceSrv(0).residentGpu);
+            cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetResourceDescriptorHandle(0).residentGpu);
+            cmd->SetComputeRootDescriptorTable(2, computeBuffers->getSourceResourceDescriptorHandle(0).residentGpu);
 
             cmd->Dispatch(
                 (unsigned int)std::ceil(computeBuffers->getWidth() / (float)DrawData::threadGroupSizeX),
                 (unsigned int)std::ceil(computeBuffers->getHeight() / (float)DrawData::threadGroupSizeY),
                 1
             );
+
+            computeBuffers->afterComputeUse(cmd);
+
             ++budgetCounter;
             --remainingSlices;
         } while (budgetCounter < slicesPerInvocation && remainingSlices > 0);
 
-        // swap one last time to make the last written texture a normal SRV
+        // swap one last time to make the last written texture the new source resource and complete all writes
         if (remainingSlices <= 0)
         {
-            computeBuffers->swap(cmd);
+            computeBuffers->beforeComputeUse(cmd);
         }
     }
 
-    // return the last color buffer, no matter how far we are
-    outColorBufferResource = computeBuffers->getSrvResource(2); 
-    outColorBufferDescriptorHandle = computeBuffers->getSourceSrv(2);
-  
     return remainingSlices;
 }
 

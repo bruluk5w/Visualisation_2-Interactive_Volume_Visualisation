@@ -247,7 +247,7 @@ void Visualization2Renderer::render(Renderer* renderer)
     v.settings.font = r.settings.font;
     v.settings.drawAssetBoundaries = r.settings.drawAssetBoundaries;
     v.settings.drawViewingVolumeBoundaries = r.settings.drawViewingVolumeBoundaries;
-    mainShader.render();
+    mainShader.render(renderer->getCommandList());
 }
 
 #define DR(expression) PAL::HandleDeviceRemoved(expression, r->device.Get(), r->logger.get())

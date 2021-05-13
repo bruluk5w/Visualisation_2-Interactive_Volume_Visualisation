@@ -7,6 +7,7 @@
 #include "Guides_ps_ps.h"
 
 #include "Renderer/PAL/d3dx12.h"
+#include "Renderer/PAL/DX12Helpers.h"
 
 #include "Common/ProceduralGeometry.h"
 #include "Core/BrowlerEngine.h"
@@ -24,31 +25,12 @@
 #include "Renderer/DataSet.h"
 #include "Renderer/TextureHandle.h"
 
+
+BRWL_RENDERER_NS
+
+
 namespace
 {
-    void transitionResourceFromPixelToComputeShader(ID3D12GraphicsCommandList* cmd, ID3D12Resource* resource)
-    {
-        D3D12_RESOURCE_BARRIER barrier;
-        memset(&barrier, 0, sizeof(barrier));
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = resource;
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        barrier.Transition.Subresource = 0;
-        cmd->ResourceBarrier(1, &barrier);
-    }
-
-    void transitionResourceFromComputeToPixelShader(ID3D12GraphicsCommandList* cmd, ID3D12Resource* resource)
-    {
-        D3D12_RESOURCE_BARRIER barrier;
-        memset(&barrier, 0, sizeof(barrier));
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = resource;
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        barrier.Transition.Subresource = 0;
-        cmd->ResourceBarrier(1, &barrier);
-    }
 
     // Input Layout is the same for all shaders
     static const D3D12_INPUT_ELEMENT_DESC inputElements[] = {
@@ -56,12 +38,9 @@ namespace
         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (UINT)offsetof(BRWL::VertexData, uv),  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     };
 
-    static const D3D12_INPUT_LAYOUT_DESC inputLayout = { inputElements, BRWL::countof(inputElements) };
+    static const D3D12_INPUT_LAYOUT_DESC inputLayout = { inputElements, (unsigned int)BRWL::countof(inputElements) };
 
 }
-
-
-BRWL_RENDERER_NS
 
 //todo: move this into own file and on a default heap
 MainShader::TriangleList::TriangleList() :
@@ -142,7 +121,8 @@ MainShader::MainShader() :
     propagationShader(nullptr),
     computeBuffers(nullptr),
     imposterShader(nullptr),
-    remainingSlices(0)
+    remainingSlices(0),
+    areResourcesUsedByPixelShader(true)
 {
     computeBuffers = std::make_unique<ComputeBuffers>();
 }
@@ -206,9 +186,9 @@ bool MainShader::create(Renderer* renderer)
 
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
         memset(&rootSignatureDesc, 0, sizeof(rootSignatureDesc));
-        rootSignatureDesc.NumParameters = countof(param);
+        rootSignatureDesc.NumParameters = (unsigned int)countof(param);
         rootSignatureDesc.pParameters = param;
-        rootSignatureDesc.NumStaticSamplers = countof(staticSamplers);
+        rootSignatureDesc.NumStaticSamplers = (unsigned int)countof(staticSamplers);
         rootSignatureDesc.pStaticSamplers = staticSamplers;
         rootSignatureDesc.Flags =
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -315,7 +295,7 @@ bool MainShader::create(Renderer* renderer)
 
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
         memset(&rootSignatureDesc, 0, sizeof(rootSignatureDesc));
-        rootSignatureDesc.NumParameters = countof(param);
+        rootSignatureDesc.NumParameters = (unsigned int)countof(param);
         rootSignatureDesc.pParameters = param;
         rootSignatureDesc.Flags =
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -408,7 +388,7 @@ bool MainShader::create(Renderer* renderer)
     {
         std::vector<VertexData> tris;
         ProceduralGeometry::makeQuad(1, 1, tris);
-        if (!BRWL_VERIFY(viewingPlane.load(device, tris.data(), tris.size()), BRWL_CHAR_LITERAL("Failed to load viewing plane geometry.")))
+        if (!BRWL_VERIFY(viewingPlane.load(device, tris.data(), (unsigned int)tris.size()), BRWL_CHAR_LITERAL("Failed to load viewing plane geometry.")))
         {
             destroy();
             return false;
@@ -417,7 +397,7 @@ bool MainShader::create(Renderer* renderer)
         viewingPlane.vertexBuffer->SetName(L"Viewing plane vertex buffer");
 
         ProceduralGeometry::makeCube(1, 1, 1, tris);
-        if (!BRWL_VERIFY(assetBounds.load(device, tris.data(), tris.size()), BRWL_CHAR_LITERAL("Failed to load viewing plane geometry.")))
+        if (!BRWL_VERIFY(assetBounds.load(device, tris.data(), (unsigned int)tris.size()), BRWL_CHAR_LITERAL("Failed to load viewing plane geometry.")))
         {
             destroy();
             return false;
@@ -433,9 +413,6 @@ bool MainShader::create(Renderer* renderer)
         return false;
     }
 
-    // TODO: do we need some synchonisation here?
-    // Should not be necessary because no data is uploaded
-
     initializationShader = std::make_unique<InitializationShader>(device);
     propagationShader = std::make_unique <PropagationShader>(device);
     imposterShader = std::make_unique <ImposterShader>(device, inputLayout);
@@ -444,8 +421,10 @@ bool MainShader::create(Renderer* renderer)
     return initialized;
 }
 
-void MainShader::render()
-{ }
+void MainShader::render(ID3D12GraphicsCommandList* cmd)
+{
+    computeBuffers->setInitialResourceState(cmd);
+}
 
 void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, MainShader::DrawData& data)
 {
@@ -519,9 +498,12 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
         const Vec3 down = normalized(toVec3(-VEC4_UP * viewingPlaneModelMatrix));
         const Vec2 halfDimension = (0.5f * viewingPlaneDimensions);
 
+        // restart scan
         if (data.hasViewChanged)
         {
             remainingSlices = (unsigned int)numSlices;
+
+            switchToCompute(cmd, data);
 
             InitializationShader::ShaderConstants initParams;
             memset(&initParams, 0, sizeof(initParams));
@@ -532,61 +514,49 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
             initParams.lightDirection = Quaternion::fromTo(VEC3_FWD, -camPos) * data.light.coords; // relative to eye-origin vector, so that the light source stays in the same hemisphere when we move around then origin
             initParams.lightColor = data.light.color;
             initParams.textureSizeWorldSpace = viewingPlaneDimensions;
-        
+            
             // Initialize the first buffers
             initializationShader->draw(cmd, initParams, computeBuffers.get());
         }
 
-        PropagationShader::DrawData propParams;
-        memset(&propParams, 0, sizeof(propParams));
+        // Do next batch of slices
+        if (remainingSlices > 0)
         {
-            propParams.bboxmin = bbox.min;
-            propParams.bboxmax = bbox.max;
-            propParams.sliceWidth = sliceWidth;
+            switchToCompute(cmd, data);
+
+            PropagationShader::DrawData propParams;
+            memset(&propParams, 0, sizeof(propParams));
+            {
+                propParams.bboxmin = bbox.min;
+                propParams.bboxmax = bbox.max;
+                propParams.sliceWidth = sliceWidth;
+            }
+
+
+            remainingSlices = propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexturehandle, remainingSlices);
         }
 
-        //computeBuffers->swap(cmd);
-
-        transitionResourceFromPixelToComputeShader(cmd, data.volumeTexturehandle.getLiveResource());
-        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection.tables.mediumColorPit.asPlatformHandle()->getLiveResource());
-        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection.tables.opacityPit.asPlatformHandle()->getLiveResource());
-        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection.tables.particleColorPit.asPlatformHandle()->getLiveResource());
-        transitionResourceFromPixelToComputeShader(cmd, data.pitCollection.tables.refractionPit.asPlatformHandle()->getLiveResource());
-
-        ID3D12Resource* colorBuffer;
-        PAL::DescriptorHandle::ResidentHandles colorBufferDescriptorHandle;
-        remainingSlices = propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexturehandle, colorBuffer, colorBufferDescriptorHandle, remainingSlices);
-
-
-        // draw result, no matter how far we are
-
         // scissor
-        const D3D12_RECT r = { 0, 0, width, height }; // whole frame buffer
+        const D3D12_RECT r = { 0, 0, (int)width, (int)height }; // whole frame buffer
         cmd->RSSetScissorRects(1, &r);
 
+        // draw last color buffer, no matter how far we are
         bindVertexBuffer(cmd, viewingPlane);
         ImposterShader::VsConstants imposterVsConstants;
         memset(&imposterVsConstants, 0, sizeof(imposterVsConstants));
         {
             imposterVsConstants.modelviewProjection = viewingPlaneModelMatrix * viewProjection;
         }
-
-        transitionResourceFromComputeToPixelShader(cmd, colorBuffer);
+        
+        PAL::DescriptorHandle::ResidentHandles colorBufferDescriptorHandle = computeBuffers->getSourceResourceDescriptorHandle(ComputeBuffers::colorBufferIdx);
+        switchToPixelShader(cmd, data);
         imposterShader->setupDraw(cmd, imposterVsConstants, colorBufferDescriptorHandle);
 
         cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
-
-        transitionResourceFromComputeToPixelShader(cmd, data.volumeTexturehandle.getLiveResource());
-        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection.tables.mediumColorPit.asPlatformHandle()->getLiveResource());
-        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection.tables.opacityPit.asPlatformHandle()->getLiveResource());
-        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection.tables.particleColorPit.asPlatformHandle()->getLiveResource());
-        transitionResourceFromComputeToPixelShader(cmd, data.pitCollection.tables.refractionPit.asPlatformHandle()->getLiveResource());
-
-        transitionResourceFromPixelToComputeShader(cmd, colorBuffer);
     }
 
     // scissor
-    const D3D12_RECT r = { 0, 0, width, height }; // whole frame buffer
+    const D3D12_RECT r = { 0, 0, (int)width, (int)height }; // whole frame buffer
     cmd->RSSetScissorRects(1, &r);
     
     if (data.drawOrthographicXRay)
@@ -657,8 +627,11 @@ void MainShader::destroy()
     guidesRootSignature = nullptr;
     mainPipelineState = nullptr;
     mainRootSignature = nullptr;
+    
+    areResourcesUsedByPixelShader = true;
 
     initialized = false;
+
 }
 
 void MainShader::bindVertexBuffer(ID3D12GraphicsCommandList* cmd, const TriangleList& list)
@@ -673,6 +646,48 @@ void MainShader::bindVertexBuffer(ID3D12GraphicsCommandList* cmd, const Triangle
     vbv.StrideInBytes = stride;
     cmd->IASetVertexBuffers(0, 1, &vbv);
     cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void MainShader::switchToCompute(ID3D12GraphicsCommandList* cmd, MainShader::DrawData& data)
+{
+    if (areResourcesUsedByPixelShader)
+    {
+        ID3D12Resource* resources[] = {
+            data.volumeTexturehandle.getLiveResource(), 
+            data.pitCollection.tables.mediumColorPit.asPlatformHandle()->getLiveResource(),
+            data.pitCollection.tables.opacityPit.asPlatformHandle()->getLiveResource(),
+            data.pitCollection.tables.particleColorPit.asPlatformHandle()->getLiveResource(),
+            data.pitCollection.tables.refractionPit.asPlatformHandle()->getLiveResource(),
+        };
+
+        PAL::stateTransition<D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE>(cmd, resources);
+
+
+        areResourcesUsedByPixelShader = false;
+    }
+
+    computeBuffers->transitionColorTexFromPixelShader(cmd);
+}
+
+void MainShader::switchToPixelShader(ID3D12GraphicsCommandList* cmd, MainShader::DrawData& data)
+{
+    if (!areResourcesUsedByPixelShader)
+    {
+        ID3D12Resource* resources[] = {
+            data.volumeTexturehandle.getLiveResource(),
+            data.pitCollection.tables.mediumColorPit.asPlatformHandle()->getLiveResource(),
+            data.pitCollection.tables.opacityPit.asPlatformHandle()->getLiveResource(),
+            data.pitCollection.tables.particleColorPit.asPlatformHandle()->getLiveResource(),
+            data.pitCollection.tables.refractionPit.asPlatformHandle()->getLiveResource(),
+        };
+
+        PAL::stateTransition<D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE>(cmd, resources);
+
+
+        areResourcesUsedByPixelShader = true;
+    }
+    
+    computeBuffers->transitionColorTexToPixelShader(cmd);
 }
 
 BRWL_RENDERER_NS_END

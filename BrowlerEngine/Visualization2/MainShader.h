@@ -59,7 +59,7 @@ public:
     ~MainShader();
 
     bool create(Renderer* renderer);
-    void render();
+    void render(ID3D12GraphicsCommandList* cmd);
     void destroy();
 
     struct DrawData {
@@ -86,6 +86,8 @@ public:
     unsigned int getNumRemainingSlices() const { return remainingSlices; }
 private:
     void bindVertexBuffer(ID3D12GraphicsCommandList* cmd, const TriangleList& list);
+    void switchToCompute(ID3D12GraphicsCommandList* cmd, MainShader::DrawData& data);
+    void switchToPixelShader(ID3D12GraphicsCommandList* cmd, MainShader::DrawData& data);
 
     ComPtr<ID3D12RootSignature>  mainRootSignature;
     ComPtr<ID3D12PipelineState>  mainPipelineState;
@@ -103,6 +105,7 @@ private:
     unsigned int remainingSlices;
 
     bool initialized;
+    bool areResourcesUsedByPixelShader;
 };
 
 BRWL_RENDERER_NS_END
