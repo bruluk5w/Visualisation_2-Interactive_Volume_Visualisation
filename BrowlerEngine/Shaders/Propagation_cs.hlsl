@@ -16,18 +16,18 @@ RWTexture2D<float4> viewingRayPositionBufferWrite : register(u4);
 RWTexture2D<float4> viewingRayDirectionBufferWrite : register(u5);
 
 
-Texture2D<float4> lightBufferRead : register(t0);
-Texture2D<float4> lightDirectionBufferRead : register(t1);
-Texture2D<float4> colorBufferRead : register(t2);
-Texture2D<float4> mediumBufferRead : register(t3);
-Texture2D<float4> viewingRayPositionBufferRead : register(t4);
-Texture2D<float4> viewingRayDirectionBufferRead : register(t5);
+RWTexture2D<float4> lightBufferRead : register(u6);
+RWTexture2D<float4> lightDirectionBufferRead : register(u7);
+RWTexture2D<float4> colorBufferRead : register(u8);
+RWTexture2D<float4> mediumBufferRead : register(u9);
+RWTexture2D<float4> viewingRayPositionBufferRead : register(u10);
+RWTexture2D<float4> viewingRayDirectionBufferRead : register(u11);
 
-Texture2D<float> refractionIntegTex : register(t6);
-Texture2D<float> particleColIntegTex : register(t7);
-Texture2D<float> opacityIntegTex : register(t8);
-Texture2D<float> mediumIntegTex : register(t9);
-Texture3D<float> volumeTexture : register(t10);
+Texture2D<float> refractionIntegTex : register(t0);
+Texture2D<float> particleColIntegTex : register(t1);
+Texture2D<float> opacityIntegTex : register(t2);
+Texture2D<float> mediumIntegTex : register(t3);
+Texture3D<float> volumeTexture : register(t4);
 
 static const float PI = 3.14159265f;
 
@@ -67,7 +67,7 @@ float3 getUVCoordinates(float3 coordinate)
 	(
 	uint3 DTid : SV_DispatchThreadID)
     {
-		const int3 read_idx = int3(DTid.xy, 0);
+		const uint3 read_idx = int3(DTid.xy, 0);
 		const uint2 write_idx = DTid.xy;
     
         // viewing ray propagation

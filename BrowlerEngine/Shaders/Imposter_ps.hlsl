@@ -6,10 +6,13 @@ struct PS_INPUT
 
 SamplerState colorSampler : register(s0);
 
-Texture2D<float4> colorTex : register(t0);
+RWTexture2D<float4> colorTex : register(u0);
 
 
 float4 main(PS_INPUT input) : SV_Target
 {  
-    return colorTex.Sample(colorSampler, input.uv);
+    uint2 texDim;
+    colorTex.GetDimensions(texDim.x, texDim.y);
+
+    return colorTex.Load(input.uv * texDim);
 }

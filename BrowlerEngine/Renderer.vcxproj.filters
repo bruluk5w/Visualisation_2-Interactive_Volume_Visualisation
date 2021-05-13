@@ -115,6 +115,9 @@
     <ClInclude Include="Include\Renderer\PAL\WinTextureHandle.h">
       <Filter>Header Files\PAL</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Renderer\PAL\DX12Helpers.h">
+      <Filter>Header Files\PAL</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Renderer\Renderer_Precomp.cpp">

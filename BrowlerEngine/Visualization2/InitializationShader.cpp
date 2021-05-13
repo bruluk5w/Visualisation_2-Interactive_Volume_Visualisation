@@ -92,20 +92,19 @@ void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderCons
     BRWL_EXCEPTION(computeBuffers, nullptr);
     BRWL_EXCEPTION(computeBuffers->isResident(), nullptr);
 
-    // todo: maybe this is not necessary?
-    computeBuffers->swap(cmd);
+    computeBuffers->beforeComputeUse(cmd);
 
     cmd->SetPipelineState(pipelineState.Get());
     cmd->SetComputeRootSignature(rootSignature.Get());
     cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
-    cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetUav(0).residentGpu);
+    cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetResourceDescriptorHandle(0).residentGpu);
    cmd->Dispatch(
         (unsigned int)std::ceil(computeBuffers->getWidth() / (float)ShaderConstants::threadGroupSizeX),
         (unsigned int)std::ceil(computeBuffers->getHeight() / (float)ShaderConstants::threadGroupSizeY),
         1
     );
     
-
+   computeBuffers->afterComputeUse(cmd);
 }
 
 BRWL_RENDERER_NS_END

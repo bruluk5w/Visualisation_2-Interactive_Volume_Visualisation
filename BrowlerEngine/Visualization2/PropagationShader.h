@@ -30,8 +30,8 @@ public:
 #pragma pack(pop)
     // propagates light and viewing rays through the volume and returns the amount of slices which was not yet able to process, returns also the last written 
     // color buffer via outColorBufferResource and outColorBufferDescriptorHandle
-    unsigned int draw(ID3D12GraphicsCommandList* cmd, const DrawData& data, ComputeBuffers* computeBuffers, PitCollection& pitCollection, TextureHandle& volumeTexture,
-        ID3D12Resource*& outColorBufferResource, PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle, unsigned int remainingSlices);
+    unsigned int draw(ID3D12GraphicsCommandList* cmd, const DrawData& data, ComputeBuffers* computeBuffers, 
+        PitCollection& pitCollection, TextureHandle& volumeTexture, unsigned int remainingSlices);
 
 private:
     ComPtr<ID3D12RootSignature> rootSignature;
