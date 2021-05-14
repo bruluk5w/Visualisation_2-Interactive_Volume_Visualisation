@@ -128,32 +128,6 @@ void ComputeBuffers::setInitialResourceState(ID3D12GraphicsCommandList* cmd)
     }
 }
 
-void ComputeBuffers::transitionColorTexToPixelShader(ID3D12GraphicsCommandList* cmd)
-{
-    //if (!colorTexUsedByPixelShader)
-    //{
-    //    ID3D12Resource* resources[] = {
-    //        getSourceResource(colorBufferIdx)
-    //    };
-
-    //    PAL::stateTransition<D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE>(cmd, resources);
-    //    colorTexUsedByPixelShader = true;
-    //}
-}
-
-void ComputeBuffers::transitionColorTexFromPixelShader(ID3D12GraphicsCommandList* cmd)
-{
-    /*if (colorTexUsedByPixelShader)
-    {
-        ID3D12Resource* resources[] = {
-        getSourceResource(colorBufferIdx)
-        };
-
-        PAL::stateTransition<D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS>(cmd, resources);
-        colorTexUsedByPixelShader = false;
-    }*/
-}
-
 void ComputeBuffers::destroy()
 {
     created = false;
@@ -222,7 +196,6 @@ void ComputeBuffers::beforeComputeUse(ID3D12GraphicsCommandList* cmd)
 void ComputeBuffers::afterComputeUse(ID3D12GraphicsCommandList* cmd)
 {
     // swap previous source resources with previous target resources
-    pingPong = !pingPong;
 #if USE_UAV_SPLIT_BARRIER
     D3D12_RESOURCE_BARRIER barriers[numBuffers];
     memset(&barriers, 0, sizeof(barriers));

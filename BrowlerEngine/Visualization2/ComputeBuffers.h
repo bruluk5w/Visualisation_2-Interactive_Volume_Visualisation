@@ -13,8 +13,6 @@ public:
 	bool create(ID3D12Device* device, PAL::DescriptorHeap* srvHeap, unsigned int width, unsigned int height);
 	// todo: this is kind of a hack. Resource states should probably be tracked by texture manager
 	void setInitialResourceState(ID3D12GraphicsCommandList* cmd);
-	void transitionColorTexToPixelShader(ID3D12GraphicsCommandList* cmd);
-	void transitionColorTexFromPixelShader(ID3D12GraphicsCommandList* cmd);
 
 	void destroy();
 	bool isResident() const;

@@ -665,8 +665,6 @@ void MainShader::switchToCompute(ID3D12GraphicsCommandList* cmd, MainShader::Dra
 
         areResourcesUsedByPixelShader = false;
     }
-
-    computeBuffers->transitionColorTexFromPixelShader(cmd);
 }
 
 void MainShader::switchToPixelShader(ID3D12GraphicsCommandList* cmd, MainShader::DrawData& data)
@@ -686,8 +684,6 @@ void MainShader::switchToPixelShader(ID3D12GraphicsCommandList* cmd, MainShader:
 
         areResourcesUsedByPixelShader = true;
     }
-    
-    computeBuffers->transitionColorTexToPixelShader(cmd);
 }
 
 BRWL_RENDERER_NS_END
