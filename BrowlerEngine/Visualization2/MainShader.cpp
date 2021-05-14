@@ -469,7 +469,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
     BRWL_CHECK(planeStackThickness > 0, nullptr);
     const float numSlices = planeStackThickness * data.numSlicesPerVoxel; // 1 plane per voxel is a very good resolution
     // position offset from prevous to next plane
-    const float sliceWidth = planeStackThickness / numSlices;
+    const float sliceWidth = 1.0f / data.numSlicesPerVoxel;
     const Vec3 deltaSlice = normalized(-camPos) * sliceWidth;
 
     if (engine->input->isKeyDown(Key::F1))
@@ -529,7 +529,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
             {
                 propParams.bboxmin = bbox.min;
                 propParams.bboxmax = bbox.max;
-                propParams.sliceWidth = sliceWidth;
+                propParams.deltaSlice = deltaSlice;
             }
 
 
@@ -570,13 +570,11 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
         memset(&vsConstants, 0, sizeof(vsConstants));
         vsConstants.modelMatrix = viewingPlaneModelMatrix;
         vsConstants.viewProjection = viewProjection;
-        //vsConstants.voxelsPerCm = data.voxelsPerCm;
         
         cmd->SetGraphicsRoot32BitConstants(0, 33, &vsConstants, 0);
 
         PsConstants psConstants;
         memset(&psConstants, 0, sizeof(psConstants));
-        //psConstants.voxelsPerCm = data.voxelsPerCm;
         psConstants.numSlices = numSlices;
         psConstants.deltaSlice = deltaSlice / sliceWidth;
 

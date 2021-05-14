@@ -51,11 +51,11 @@ void Visualization2Updatable::update(double dt)
 	Vec3 direction{ 0.f, 0.f, 0.f };
 
 	if (engine->input->isKeyPressed(Key::W)) {
-		direction.z += 1;
+		direction.z += 100;
 	}
 
 	if (engine->input->isKeyPressed(Key::S)) {
-		direction.z -= 1;
+		direction.z -= 100;
 	}
 
 	if (engine->input->isKeyPressed(Key::D)) {
@@ -67,14 +67,14 @@ void Visualization2Updatable::update(double dt)
 	}
 
 	if (engine->input->isKeyPressed(Key::E)) {
-		direction.y += 1;
+		direction.y += 100;
 	}
 
 	if (engine->input->isKeyPressed(Key::Q)) {
-		direction.y -= 1;
+		direction.y -= 100;
 	}
 
-	direction *= 100;// length(camera->cPosition());
+	direction *= 1;// length(camera->cPosition());
 
 	float dx = (float)engine->input->getMouseDeltaX();
 	float dy = (float)engine->input->getMouseDeltaY();

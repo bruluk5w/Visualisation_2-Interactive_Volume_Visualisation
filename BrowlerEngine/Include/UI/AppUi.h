@@ -24,7 +24,6 @@ struct UIResult
 
 		static const char* fontNames[ENUM_CLASS_TO_NUM(Font::MAX)];
 
-		float voxelsPerCm;
 		float numSlicesPerVoxel;
 		bool vsync;
 		bool freeCamMovement;

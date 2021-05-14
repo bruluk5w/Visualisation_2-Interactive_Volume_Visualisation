@@ -2,7 +2,7 @@ cbuffer constants : register(b0)
 {
     float3 bboxmin;
     float3 bboxmax;
-    float sliceWidth;
+    float3 deltaSlice;
 };
 
 SamplerState preintegrationSampler : register(s0);
@@ -69,13 +69,14 @@ float3 getUVCoordinates(float3 coordinate)
     {
 		const uint3 read_idx = int3(DTid.xy, 0);
 		const uint2 write_idx = DTid.xy;
+        const float sliceDepth = length(deltaSlice);
     
         // viewing ray propagation
 		const float3 viewingRayPositionOld = viewingRayPositionBufferRead.Load(read_idx).xyz;
 		const float3 viewingRayDirectionOld = viewingRayDirectionBufferRead.Load(read_idx).xyz;
 
         // Advance viewing ray in world space
-		const float3 viewingRayPositionNew = viewingRayPositionOld + viewingRayDirectionOld;
+		const float3 viewingRayPositionNew = viewingRayPositionOld + viewingRayDirectionOld * dot(viewingRayDirectionOld, deltaSlice);
 	    const float3 viewingRayDirectionNew = viewingRayDirectionOld; // todo
     
         // TODO: Add refraction here
@@ -84,10 +85,12 @@ float3 getUVCoordinates(float3 coordinate)
 	    viewingRayDirectionBufferWrite[write_idx].xyz = viewingRayDirectionNew; // has to be normalized
 
         // Sampling the volume
-        // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/4 of the normalized range is utilized.
+        // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/8 of the normalized range is utilized.
         const float rawScalarSampleOld = volumeTexture.SampleLevel(volumeSampler, getUVCoordinates(viewingRayPositionOld), 0) * 8;
+        const float rawScalarSampleNew = volumeTexture.SampleLevel(volumeSampler, getUVCoordinates(viewingRayPositionNew), 0) * 8;
 
+        const float refractionContrib = refractionIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
 
-	colorBufferWrite[write_idx].xyz = ((float3) DTid) / 1024.0f;
+        colorBufferWrite[write_idx].xyz += refractionContrib / 50 * sliceDepth;
 		colorBufferWrite[write_idx].w = 1;
 	}

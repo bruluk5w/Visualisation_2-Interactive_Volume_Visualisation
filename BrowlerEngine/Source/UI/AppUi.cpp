@@ -31,8 +31,7 @@ UIResult::UIResult() :
     settings {
         UIResult::Settings::Font::OPEN_SANS_REGULAR, // font
         22, // fontSize
-        300, // voxelsPerCm
-        1.0f, // numSlicesPerVoxel
+        0.3f, // numSlicesPerVoxel
         false, // vsync
         false, // freeCamMovement
         true, // drawAssetBoundaries
@@ -180,9 +179,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
             SliderFloat("", &result.settings.fontSize, 5, 40);
             result.settings.fontSize = Utils::clamp(result.settings.fontSize, 5.f, 40.f);
         SLIDER_FIX_END();
-        Text("Voxels per Centimeter:");
-        ::ImGui::InputFloat("", &result.settings.voxelsPerCm, 1.f, 5.f, "%.0f");
-        result.settings.voxelsPerCm = Utils::clamp(result.settings.voxelsPerCm, 1.f, 1000.f);
+
         SLIDER_FIX(1, 2)
             Text("Number of slices per voxel:");
             ::ImGui::InputFloat("", &result.settings.numSlicesPerVoxel, 0.01f, 1.f, "%0.2f");

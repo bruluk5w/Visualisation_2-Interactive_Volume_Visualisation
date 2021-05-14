@@ -41,15 +41,11 @@ class MainShader final
     {
         Mat4 modelMatrix;
         Mat4 viewProjection;
-        float voxelsPerCm;
     };
 
     struct PsConstants
     {
-        float voxelsPerCm;
         float numSlices;
-        float pad0;
-        float pad1;
         Vec3 deltaSlice;
     };
 #pragma pack(pop)

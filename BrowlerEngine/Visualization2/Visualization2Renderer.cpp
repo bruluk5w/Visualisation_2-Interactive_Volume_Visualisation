@@ -227,10 +227,6 @@ void Visualization2Renderer::render(Renderer* renderer)
         hasViewChanged = true;
     }
 
-    if (v.settings.voxelsPerCm != r.settings.voxelsPerCm) {
-        hasViewChanged = true;
-        v.settings.voxelsPerCm = r.settings.voxelsPerCm;
-    }
     if (v.settings.numSlicesPerVoxel != r.settings.numSlicesPerVoxel) {
         hasViewChanged = true;
         v.settings.numSlicesPerVoxel = r.settings.numSlicesPerVoxel;

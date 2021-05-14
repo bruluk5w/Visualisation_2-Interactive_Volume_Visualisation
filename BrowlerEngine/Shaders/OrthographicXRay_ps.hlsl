@@ -6,7 +6,6 @@ struct PS_INPUT
 
 struct Constants
 {
-    float voxelsPerCm;
     float numSlices;
     float3 deltaSlice;
 };

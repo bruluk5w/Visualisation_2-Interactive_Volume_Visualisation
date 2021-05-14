@@ -23,7 +23,7 @@ InitializationShader::InitializationShader(ID3D12Device* device) :
 
     D3D12_ROOT_PARAMETER param[2];
     memset(&param, 0, sizeof(param));
-    // Model- & ViewProjection matrix & voxelsPerCm
+    // Model- & ViewProjection matrix
     param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
     param[0].Constants.ShaderRegister = 0; // register b0
     param[0].Constants.RegisterSpace = 0;
