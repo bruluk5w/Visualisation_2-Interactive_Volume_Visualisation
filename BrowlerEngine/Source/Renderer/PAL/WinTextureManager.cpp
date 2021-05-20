@@ -184,7 +184,7 @@ namespace PAL
 			// TODO: replace data structure or at least track next free GPU texture
 			auto it = std::find_if(gpuTextures.begin(), gpuTextures.end(), [](const GpuTexture* t) { return t->liveTexture == nullptr; });
 			if (it == gpuTextures.end())
-			{	// create new GPU texture obect
+			{	// create new GPU texture object
 				// TODO: replace data structure 
 				gpuTexIndex[handle.id] = (decltype(gpuTexIndex)::value_type)gpuTextures.size();
 				gpuTextures.push_back(new GpuTexture());
@@ -499,7 +499,6 @@ namespace PAL
 		return tex->liveTexture->texture.Get();
 	}
 
-#pragma optimize("", off)
 	void WinTextureManager::promoteStagedTexturesInternal()
 	{
 #ifdef _DEBUG
