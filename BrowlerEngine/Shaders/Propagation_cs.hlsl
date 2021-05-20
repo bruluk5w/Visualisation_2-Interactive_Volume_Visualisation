@@ -56,41 +56,82 @@ float4 cookTorrance(float3 normal, float3 view, float3 light, float fromIdxOfRef
     return (distributionFactor * fresnel * geometricAttenuation) / (PI * angleOfReflection * angleOfIncidence);
 }
 
+
+
 float3 getUVCoordinates(float3 coordinate)
 {
 	return (coordinate - bboxmin) / (bboxmax - bboxmin);
 }
 
+
+float3 integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float> tex)
+{
+    return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).r;
+}
+
+
+
+
 [numthreads(16, 16, 1)]
 
-	void main
-	(
-	uint3 DTid : SV_DispatchThreadID)
-    {
-		const uint3 read_idx = int3(DTid.xy, 0);
-		const uint2 write_idx = DTid.xy;
-        const float sliceDepth = length(deltaSlice);
+void main ( uint3 DTid : SV_DispatchThreadID )
+
+{
+	const uint3 read_idx = int3(DTid.xy, 0);
+	const uint2 write_idx = DTid.xy;
+    const float sliceDepth = length(deltaSlice);
     
-        // viewing ray propagation
-		const float3 viewingRayPositionOld = viewingRayPositionBufferRead.Load(read_idx).xyz;
-		const float3 viewingRayDirectionOld = viewingRayDirectionBufferRead.Load(read_idx).xyz;
-
-        // Advance viewing ray in world space
-		const float3 viewingRayPositionNew = viewingRayPositionOld + viewingRayDirectionOld * dot(viewingRayDirectionOld, deltaSlice);
-	    const float3 viewingRayDirectionNew = viewingRayDirectionOld; // todo
+    /*
+        Light Propagation
+    */
     
-        // TODO: Add refraction here
+    // TODO: Add refraction here
+    const float3 currentLightDirection = lightDirectionBufferRead.Load(read_idx).xyz;
+    const float3 currentLightIntensity = lightBufferRead.Load(read_idx).xyz;
     
-		viewingRayPositionBufferWrite[write_idx].xyz = viewingRayPositionNew;
-	    viewingRayDirectionBufferWrite[write_idx].xyz = viewingRayDirectionNew; // has to be normalized
+    lightDirectionBufferWrite[write_idx].xyz = currentLightDirection;
+    lightBufferWrite[write_idx].xyz = currentLightIntensity;
 
-        // Sampling the volume
-        // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/8 of the normalized range is utilized.
-        const float rawScalarSampleOld = volumeTexture.SampleLevel(volumeSampler, getUVCoordinates(viewingRayPositionOld), 0) * 8;
-        const float rawScalarSampleNew = volumeTexture.SampleLevel(volumeSampler, getUVCoordinates(viewingRayPositionNew), 0) * 8;
 
-        const float refractionContrib = refractionIntegTex.SampleLevel(preintegrationSampler, float2(rawScalarSampleOld, rawScalarSampleNew), 0).r;
-
-        colorBufferWrite[write_idx].xyz += refractionContrib / 50 * sliceDepth;
-		colorBufferWrite[write_idx].w = 1;
-	}
+    /*
+        Viewing Ray Propagation
+    */
+    const float3 currentViewingRayPosition = viewingRayPositionBufferRead.Load(read_idx).xyz;
+    const float3 currentViewingRayDirection = viewingRayDirectionBufferRead.Load(read_idx).xyz;
+    
+    // We know that the write buffer holds the previous pixel's viewing ray position
+    const float3 previousViewingRayPosition = viewingRayPositionBufferWrite.Load(read_idx).xyz;
+    
+    float4 currentColor = colorBufferRead.Load(read_idx);
+    float3 currentMediumColor = mediumBufferRead.Load(read_idx).xyz;
+    
+    float3 diffuseLight = lightBufferRead.Load(read_idx).xyz; // Need to calculate values first
+    float3 specularLight = float3(0, 0, 0); //TODO: specularBDRF(currentLightDirection, currentViewingRayDirection, delta f)
+    
+    
+    // Sampling the volume
+    // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/8 of the normalized range is utilized.
+    const float previousScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinates(previousViewingRayPosition), 0) * 8;
+    const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinates(currentViewingRayPosition), 0) * 8;
+    
+    float3 color = integrationTable(previousScalarSample, currentScalarSample, particleColIntegTex);
+    float3 alpha = integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex);
+    float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
+    float3 deleteme = integrationTable(previousScalarSample, currentScalarSample, refractionIntegTex);
+    
+    float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * diffuseLight + specularLight);
+    float nextAlpha = currentColor.w + (1 - currentColor.w) * alpha.x;
+    float3 nextMediumColor = currentMediumColor * medium;
+    
+    // Advance viewing ray in world space
+    const float3 nextViewingRayPosition = currentViewingRayPosition + currentViewingRayDirection * dot(currentViewingRayDirection, deltaSlice);
+    const float3 nextViewingRayDirection = currentViewingRayDirection; // todo
+    
+   
+    
+    viewingRayPositionBufferWrite[write_idx].xyz = nextViewingRayPosition;
+    viewingRayDirectionBufferWrite[write_idx].xyz = nextViewingRayDirection; // has to be normalized
+    colorBufferWrite[write_idx].xyz = nextColor;
+    colorBufferWrite[write_idx].w = nextAlpha;
+    mediumBufferWrite[write_idx].xyz = nextMediumColor;
+}
