@@ -42,7 +42,7 @@ namespace PAL {
 #include <d3d12.h>
 #include <dxgi1_6.h>
 
-#define ENABLE_PIX 0
+#define ENABLE_PIX 1
 #define FORCE_ENABLE_DRED 1
 
 // if debugging with pix, don't touch the debug interfaces

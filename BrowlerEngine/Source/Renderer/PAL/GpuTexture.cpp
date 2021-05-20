@@ -86,7 +86,7 @@ namespace PAL
 
 	bool GpuTexture::isUploading() const
 	{
-		return fence && uploadFenceValue < fence->GetCompletedValue();
+		return fence && uploadFenceValue > fence->GetCompletedValue();
 	}
 
 	bool GpuTexture::isFailed() const

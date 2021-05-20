@@ -499,7 +499,7 @@ namespace PAL
 		return tex->liveTexture->texture.Get();
 	}
 
-
+#pragma optimize("", off)
 	void WinTextureManager::promoteStagedTexturesInternal()
 	{
 #ifdef _DEBUG
