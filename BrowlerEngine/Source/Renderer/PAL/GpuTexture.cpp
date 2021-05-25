@@ -91,7 +91,7 @@ namespace PAL
 
 	bool GpuTexture::isFailed() const
 	{
-		return stagedTexture->state != TextureResource::State::FAILED;
+		return stagedTexture->state == TextureResource::State::FAILED;
 	}
 
 

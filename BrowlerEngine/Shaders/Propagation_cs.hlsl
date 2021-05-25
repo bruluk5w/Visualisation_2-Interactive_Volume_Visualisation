@@ -69,6 +69,44 @@ float3 integrationTable(float previousScalarSample, float currentScalarSample, T
     return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).r;
 }
 
+bool rayIntersectsVolume(float3 rayPos, float3 rayDir)
+{
+    float xdistancemax = bboxmax.x - rayPos.x;
+    // (xdistancemax * rayDir > 0) checks if they have the same preceding sign (pos/neg)
+    bool intersectsPositiveX = (xdistancemax * rayDir.x > 0) && all(abs((rayPos + rayDir * (xdistancemax / rayDir.x)).yz) <= bboxmax.yz);
+    float xdistancemin = bboxmin.x - rayPos.x;
+    bool intersectsNegativeX = (xdistancemin * rayDir.x > 0) && all(abs((rayPos + rayDir * (xdistancemin / rayDir.x)).yz) <= bboxmax.yz);
+    float ydistancemax = bboxmax.y - rayPos.y;
+    bool intersectsPositiveY = (ydistancemax * rayDir.y > 0) && all(abs((rayPos + rayDir * (ydistancemax / rayDir.y)).xz) <= bboxmax.xz);
+    float ydistancemin = bboxmin.y - rayPos.y;
+    bool intersectsNegativeY = (ydistancemin * rayDir.y > 0) && all(abs((rayPos + rayDir * (ydistancemin / rayDir.y)).xz) <= bboxmax.xz);
+    float zdistancemax = bboxmax.z - rayPos.z;
+    bool intersectsPositiveZ = (zdistancemax * rayDir.z > 0) && all(abs((rayPos + rayDir * (zdistancemax / rayDir.z)).xy) <= bboxmax.xy);
+    float zdistancemin = bboxmin.z - rayPos.z;
+    bool intersectsNegativeZ = (zdistancemin * rayDir.z > 0) && all(abs((rayPos + rayDir * (zdistancemin / rayDir.z)).xy) <= bboxmax.xy);
+    
+    return (intersectsNegativeX || intersectsNegativeY || intersectsNegativeZ || 
+            intersectsPositiveX || intersectsPositiveY || intersectsPositiveZ);
+}
+
+float3 checkerBoard(float3 viewingRayDirection)
+{
+    int2 stub = 10 * (viewingRayDirection / viewingRayDirection.z).yz;
+    if (abs((stub.x % 2 - stub.y % 2)) < 0.01)
+        return (1, 1, 1);
+    else 
+        return (0, 0, 0);
+}
+
+float3 checkerBoardAlt(float3 viewingRayDirection)
+{
+    int2 stub = (viewingRayDirection / viewingRayDirection.z).yz;
+    if ((stub.x & 1) ^ (stub.y & 1))
+        return (1, 1, 1);
+    else
+        return (0, 0, 0);
+}
+
 
 
 
@@ -103,10 +141,24 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     const float3 previousViewingRayPosition = viewingRayPositionBufferWrite.Load(read_idx).xyz;
     
     float4 currentColor = colorBufferRead.Load(read_idx);
+    
+    if (currentColor.w >= 1)
+    { // Would be sufficient to do it only once and write the second plane/layer into the next Buffer
+        colorBufferWrite[write_idx] = currentColor;
+        return; 
+    }
+    if (!rayIntersectsVolume(currentViewingRayPosition, currentViewingRayDirection))
+    {
+        colorBufferWrite[write_idx].xyz = checkerBoard(currentViewingRayDirection) * (1 - currentColor.w);
+        colorBufferWrite[write_idx].w = 1;
+        return;
+    }
+    
     float3 currentMediumColor = mediumBufferRead.Load(read_idx).xyz;
     
     float3 diffuseLight = lightBufferRead.Load(read_idx).xyz; // Need to calculate values first
-    float3 specularLight = float3(0, 0, 0); //TODO: specularBDRF(currentLightDirection, currentViewingRayDirection, delta f)
+    // TODO: float3 specularLight = specularBDRF(currentLightDirection, currentViewingRayDirection, delta f);
+    float3 specularLight = float3(0, 0, 0);
     
     
     // Sampling the volume
@@ -117,11 +169,10 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float3 color = integrationTable(previousScalarSample, currentScalarSample, particleColIntegTex);
     float3 alpha = integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex);
     float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
-    float3 deleteme = integrationTable(previousScalarSample, currentScalarSample, refractionIntegTex);
     
     float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * diffuseLight + specularLight);
     float nextAlpha = currentColor.w + (1 - currentColor.w) * alpha.x;
-    float3 nextMediumColor = currentMediumColor * medium;
+    float3 nextMediumColor = currentMediumColor * (1 - medium);
     
     // Advance viewing ray in world space
     const float3 nextViewingRayPosition = currentViewingRayPosition + currentViewingRayDirection * dot(currentViewingRayDirection, deltaSlice);

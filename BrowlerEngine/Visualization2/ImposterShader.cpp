@@ -85,8 +85,7 @@ ImposterShader::ImposterShader(ID3D12Device* device, const D3D12_INPUT_LAYOUT_DE
 
         // Create the blending setup
         {
-            psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-            /*D3D12_BLEND_DESC& desc = psoDesc.BlendState;
+            D3D12_BLEND_DESC& desc = psoDesc.BlendState;
             desc.AlphaToCoverageEnable = false;
             desc.RenderTarget[0].BlendEnable = true;
             desc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
@@ -95,7 +94,8 @@ ImposterShader::ImposterShader(ID3D12Device* device, const D3D12_INPUT_LAYOUT_DE
             desc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
             desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
             desc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-            desc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;*/
+            desc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+            psoDesc.BlendState = CD3DX12_BLEND_DESC(desc);
         }
 
         // Create the rasterizer state
