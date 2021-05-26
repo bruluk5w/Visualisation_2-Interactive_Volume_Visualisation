@@ -126,7 +126,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
         thread_local bool fitWindow = false;
 
         {
-            int arrayLen = result.transferFunctions.functions.mediumColorTransFunc.getArrayLength();
+            int arrayLen = result.transferFunctions.mediumColorTransFunc.getArrayLength();
             const float minWindowSizeX = arrayLen * plotWidth + 25.f;
             const float minWindowSizeY = Utils::min(GetIO().DisplaySize.y - 20, menuSpaceY + 20);
             if (fitWindow) {
@@ -139,8 +139,12 @@ void renderAppUI(UIResult& result, const UIResult& values)
 
         Begin("Tools", &showTransferFunctions);
         {
-            TransferFunctionBitDepth resultBitDepth;
-            ENUM_SELECT("Bit Depth", values.transferFunctions.mediumColorTransFunc.bitDepth, resultBitDepth, TransferFunction, TransferFunctionBitDepth, bitDepthNames);
+           ;
+            int item_current = ENUM_CLASS_TO_NUM(result.transferFunctions.opacityTransFunc.bitDepth);
+            ::ImGui::Text("Bit Depth");
+            ::ImGui::Combo("", &item_current, bitDepthNames, IM_ARRAYSIZE(bitDepthNames));
+            TransferFunctionBitDepth resultBitDepth = (TransferFunctionBitDepth)Utils::clamp<std::underlying_type_t<TransferFunctionBitDepth>>(item_current, ENUM_CLASS_TO_NUM(TransferFunctionBitDepth::MIN), ENUM_CLASS_TO_NUM(TransferFunctionBitDepth::MAX));
+            result.transferFunctions.mediumColorTransFunc.bitDepth = resultBitDepth;
             result.transferFunctions.opacityTransFunc.bitDepth = resultBitDepth;
             result.transferFunctions.particleColorTransFunc.bitDepth = resultBitDepth;
             result.transferFunctions.refractionTansFunc.bitDepth = resultBitDepth;

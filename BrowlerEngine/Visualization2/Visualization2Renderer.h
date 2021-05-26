@@ -1,7 +1,7 @@
 #pragma once // (c) 2020 Lukas Brunner
 
 #include "Renderer/AppRenderer.h"
-#include "UI/AppUi.h"
+#include "AppUi.h"
 #include "Renderer/DataSet.h"
 #include "PitCollection.h"
 #include "Renderer/RendererFwd.h"

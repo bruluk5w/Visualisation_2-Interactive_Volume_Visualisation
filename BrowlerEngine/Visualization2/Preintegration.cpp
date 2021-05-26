@@ -63,7 +63,7 @@ void makePreintegrationTable(T<S>& image, typename T<S>::sampleT* transferFunc, 
 				sum = sum + (transferFunc[i - 1] + transferFunc[i]) * 0.5f;
 			}
 
-			lineStart[x] = sum / (x - y);
+			lineStart[x] = sum / (float)(x - y);
 		}
 	}
 

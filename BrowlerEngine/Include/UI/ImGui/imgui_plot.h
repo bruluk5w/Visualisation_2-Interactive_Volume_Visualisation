@@ -1,7 +1,7 @@
 #pragma once // (c) 2020 Lukas Brunner
-#include "ImGui/imgui.h"
+#include "UI/ImGui/imgui.h"
 
-#include "ImGui/ImGuiHelpers.h"
+#include "UI/ImGui/ImGuiHelpers.h"
 
 namespace ImGui {
 // Use this structure to pass the plot data and settings into the Plot function

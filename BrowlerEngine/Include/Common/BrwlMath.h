@@ -327,6 +327,41 @@ namespace DirectX
 		return res;
 	}
 
+	inline ::BRWL::Vec4 operator+(const ::BRWL::Vec4& lhs, const ::BRWL::Vec4& rhs)
+	{
+		::BRWL::Vec4 res;
+		XMStoreFloat4(&res, XMVectorAdd(XMLoadFloat4(&lhs), XMLoadFloat4(&rhs)));
+		return res;
+	}
+
+	inline ::BRWL::Vec4 operator*(const ::BRWL::Vec4& lhs, const ::BRWL::Vec4& rhs)
+	{
+		::BRWL::Vec4 res;
+		XMStoreFloat4(&res, XMVectorMultiply(XMLoadFloat4(&lhs), XMLoadFloat4(&rhs)));
+		return res;
+	}
+
+	inline ::BRWL::Vec4 operator*(const ::BRWL::Vec4& lhs, float rhs)
+	{
+		::BRWL::Vec4 res;
+		XMStoreFloat4(&res, XMVectorMultiply(XMLoadFloat4(&lhs), XMVectorReplicate(rhs)));
+		return res;
+	}
+
+	inline ::BRWL::Vec4 operator/(const ::BRWL::Vec4& lhs, const ::BRWL::Vec4& rhs)
+	{
+		::BRWL::Vec4 res;
+		XMStoreFloat4(&res, XMVectorDivide(XMLoadFloat4(&lhs), XMLoadFloat4(&rhs)));
+		return res;
+	}
+
+	inline ::BRWL::Vec4 operator/(const ::BRWL::Vec4& lhs, float rhs)
+	{
+		::BRWL::Vec4 res;
+		XMStoreFloat4(&res, XMVectorDivide(XMLoadFloat4(&lhs), XMVectorReplicate(rhs)));
+		return res;
+	}
+
 	inline bool operator==(const ::BRWL::Vec4& a, const ::BRWL::Vec4& b)
 	{
 		return XMVector3EqualR(XMVectorSet(a.x, a.y, a.z, a.w), XMVectorSet(b.x, b.y, b.z, b.w));

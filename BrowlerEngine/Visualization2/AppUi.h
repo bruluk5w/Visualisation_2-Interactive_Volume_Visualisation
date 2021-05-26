@@ -30,6 +30,10 @@ struct TransferFunction
 	using sampleT = typename T<S>::sampleT;
 	TransferFunctionBitDepth bitDepth;
 
+	::ImGui::CtrlPointGroup controlPoints[T<S>::sampleByteSize()];
+	sampleT transferFunction[1 << 10];
+	void* textureID;
+
 	TransferFunction<S>& operator=(const TransferFunction<S>& o)
 	{
 		memcpy(transferFunction, o.transferFunction, sizeof(transferFunction));
@@ -38,9 +42,13 @@ struct TransferFunction
 		return *this;
 	}
 
-	::ImGui::CtrlPointGroup controlPoints[T<S>::sampleByteSize()];
-	sampleT transferFunction[1 << 10];
-	void* textureID;
+	TransferFunction<S> operator==(const TransferFunction<S> o) {
+		return bitDepth == o.bitDepth &&
+			memcmp(transferFunction, o.transferFunction, getArrayLength() * sizeof(UIResult::TransferFunction<S>::sampleT)) != 0;
+	}
+
+	TransferFunction<S> operator=(const TransferFunction<S> o) { return operator==(o); }
+
 
 	int getArrayLength() const
 	{

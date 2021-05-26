@@ -1,10 +1,10 @@
 #pragma once // (c) 2020 Lukas Brunner
-#include "ImGui/imgui.h"
+#include "UI/ImGui/imgui.h"
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
-#include "ImGui/imgui_internal.h"
+#include "UI/ImGui/imgui_internal.h"
 
 namespace ImGui
 {

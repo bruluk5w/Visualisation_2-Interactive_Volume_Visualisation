@@ -172,17 +172,13 @@ void Visualization2Renderer::render(Renderer* renderer)
     // Check if textures should be recomputed
     bool mustRecompute[countof(*((decltype(pitCollection.array)*)nullptr))] = { false };
     bool anyRecompute = false;
-    for (int i = 0; i < countof(pitCollection.array); ++i)
-    {
-        BaseTextureHandle& pitImage = pitCollection.array[i];
-        UIResult::TransferFunction& tFuncValue = v.transferFunctions.array[i];
-        UIResult::TransferFunction& tFuncResult = r.transferFunctions.array[i];
-        if (!pitImage->isValid() || tFuncValue.bitDepth != tFuncResult.bitDepth ||
-            memcmp(tFuncValue.transferFunction, tFuncResult.transferFunction, tFuncValue.getArrayLength() * sizeof(UIResult::TransferFunction::sampleT)) != 0)
+
+        BaseTextureHandle& pitImage = pitCollection.tables.mediumColorPit;
+        if (!pitImage->isValid() || v.transferFunctions.mediumColorTransFunc != r.transferFunctions.mediumColorTransFunc)
         {
             mustRecompute[i] = anyRecompute = true;
         }
-    }
+    
 
     if (anyRecompute)
     {
