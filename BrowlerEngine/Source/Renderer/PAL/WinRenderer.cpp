@@ -12,7 +12,6 @@
 #include "UI/ImGui/imgui.h"
 #include "PAL/imgui_impl_dx12.h"
 #include "PAL/imgui_impl_win32.h"
-#include "UI/AppUi.h"
 extern ImGuiContext* GImGui;
 #endif // BRWL_USE_DEAR_IM_GUI
 

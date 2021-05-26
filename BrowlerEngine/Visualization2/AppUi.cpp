@@ -1,7 +1,7 @@
 #include "AppUi.h"
 
-#include "ImGui/imgui.h"
-#include "ImGui/imgui_plot.h"
+#include "UI/ImGui/imgui.h"
+#include "UI/ImGui/imgui_plot.h"
 #include "Common/Spline.h"
 
 
@@ -39,7 +39,7 @@ UIResult::UIResult() :
         false, // drawViewingVolumeBoundaries
         false, // drawOrthographicXRay
     },
-    transferFunctions{},
+    transferFunctions(),
     light{
         {0.f, 0.f, 1.f}, // coords
         {1.f, 1.f, 1.f, 1.f} // color
@@ -48,18 +48,12 @@ UIResult::UIResult() :
 
 
 UIResult::TransferFunctionCollection::TransferFunctionCollection() :
-    functions {
-        {}, // refractionTansFunc
-        {}, // particleColorTransFunc
-        {}, // opacityTransFunc
-        {}  // mediumColorTransFunc
-    }
+    refractionTansFunc(), 
+    particleColorTransFunc(), 
+    opacityTransFunc(), 
+    mediumColorTransFunc()
 { }
 
-UIResult::TransferFunctionCollection::~TransferFunctionCollection()
-{
-    functions.~Aliases();
-}
 
 using namespace ImGui;
 
@@ -132,7 +126,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
         thread_local bool fitWindow = false;
 
         {
-            int arrayLen = result.transferFunctions.array[0].getArrayLength();
+            int arrayLen = result.transferFunctions.functions.mediumColorTransFunc.getArrayLength();
             const float minWindowSizeX = arrayLen * plotWidth + 25.f;
             const float minWindowSizeY = Utils::min(GetIO().DisplaySize.y - 20, menuSpaceY + 20);
             if (fitWindow) {
@@ -145,12 +139,12 @@ void renderAppUI(UIResult& result, const UIResult& values)
 
         Begin("Tools", &showTransferFunctions);
         {
-            UIResult::TransferFunction::BitDepth resultBitDepth;
-            ENUM_SELECT("Bit Depth", values.transferFunctions.array[0].bitDepth, resultBitDepth, UIResult::TransferFunction, BitDepth, bitDepthNames);
-            for (int i = 0; i < countof(result.transferFunctions.array); ++i)
-            {
-                result.transferFunctions.array[i].bitDepth = resultBitDepth;
-            }
+            TransferFunctionBitDepth resultBitDepth;
+            ENUM_SELECT("Bit Depth", values.transferFunctions.mediumColorTransFunc.bitDepth, resultBitDepth, TransferFunction, TransferFunctionBitDepth, bitDepthNames);
+            result.transferFunctions.opacityTransFunc.bitDepth = resultBitDepth;
+            result.transferFunctions.particleColorTransFunc.bitDepth = resultBitDepth;
+            result.transferFunctions.refractionTansFunc.bitDepth = resultBitDepth;
+
 
             thread_local bool lockAspect = false;
             float plotWidthBefore = plotWidth;

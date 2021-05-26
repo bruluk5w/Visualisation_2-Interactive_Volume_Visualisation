@@ -352,6 +352,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AppUi.h" />
     <ClInclude Include="CLogEdit.h" />
     <ClInclude Include="ComputeBuffers.h">
       <SubType>
@@ -393,6 +394,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AppUi.cpp" />
     <ClCompile Include="CLogEdit.cpp" />
     <ClCompile Include="ComputeBuffers.cpp" />
     <ClCompile Include="DxHelpers.cpp" />
@@ -434,6 +436,9 @@
     </ProjectReference>
     <ProjectReference Include="..\Renderer.vcxproj">
       <Project>{4e480767-b556-4a96-94a7-2197c922eeb0}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\UI.vcxproj">
+      <Project>{f0c969f6-d269-400c-bc1e-758045f509cc}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

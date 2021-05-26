@@ -1,6 +1,8 @@
 #pragma once // (c) 2020 Lukas Brunner
 
-#include "ImGui/ImGuiHelpers.h"
+#include "UI/ImGui/ImGuiHelpers.h"
+
+#include "Renderer/Texture.h"
 
 BRWL_NS
 
@@ -139,20 +141,15 @@ struct UIResult
 	};
 
 	// A collection of transfer functions
-	union TransferFunctionCollection
+	struct TransferFunctionCollection
 	{
 		TransferFunctionCollection();
-		~TransferFunctionCollection();
-		// All our transferfunctions
-		//TransferFunction* array[4];
 
-		// aliases
-		struct Aliases {
-			TransferFunction<RENDERER::SampleFormat::F32> refractionTansFunc;
-			TransferFunction<RENDERER::SampleFormat::VEC4F32> particleColorTransFunc;
-			TransferFunction<RENDERER::SampleFormat::F32> opacityTransFunc;
-			TransferFunction<RENDERER::SampleFormat::VEC4F32> mediumColorTransFunc;
-		} functions;
+		TransferFunction<RENDERER::SampleFormat::F32> refractionTansFunc;
+		TransferFunction<RENDERER::SampleFormat::VEC4F32> particleColorTransFunc;
+		TransferFunction<RENDERER::SampleFormat::F32> opacityTransFunc;
+		TransferFunction<RENDERER::SampleFormat::VEC4F32> mediumColorTransFunc;
+
 
 		static const char* transferFuncNames[ENUM_CLASS_TO_NUM(TransferFuncType::MAX)];
 

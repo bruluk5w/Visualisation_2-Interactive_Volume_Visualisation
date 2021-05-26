@@ -45,9 +45,6 @@
     <ClInclude Include="Include\UI\ImGui\imstb_truetype.h">
       <Filter>Header Files\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Include\UI\AppUi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Include\UI\ImGui\imgui_plot.h">
       <Filter>Header Files\ImGui</Filter>
     </ClInclude>
@@ -70,9 +67,6 @@
     </ClCompile>
     <ClCompile Include="Source\UI\ImGui\imgui_widgets.cpp">
       <Filter>Source Files\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\UI\AppUi.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\UI\ImGui\imgui_plot.cpp">
       <Filter>Source Files\ImGui</Filter>

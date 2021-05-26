@@ -6,6 +6,7 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/PAL/imgui_impl_dx12.h"
 #include "Core/Events.h"
+#include "AppUi.h"
 
 BRWL_RENDERER_NS
 
