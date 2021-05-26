@@ -7,17 +7,18 @@
 
 BRWL_NS
 
+namespace {
+    const char* bitDepthNames[ENUM_CLASS_TO_NUM(TransferFunctionBitDepth::MAX)] = {
+    "8 Bit",
+    "10 Bit"
+    };
+}
 
 const char* UIResult::Settings::fontNames[] = {
     "Open Sans Light",
     "Open Sans Regular",
     "Open Sans Semibold",
     "Open Sans Bold"
-};
-
-const char* UIResult::TransferFunction::bitDepthNames[] = {
-    "8 Bit",
-    "10 Bit"
 };
 
 const char* UIResult::TransferFunctionCollection::transferFuncNames[] = {
@@ -58,77 +59,6 @@ UIResult::TransferFunctionCollection::TransferFunctionCollection() :
 UIResult::TransferFunctionCollection::~TransferFunctionCollection()
 {
     functions.~Aliases();
-}
-
-UIResult::TransferFunction::TransferFunction()  :
-    bitDepth(UIResult::TransferFunction::BitDepth::BIT_DEPTH_8_BIT),
-    controlPoints(),
-    transferFunction { 0 },
-    textureID(nullptr)
-{
-    updateFunction();
-}
-
-
-int UIResult::TransferFunction::getArrayLength() const
-{
-    switch (bitDepth) {
-    case BitDepth::BIT_DEPTH_8_BIT:
-        return 1 << 8;
-    case BitDepth::BIT_DEPTH_10_BIT:
-        return 1 << 10;
-    default:
-        BRWL_UNREACHABLE();
-    }
-
-    return 0;
-}
-
-
-
-void UIResult::TransferFunction::updateFunction()
-{   
-    const int numPoints = (int)controlPoints.points.size();
-
-    thread_local std::vector<Vec2> vBuf;
-    vBuf.reserve(numPoints);
-
-    for (const size_t ref : controlPoints.refs)
-        vBuf.push_back(controlPoints.points[ref].pt);
-
-    if (!BRWL_VERIFY(numPoints >= 2, nullptr)) return;
-
-    // evaluate the spline at non-uniform locations
-    if (!BRWL_VERIFY(vBuf[0].x == 0 && vBuf[numPoints - 1].x == 1, nullptr)) {
-        return;
-    }
-    Vec2 first(vBuf[0] - (vBuf[1] - vBuf[0]));
-    Vec2 last(vBuf[numPoints - 1] + (vBuf[numPoints - 1] - vBuf[numPoints - 2]));
-    const int numSamples = getArrayLength();
-    const int numSubdivisions = 30;
-    const int numTessellatedPoints = (numPoints - 1) * numSubdivisions + 1;
-    std::unique_ptr<Vec2[]> tessellatedPoints = std::unique_ptr<Vec2[]>(new Vec2[numTessellatedPoints]);
-    Splines::CentripetalCatmullRom(first, vBuf.data(), last, vBuf.size(), tessellatedPoints.get(), numSubdivisions, numTessellatedPoints);
-
-    // Interpolate along segments for approximation of uniform intervals along the x axis
-    int cursor = 1;
-    transferFunction[0] = tessellatedPoints[0].y;
-    for (int i = 1; i < numSamples; ++i)
-    {
-        while (tessellatedPoints[cursor].x * numSamples <= i && cursor < numTessellatedPoints - 1)
-        {
-            ++cursor;
-        }
-        const Vec2& previous = tessellatedPoints[cursor - 1];
-        const Vec2& next = tessellatedPoints[cursor];
-        const Vec2 delta = next - previous;
-
-        transferFunction[i] = previous.y + ((float)i / (float)numSamples - previous.x) * delta.y / delta.x;
-    }
-
-    transferFunction[numSamples - 1] = tessellatedPoints[numTessellatedPoints - 1].y;
-
-    vBuf.clear();
 }
 
 using namespace ImGui;
@@ -182,8 +112,9 @@ void renderAppUI(UIResult& result, const UIResult& values)
 
         SLIDER_FIX(1, 2)
             Text("Number of slices per voxel:");
-            ::ImGui::InputFloat("", &result.settings.numSlicesPerVoxel, 0.01f, 1.f, "%0.2f");
-            result.settings.numSlicesPerVoxel = Utils::clamp(result.settings.numSlicesPerVoxel, 0.01f, 1.f);
+            ::ImGui::InputFloat("", &result.settings.numSlicesPerVoxel, 0.01f, 2.f, "%0.2f");
+            SliderFloat("", &result.settings.numSlicesPerVoxel, 0.01f, 2.f, "%0.2f");
+            result.settings.numSlicesPerVoxel = Utils::clamp(result.settings.numSlicesPerVoxel, 0.01f, 2.f);
         SLIDER_FIX_END();
         Checkbox("VSync", &result.settings.vsync);
         Checkbox("Free Camera Movement", &result.settings.freeCamMovement);
@@ -346,8 +277,8 @@ void renderAppUI(UIResult& result, const UIResult& values)
         Text("Light Color:");
         float col[4]{ values.light.color.x, values.light.color.y, values.light.color.z };
         ColorEdit4("", col, ImGuiColorEditFlags_HDR);
-        Vec3 hue = Vec3(Utils::clamp(col[0], 0.f, 1.f), Utils::clamp(col[1], 0.f, 1.f), Utils::clamp(col[2], 0.f, 1.f));
-        result.light.color = Vec4(hue.x, hue.y, hue.z, Utils::max(0.f, col[3]));
+        //Vec3 hue = Vec3(Utils::clamp(col[0], 0.f, 1.f), Utils::clamp(col[1], 0.f, 1.f), Utils::clamp(col[2], 0.f, 1.f));
+        result.light.color = Vec4(col[0], col[1], col[2], Utils::max(0.f, col[3]));
         End();
     }
 

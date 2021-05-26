@@ -10,6 +10,7 @@ BRWL_RENDERER_NS
 union PitCollection
 {
 	typedef TextureF32 PitImage;
+	typedef TextureVEC4F32 ColorPitImage;
 
 	PitCollection();
 	~PitCollection();

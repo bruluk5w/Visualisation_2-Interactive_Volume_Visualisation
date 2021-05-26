@@ -25,9 +25,9 @@ void PitCollection::create(BaseTextureManager* mgr)
 {
 	tables = {
 		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Refraction PIT")),
-		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Particle Color PIT")),
+		mgr->createTexture<ColorPitImage>(BRWL_CHAR_LITERAL("Particle Color PIT")),
 		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Opacity PIT")),
-		mgr->createTexture<PitImage>(BRWL_CHAR_LITERAL("Medium Color PIT"))
+		mgr->createTexture<ColorPitImage>(BRWL_CHAR_LITERAL("Medium Color PIT"))
 	};
 }
 

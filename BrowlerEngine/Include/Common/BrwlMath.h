@@ -76,7 +76,7 @@ namespace DirectX
 {
 	inline bool operator==(const ::BRWL::Vec2& a, const ::BRWL::Vec2& b)
 	{
-		return XMVector3EqualR(XMLoadFloat2(&a), XMLoadFloat2(&b));
+		return XMVector3Equal(XMLoadFloat2(&a), XMLoadFloat2(&b));
 	}
 
 	inline bool operator!=(const ::BRWL::Vec2& a, const ::BRWL::Vec2& b)
@@ -89,54 +89,62 @@ namespace DirectX
 		return lhs;
 	}
 
-	inline ::BRWL::Vec2 operator-(::BRWL::Vec2 lhs, const ::BRWL::Vec2& rhs) {
-		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet(rhs.x, rhs.y, 0.f, 0.f))));
-		return lhs;
+	inline ::BRWL::Vec2 operator-(const ::BRWL::Vec2 lhs, const ::BRWL::Vec2& rhs) {
+		::BRWL::Vec2 ret;
+		XMStoreFloat2(&ret, XMVectorSubtract(XMLoadFloat2(&lhs), XMLoadFloat2(&rhs)));
+		return ret;
 	}
 
-	inline ::BRWL::Vec2 operator-(::BRWL::Vec2 lhs, float rhs) {
-		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet(rhs, rhs, 0.f, 0.f))));
-		return lhs;
+	inline ::BRWL::Vec2 operator-(const ::BRWL::Vec2 lhs, float rhs) {
+		::BRWL::Vec2 ret;
+		XMStoreFloat2(&ret, XMVectorSubtract(XMLoadFloat2(&lhs), XMVectorSet(rhs, rhs, 0.f, 0.f)));
+		return ret;
 	}
 
-	inline ::BRWL::Vec2 operator+(::BRWL::Vec2 lhs, const ::BRWL::Vec2& rhs) {
-		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
-		return lhs;
+	inline ::BRWL::Vec2 operator+(const ::BRWL::Vec2 lhs, const ::BRWL::Vec2& rhs) {
+		::BRWL::Vec2 ret;
+		XMStoreFloat2(&ret, XMVectorAdd(XMLoadFloat2(&lhs), XMLoadFloat2(&rhs)));
+		return ret;
 	}
 
 	inline ::BRWL::Vec2 operator+(::BRWL::Vec2 lhs, float rhs) {
-		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs, rhs, 0.f, 0.f)));
-		return lhs;
+		::BRWL::Vec2 ret;
+		XMStoreFloat2(&ret, XMVectorAdd(XMLoadFloat2(&lhs), XMVectorSet(rhs, rhs, 0.f, 0.f)));
+		return ret;
 	}
 
 	inline ::BRWL::Vec2& operator+=(::BRWL::Vec2& lhs, const ::BRWL::Vec2& rhs) {
-		XMStoreFloat2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
+		XMStoreFloat2(&lhs, XMVectorAdd(XMLoadFloat2(&lhs), XMLoadFloat2(&rhs)));
 		return lhs;
 	}
 
-	inline ::BRWL::Vec2 operator*(::BRWL::Vec2 lhs, const ::BRWL::Vec2& rhs) {
-		XMStoreFloat2(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
-		return lhs;
+	inline ::BRWL::Vec2 operator*(const ::BRWL::Vec2 lhs, const ::BRWL::Vec2& rhs) {
+		::BRWL::Vec2 ret;
+		XMStoreFloat2(&ret, XMVectorMultiply(XMLoadFloat2(&lhs), XMLoadFloat2(&rhs)));
+		return ret;
 	}
 
 	inline ::BRWL::Vec2& operator*=(::BRWL::Vec2& lhs, const ::BRWL::Vec2& rhs) {
-		XMStoreFloat2(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
+		XMStoreFloat2(&lhs, XMVectorMultiply(XMLoadFloat2(&lhs), XMLoadFloat2(&rhs)));
 		return lhs;
 	}
 
-	inline ::BRWL::Vec2 operator*(::BRWL::Vec2 lhs, float rhs) {
-		XMStoreFloat2(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs, rhs, 0.f, 0.f)));
-		return lhs;
+	inline ::BRWL::Vec2 operator*(const ::BRWL::Vec2 lhs, float rhs) {
+		::BRWL::Vec2 ret;
+		XMStoreFloat2(&ret, XMVectorMultiply(XMLoadFloat2(&lhs), XMVectorSet(rhs, rhs, 0.f, 0.f)));
+		return ret;
 	}
 
-	inline ::BRWL::Vec2 operator*(float lhs, ::BRWL::Vec2 rhs) {
-		XMStoreFloat2(&rhs, XMVectorMultiply(XMVectorSet(rhs.x, rhs.y, 0.f, 0.f), XMVectorSet(lhs, lhs, 0.f, 0.f)));
-		return rhs;
+	inline ::BRWL::Vec2 operator*(float lhs, const ::BRWL::Vec2 rhs) {
+		::BRWL::Vec2 ret;
+		XMStoreFloat2(&ret, XMVectorMultiply(XMVectorSet(lhs, lhs, 0.f, 0.f), XMLoadFloat2(&rhs)));
+		return ret;
 	}
 
-	inline ::BRWL::Vec2 operator/(::BRWL::Vec2 lhs, ::BRWL::Vec2 rhs) {
-		XMStoreFloat2(&lhs, XMVectorDivide(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorSet(rhs.x, rhs.y, 0.f, 0.f)));
-		return lhs;
+	inline ::BRWL::Vec2 operator/(const ::BRWL::Vec2 lhs, const ::BRWL::Vec2 rhs) {
+		::BRWL::Vec2 ret;
+		XMStoreFloat2(&ret, XMVectorDivide(XMLoadFloat2(&lhs), XMLoadFloat2(&rhs)));
+		return ret;
 	}
 
 	//inline ::BRWL::IntVec2& operator-=(::BRWL::IntVec2& lhs, const ::BRWL::IntVec2& rhs) {
@@ -199,106 +207,124 @@ namespace DirectX
 		return lhs;
 	}
 
-	inline ::BRWL::Vec3 operator-(::BRWL::Vec3 lhs, const ::BRWL::Vec3& rhs) {
-		XMStoreFloat3(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorNegate(XMVectorSet(rhs.x, rhs.y, rhs.z, 0.f))));
-		return lhs;
+	inline ::BRWL::Vec3 operator-(const ::BRWL::Vec3 lhs, const ::BRWL::Vec3& rhs) {
+		::BRWL::Vec3 ret;
+		XMStoreFloat3(&ret, XMVectorSubtract(XMLoadFloat3(&lhs), XMLoadFloat3(&rhs)));
+		return ret;
 	}
 
-	inline ::BRWL::Vec3 operator-(::BRWL::Vec3 lhs, float rhs) {
-		XMStoreFloat3(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorNegate(XMVectorSet(rhs, rhs, rhs, 0.f))));
-		return lhs;
+	inline ::BRWL::Vec3 operator-(const ::BRWL::Vec3 lhs, float rhs) {
+		::BRWL::Vec3 ret;
+		XMStoreFloat3(&ret, XMVectorSubtract(XMLoadFloat3(&lhs), XMVectorSet(rhs, rhs, rhs, 0.f)));
+		return ret;
 	}
 
 	inline ::BRWL::Vec3 operator-(const ::BRWL::Vec3& v)
 	{
 		::BRWL::Vec3 res;
-		XMStoreFloat3(&res, XMVectorNegate(XMVectorSet(v.x, v.y, v.z, 0.f)));
+		XMStoreFloat3(&res, XMVectorNegate(XMLoadFloat3(&v)));
 		return res;
 	}
 
-	inline ::BRWL::Vec3 operator+(::BRWL::Vec3 lhs, const ::BRWL::Vec3& rhs) {
-		XMStoreFloat3(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorSet(rhs.x, rhs.y, rhs.z, 0.f)));
-		return lhs;
+	inline ::BRWL::Vec3 operator+(const ::BRWL::Vec3 lhs, const ::BRWL::Vec3& rhs) {
+		::BRWL::Vec3 ret;
+		XMStoreFloat3(&ret, XMVectorAdd(XMLoadFloat3(&lhs), XMLoadFloat3(&rhs)));
+		return ret;
 	}
 
-	inline ::BRWL::Vec3 operator+(::BRWL::Vec3 lhs, float rhs) {
-		XMStoreFloat3(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorSet(rhs, rhs, rhs, 0.f)));
-		return lhs;
+	inline ::BRWL::Vec3 operator+(const ::BRWL::Vec3 lhs, float rhs) {
+		::BRWL::Vec3 ret;
+		XMStoreFloat3(&ret, XMVectorAdd(XMLoadFloat3(&lhs), XMVectorSet(rhs, rhs, rhs, 0.f)));
+		return ret;
 	}
 
 	inline ::BRWL::Vec3& operator+=(::BRWL::Vec3& lhs, const ::BRWL::Vec3& rhs) {
-		XMStoreFloat3(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorSet(rhs.x, rhs.y, rhs.z, 0.f)));
+		XMStoreFloat3(&lhs, XMVectorAdd(XMLoadFloat3(&lhs), XMLoadFloat3(&rhs)));
 		return lhs;
 	}
 
+	// TODO: change this to dot(...)
 	inline float operator*(const ::BRWL::Vec3& lhs, const ::BRWL::Vec3& rhs) {
 		float res;
-		XMStoreFloat(&res, XMVector3Dot(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorSet(rhs.x, rhs.y, rhs.z, 0.f)));
+		XMStoreFloat(&res, XMVector3Dot(XMLoadFloat3(&lhs), XMLoadFloat3(&rhs)));
 		return res;
 	}
 
 	inline ::BRWL::Vec3& operator*=(::BRWL::Vec3& lhs, const ::BRWL::Vec3& rhs) {
-		XMStoreFloat3(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorSet(rhs.x, rhs.y, rhs.z, 0.f)));
+		XMStoreFloat3(&lhs, XMVectorMultiply(XMLoadFloat3(&lhs), XMLoadFloat3(&rhs)));
 		return lhs;
 	}
 
 	inline ::BRWL::Vec3& operator*=(::BRWL::Vec3& lhs, float rhs) {
-		XMStoreFloat3(&lhs, XMVectorMultiply(XMVectorSet((float)lhs.x, (float)lhs.y, (float)lhs.z, 0.f), XMVectorReplicate(rhs)));
+		XMStoreFloat3(&lhs, XMVectorMultiply(XMLoadFloat3(&lhs), XMVectorReplicate(rhs)));
 		return lhs;
 	}
 
-	inline ::BRWL::Vec3 operator*(::BRWL::Vec3 lhs, float rhs) {
-		XMStoreFloat3(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorReplicate(rhs)));
-		return lhs;
+	inline ::BRWL::Vec3 operator*(const ::BRWL::Vec3 lhs, float rhs) {
+		::BRWL::Vec3 res;
+		XMStoreFloat3(&res, XMVectorMultiply(XMLoadFloat3(&lhs), XMVectorReplicate(rhs)));
+		return res;
 	}
 
-	inline ::BRWL::Vec3 operator/(::BRWL::Vec3 lhs, float rhs) {
-		const float recip = 1.f / rhs;
-		XMStoreFloat3(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorReplicate(recip)));
-		return lhs;
+	inline ::BRWL::Vec3 operator/(const ::BRWL::Vec3 lhs, float rhs) {
+		::BRWL::Vec3 res;
+		XMStoreFloat3(&res, XMVectorDivide(XMLoadFloat3(&lhs), XMVectorReplicate(rhs)));
+		return res;
 	}
 
 
-	inline ::BRWL::Vec3 operator*(float rhs, ::BRWL::Vec3 lhs) {
-		XMStoreFloat3(&lhs, XMVectorMultiply(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), XMVectorSet(rhs, rhs, rhs, 0.f)));
-		return lhs;
+	inline ::BRWL::Vec3 operator*(float lhs, ::BRWL::Vec3 rhs) {
+		::BRWL::Vec3 res;
+		XMStoreFloat3(&res, XMVectorDivide(XMVectorReplicate(lhs), XMLoadFloat3(&rhs)));
+		return res;
 	}
 
-	inline ::BRWL::Vec4 operator*(::BRWL::Vec4 lhs, ::BRWL::Mat4 rhs)
+
+	inline ::BRWL::Vec3 operator*(const ::BRWL::Vec3 lhs, ::BRWL::Mat4 rhs)
 	{
+		::BRWL::Vec3 res;
+		XMStoreFloat3(&res, XMVector3TransformCoord(XMLoadFloat3(&lhs), rhs));
+		return lhs;
+	}
+
+	inline bool operator==(const ::BRWL::Vec3& lhs, const ::BRWL::Vec3& rhs)
+	{
+		return XMVector3Equal(XMLoadFloat3(&lhs), XMLoadFloat3(&rhs));
+	}
+
+	inline bool operator!=(const ::BRWL::Vec3& lhs, const ::BRWL::Vec3& rhs)
+	{
+		return !(lhs == rhs);
+	}
+
+	inline ::BRWL::Vec4 operator*(const ::BRWL::Vec4 lhs, const ::BRWL::Mat4 rhs)
+	{
+		::BRWL::Vec4 res;
 		if (lhs.w != 0)
 		{
-			XMVECTOR tmp = XMVector4Transform(XMVectorDivide(XMVectorSet(lhs.x, lhs.y, lhs.z, lhs.w), XMVectorReplicate(lhs.w)), rhs);
-			XMStoreFloat4(&lhs, XMVectorDivide(tmp, XMVectorSplatW(tmp)));
+			XMVECTOR tmp = XMVector4Transform(XMVectorDivide(XMLoadFloat4(&lhs), XMVectorReplicate(lhs.w)), rhs);
+			XMStoreFloat4(&res, XMVectorDivide(tmp, XMVectorSplatW(tmp)));
 		}
 		else
 		{
-			XMStoreFloat4(&lhs, XMVector4Transform(XMVectorSet(lhs.x, lhs.y, lhs.z, lhs.w), rhs));
+			XMStoreFloat4(&res, XMVector4Transform(XMLoadFloat4(&lhs), rhs));
 		}
 
 		return lhs;
 	}
 
-	inline ::BRWL::Vec3 operator*(::BRWL::Vec3 lhs, ::BRWL::Mat4 rhs)
+	inline ::BRWL::Vec4 operator-(const ::BRWL::Vec4 v)
 	{
-		XMStoreFloat3(&lhs, XMVector3TransformCoord(XMVectorSet(lhs.x, lhs.y, lhs.z, 0.f), rhs));
-		return lhs;
+		::BRWL::Vec4 res;
+		XMStoreFloat4(&res, XMVectorNegate(XMLoadFloat4(&v)));
+		return res;
 	}
 
-	inline ::BRWL::Vec4 operator-(::BRWL::Vec4 v)
+	inline ::BRWL::Vec4 operator-(const ::BRWL::Vec4& lhs, const ::BRWL::Vec4& rhs)
 	{
-		XMStoreFloat4(&v, XMVectorNegate(XMVectorSet(v.x, v.y, v.z, v.w)));
-		return v;
-	}
-
-	inline bool operator==(const ::BRWL::Vec3& a, const ::BRWL::Vec3& b)
-	{
-		return XMVector3EqualR(XMVectorSet(a.x, a.y, a.z, 0.f), XMVectorSet(b.x, b.y, b.z, 0.f));
-	}
-
-	inline bool operator!=(const ::BRWL::Vec3& a, const ::BRWL::Vec3& b)
-	{
-		return !(a == b);
+		::BRWL::Vec4 res;
+		XMStoreFloat4(&res, XMVectorSubtract(XMLoadFloat4(&lhs), XMLoadFloat4(&rhs)));
+		return res;
 	}
 
 	inline bool operator==(const ::BRWL::Vec4& a, const ::BRWL::Vec4& b)

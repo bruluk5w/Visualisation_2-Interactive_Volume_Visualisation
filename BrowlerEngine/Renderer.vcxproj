@@ -482,6 +482,9 @@ if not exist %compiled_folder% (
     <DXCShader Include="Shaders\OrthographicXRay_vs.hlsl" />
     <DXCShader Include="Shaders\Propagation_cs.hlsl" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Common.hlsli" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="packages\directxmath.2021.1.11.2\build\native\directxmath.targets" Condition="Exists('packages\directxmath.2021.1.11.2\build\native\directxmath.targets')" />

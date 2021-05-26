@@ -30,6 +30,7 @@ DEFINE_ENUM_CLASS_OPERATORS(TextureCreationParams)
 	f(U16) \
 	f(S32) \
 	f(U32) \
+	f(VEC4F32) \
 
 #define BRWL_MAKE_ENUM_(e) e,
 enum class SampleFormat : uint8_t

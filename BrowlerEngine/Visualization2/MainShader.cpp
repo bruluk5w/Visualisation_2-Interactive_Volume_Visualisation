@@ -467,7 +467,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
     const float planeOffsetFar = -bbox.getClosestPlaneFromDirection(-camPos);
     const float planeStackThickness = planeOffsetNear - planeOffsetFar;
     BRWL_CHECK(planeStackThickness > 0, nullptr);
-    const float numSlices = planeStackThickness * data.numSlicesPerVoxel +1; // 1 plane per voxel is a very good resolution
+    const float numSlices = planeStackThickness * data.numSlicesPerVoxel + 2; // 1 plane per voxel is a very good resolution; + 2 for render even one slice past the end for environment lookup 
     // position offset from prevous to next plane
     const float sliceWidth = 1.0f / data.numSlicesPerVoxel;
     const Vec3 deltaSlice = normalized(-camPos) * sliceWidth;

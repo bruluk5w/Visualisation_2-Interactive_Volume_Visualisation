@@ -34,6 +34,12 @@ template<> struct SampleFormatTrait<SampleFormat::U32> {
 	using type = uint32_t;
 };
 
+
+template<> struct SampleFormatTrait<SampleFormat::VEC4F32> {
+	using type = Vec4;
+};
+
+
 //!  The main texture class
 /*!
  * This class allows specialization on the pixel format of a texture.
@@ -68,8 +74,10 @@ public:
 	//! Inherited via BaseTexture
 	virtual int getSampleByteSize() const override
 	{
-		return sizeof(sampleT);
+		return sampleByteSize();
 	}
+
+	static constexpr int sampleByteSize() { return sizeof(sampleT); }
 
 	virtual SampleFormat getSampleFormat() const override
 	{
@@ -83,6 +91,7 @@ typedef Texture<SampleFormat::S16> TextureS16;
 typedef Texture<SampleFormat::U16> TextureU16;
 typedef Texture<SampleFormat::S32> TextureS32;
 typedef Texture<SampleFormat::U32> TextureU32;
+typedef Texture<SampleFormat::VEC4F32> TextureVEC4F32;
 
 
 BRWL_RENDERER_NS_END

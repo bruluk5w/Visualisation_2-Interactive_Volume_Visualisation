@@ -202,7 +202,12 @@ void Visualization2Renderer::render(Renderer* renderer)
                 else
                     pitImage->zero();
 
-                makePreintegrationTable<>(*dynamic_cast<PitCollection::PitImage*>(&*pitImage), tFuncResult.transferFunction, tFuncResult.getArrayLength());
+                if ((*pitImage).getSampleFormat() == SampleFormat::F32) {
+                    makePreintegrationTable<>(*dynamic_cast<PitCollection::PitImage*>(&*pitImage), tFuncResult.transferFunction, tFuncResult.getArrayLength());
+                }
+                else {
+                    makePreintegrationTable<>(*dynamic_cast<PitCollection::ColorPitImage*>(&*pitImage), tFuncResult.transferFunction, tFuncResult.getArrayLength());
+                }
 
                 pitImage.startLoad();
             }

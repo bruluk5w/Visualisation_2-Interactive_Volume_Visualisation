@@ -210,4 +210,9 @@
       <Filter>Shaders</Filter>
     </DXCShader>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Common.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+  </ItemGroup>
 </Project>

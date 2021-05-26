@@ -48,7 +48,7 @@ namespace
 //}
 
 template<SampleFormat S, template<SampleFormat> typename T>
-void makePreintegrationTable(T<S>& image, float* transferFunc, unsigned int lenFunc)
+void makePreintegrationTable(T<S>& image, typename T<S>::sampleT* transferFunc, unsigned int lenFunc)
 {
 	checkSize<S>(image, lenFunc);
 	const size_t yStep = image.getSizeX();
@@ -58,12 +58,12 @@ void makePreintegrationTable(T<S>& image, float* transferFunc, unsigned int lenF
 		T<S>::sampleT* lineStart = table + y * yStep;
 		for (size_t x = y + 1; x < lenFunc; ++x)
 		{ // integrate from y to x
-			double sum = 0;
-			for (int i = y + 1; i < x; ++i) {
-				sum += (transferFunc[i - 1] + transferFunc[i]) * 0.5;
+			T<S>::sampleT sum = T<S>::sampleT();
+			for (size_t i = y + 1; i < x; ++i) {
+				sum = sum + (transferFunc[i - 1] + transferFunc[i]) * 0.5f;
 			}
 
-			lineStart[x] = (T<S>::sampleT)sum / (x - y);
+			lineStart[x] = sum / (x - y);
 		}
 	}
 
@@ -78,7 +78,8 @@ void makePreintegrationTable(T<S>& image, float* transferFunc, unsigned int lenF
 }
 
 template inline void makePreintegrationTable<>(Texture<SampleFormat::F32>& image, float* transferFunc, unsigned int lenFunc);
-template inline void makePreintegrationTable<>(Texture<SampleFormat::F64>& image, float* transferFunc, unsigned int lenFunc);
+template inline void makePreintegrationTable<>(Texture<SampleFormat::F64>& image, double* transferFunc, unsigned int lenFunc);
+template inline void makePreintegrationTable<>(Texture<SampleFormat::VEC4F32>& image, Vec4* transferFunc, unsigned int lenFunc);
 
 
 template<SampleFormat S, template<SampleFormat> typename T>

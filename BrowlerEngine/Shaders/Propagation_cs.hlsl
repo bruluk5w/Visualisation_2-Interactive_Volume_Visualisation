@@ -1,3 +1,5 @@
+#include "Common.hlsli"
+
 cbuffer constants : register(b0)
 {
     float3 bboxmin;
@@ -89,29 +91,8 @@ bool rayIntersectsVolume(float3 rayPos, float3 rayDir)
             intersectsPositiveX || intersectsPositiveY || intersectsPositiveZ);
 }
 
-float3 checkerBoard(float3 viewingRayDirection)
-{
-    int2 stub = 10 * (viewingRayDirection / viewingRayDirection.z).yz;
-    if (abs((stub.x % 2 - stub.y % 2)) < 0.01)
-        return (1, 1, 1);
-    else 
-        return (0, 0, 0);
-}
-
-float3 checkerBoardAlt(float3 viewingRayDirection)
-{
-    int2 stub = (viewingRayDirection / viewingRayDirection.z).yz;
-    if ((stub.x & 1) ^ (stub.y & 1))
-        return (1, 1, 1);
-    else
-        return (0, 0, 0);
-}
-
-
-
 
 [numthreads(16, 16, 1)]
-
 void main ( uint3 DTid : SV_DispatchThreadID )
 
 {
@@ -149,7 +130,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     }
     if (!rayIntersectsVolume(currentViewingRayPosition, currentViewingRayDirection))
     {
-        colorBufferWrite[write_idx].xyz = checkerBoard(currentViewingRayDirection) * (1 - currentColor.w);
+        colorBufferWrite[write_idx].xyz = currentColor + checkerBoard(currentViewingRayDirection) * (1 - currentColor.w);
         colorBufferWrite[write_idx].w = 1;
         return;
     }
@@ -175,7 +156,8 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float3 nextMediumColor = currentMediumColor * (1 - medium);
     
     // Advance viewing ray in world space
-    const float3 nextViewingRayPosition = currentViewingRayPosition + currentViewingRayDirection * dot(currentViewingRayDirection, deltaSlice);
+    float len = dot(currentViewingRayDirection, normalize(deltaSlice));
+    const float3 nextViewingRayPosition = currentViewingRayPosition + currentViewingRayDirection * length(deltaSlice) / len;
     const float3 nextViewingRayDirection = currentViewingRayDirection; // todo
     
    
