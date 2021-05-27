@@ -275,7 +275,7 @@ namespace DirectX
 
 	inline ::BRWL::Vec3 operator*(float lhs, ::BRWL::Vec3 rhs) {
 		::BRWL::Vec3 res;
-		XMStoreFloat3(&res, XMVectorDivide(XMVectorReplicate(lhs), XMLoadFloat3(&rhs)));
+		XMStoreFloat3(&res, XMVectorMultiply(XMVectorReplicate(lhs), XMLoadFloat3(&rhs)));
 		return res;
 	}
 
@@ -284,7 +284,7 @@ namespace DirectX
 	{
 		::BRWL::Vec3 res;
 		XMStoreFloat3(&res, XMVector3TransformCoord(XMLoadFloat3(&lhs), rhs));
-		return lhs;
+		return res;
 	}
 
 	inline bool operator==(const ::BRWL::Vec3& lhs, const ::BRWL::Vec3& rhs)
@@ -310,7 +310,7 @@ namespace DirectX
 			XMStoreFloat4(&res, XMVector4Transform(XMLoadFloat4(&lhs), rhs));
 		}
 
-		return lhs;
+		return res;
 	}
 
 	inline ::BRWL::Vec4 operator-(const ::BRWL::Vec4 v)

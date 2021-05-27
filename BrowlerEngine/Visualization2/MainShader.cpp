@@ -497,6 +497,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
         const Vec3 right = normalized(toVec3(VEC4_RIGHT * viewingPlaneModelMatrix));
         const Vec3 down = normalized(toVec3(-VEC4_UP * viewingPlaneModelMatrix));
         const Vec2 halfDimension = (0.5f * viewingPlaneDimensions);
+        const Vec3 topLeft = viewingPlaneCenter - halfDimension.x * right - halfDimension.y * down; // in world space
 
         // restart scan
         if (data.hasViewChanged)
@@ -509,7 +510,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
             memset(&initParams, 0, sizeof(initParams));
             initParams.horizontalPlaneDirection = right;
             initParams.verticalPlaneDirection = down;
-            initParams.topLeft = viewingPlaneCenter - halfDimension.x * right - halfDimension.y * down; // in world space
+            initParams.topLeft = topLeft;
             initParams.eye = camPos;
             initParams.lightDirection = Quaternion::fromTo(VEC3_FWD, -camPos) * data.light.coords; // relative to eye-origin vector, so that the light source stays in the same hemisphere when we move around then origin
             initParams.lightColor = data.light.color;
@@ -530,8 +531,10 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
                 propParams.bboxmin = bbox.min;
                 propParams.bboxmax = bbox.max;
                 propParams.deltaSlice = deltaSlice;
+                propParams.planeRight = right;
+                propParams.planeDown = down;
+                propParams.topLeft = topLeft;
             }
-
 
             remainingSlices = propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexturehandle, remainingSlices);
         }

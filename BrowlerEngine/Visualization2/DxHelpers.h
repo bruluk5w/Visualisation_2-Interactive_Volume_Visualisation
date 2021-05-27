@@ -1,7 +1,11 @@
 #pragma once // (c) 2020 Lukas Brunner
 
 
-void makeStaticSamplerDescription(D3D12_STATIC_SAMPLER_DESC& staticSampler, unsigned int shaderRegister, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_PIXEL);
+void makeStaticSamplerDescription(
+    D3D12_STATIC_SAMPLER_DESC& staticSampler,
+    unsigned int shaderRegister,
+    D3D12_TEXTURE_ADDRESS_MODE addressMode = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+    D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_PIXEL);
 
 enum class PitTex : uint8_t
 {

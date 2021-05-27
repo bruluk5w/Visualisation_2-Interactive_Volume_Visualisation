@@ -60,7 +60,7 @@ public:
 	void* textureID;
 };
 
-
+//S is expected to be a format with only 32bit float channels
 template<RENDERER::SampleFormat S, template<RENDERER::SampleFormat> typename T>
 struct TransferFunction : public BaseTransferFunction
 {
@@ -92,6 +92,15 @@ struct TransferFunction : public BaseTransferFunction
 		}() };
 
 		updateFunction(dirtyFlags.data()); // initializes transferFunction
+
+		// set unused channels to one (e.g. alpha)
+		for (int i = numChannels(); i < sizeof(sampleT) / sizeof(float); ++i)
+		{
+			float* base = getData() + i;
+			for (unsigned int j = 0; j < countof(transferFunction); ++j) {
+				base[j * sizeof(sampleT) / sizeof(float)] = 1.0f;
+			}
+		}
 	}
 
 

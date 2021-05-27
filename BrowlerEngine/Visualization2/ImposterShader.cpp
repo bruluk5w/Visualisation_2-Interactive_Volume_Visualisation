@@ -43,7 +43,7 @@ ImposterShader::ImposterShader(ID3D12Device* device, const D3D12_INPUT_LAYOUT_DE
 
         // color tex sampler
         D3D12_STATIC_SAMPLER_DESC staticSampler;
-        makeStaticSamplerDescription(staticSampler, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+        makeStaticSamplerDescription(staticSampler, 0, D3D12_TEXTURE_ADDRESS_MODE_BORDER, D3D12_SHADER_VISIBILITY_PIXEL);
 
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
         memset(&rootSignatureDesc, 0, sizeof(rootSignatureDesc));

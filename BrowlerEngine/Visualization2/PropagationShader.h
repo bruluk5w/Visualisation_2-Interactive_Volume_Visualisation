@@ -21,12 +21,18 @@ public:
     {
         static const unsigned int threadGroupSizeX = 16;
         static const unsigned int threadGroupSizeY = 16;
-        static const unsigned int constantCount = 11;
-        Vec3 bboxmin;
+        static const unsigned int constantCount = 23;
+        Vec3 bboxmin; // extents of the volume data set
         float padding0;
-        Vec3 bboxmax;
+        Vec3 bboxmax; // extents of the volume data set
         float padding1;
-        Vec3 deltaSlice;
+        Vec3 deltaSlice; // normal vector of the slices with length equal to distance between slices
+        float padding2;
+        Vec3 planeRight; // horizontal direction of the slices in positive uv direction (normalised)
+        float padding3;
+        Vec3 planeDown; // vertical direction of the slices in positive uv direction (normalised)
+        float padding4;
+        Vec3 topLeft; // top left corner point (front) of the viewing volume
     };
 #pragma pack(pop)
     // propagates light and viewing rays through the volume and returns the amount of slices which was not yet able to process, returns also the last written 

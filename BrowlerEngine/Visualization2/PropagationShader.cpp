@@ -29,26 +29,26 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
 
         // pong buffers - write
         D3D12_DESCRIPTOR_RANGE pingPongRanges[2];
-        D3D12_DESCRIPTOR_RANGE& uavRange = pingPongRanges[0];
-        memset(&uavRange, 0, sizeof(uavRange));
-        uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        uavRange.NumDescriptors = ComputeBuffers::numBuffers;
-        uavRange.BaseShaderRegister = uavRegisterIdx;
-        uavRange.RegisterSpace = 0;
-        uavRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        D3D12_DESCRIPTOR_RANGE& uavRangePong = pingPongRanges[0];
+        memset(&uavRangePong, 0, sizeof(uavRangePong));
+        uavRangePong.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+        uavRangePong.NumDescriptors = ComputeBuffers::numBuffers;
+        uavRangePong.BaseShaderRegister = uavRegisterIdx;
+        uavRangePong.RegisterSpace = 0;
+        uavRangePong.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
         
-        uavRegisterIdx += uavRange.NumDescriptors;
+        uavRegisterIdx += uavRangePong.NumDescriptors;
 
         // ping buffers - read
-        D3D12_DESCRIPTOR_RANGE& srvRange = pingPongRanges[1];
-        memset(&srvRange, 0, sizeof(srvRange));
-        srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        srvRange.NumDescriptors = ComputeBuffers::numBuffers;
-        srvRange.BaseShaderRegister = uavRegisterIdx;
-        srvRange.RegisterSpace = 0;
-        srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        D3D12_DESCRIPTOR_RANGE& uavRangePing = pingPongRanges[1];
+        memset(&uavRangePing, 0, sizeof(uavRangePing));
+        uavRangePing.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+        uavRangePing.NumDescriptors = ComputeBuffers::numBuffers;
+        uavRangePing.BaseShaderRegister = uavRegisterIdx;
+        uavRangePing.RegisterSpace = 0;
+        uavRangePing.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-        uavRegisterIdx += srvRange.NumDescriptors;
+        uavRegisterIdx += uavRangePing.NumDescriptors;
 
         D3D12_ROOT_PARAMETER param[8];
         memset(&param, 0, sizeof(param));
@@ -60,12 +60,12 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
 
         param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         param[1].DescriptorTable.NumDescriptorRanges = 1;
-        param[1].DescriptorTable.pDescriptorRanges = &uavRange;
+        param[1].DescriptorTable.pDescriptorRanges = &uavRangePong;
         param[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
         param[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         param[2].DescriptorTable.NumDescriptorRanges = 1;
-        param[2].DescriptorTable.pDescriptorRanges = &srvRange;
+        param[2].DescriptorTable.pDescriptorRanges = &uavRangePing;
         param[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
         // preintegration tables and volume texture
@@ -92,9 +92,10 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
         }
 
         // volume and preintergration sampler are static samplers since they never change
-        D3D12_STATIC_SAMPLER_DESC staticSamplers[2];
-        makeStaticSamplerDescription(staticSamplers[0], 0, D3D12_SHADER_VISIBILITY_ALL);
-        makeStaticSamplerDescription(staticSamplers[1], 1, D3D12_SHADER_VISIBILITY_ALL);
+        D3D12_STATIC_SAMPLER_DESC staticSamplers[3];
+        makeStaticSamplerDescription(staticSamplers[0], 0, D3D12_TEXTURE_ADDRESS_MODE_BORDER, D3D12_SHADER_VISIBILITY_ALL);
+        makeStaticSamplerDescription(staticSamplers[1], 1, D3D12_TEXTURE_ADDRESS_MODE_BORDER, D3D12_SHADER_VISIBILITY_ALL);
+        makeStaticSamplerDescription(staticSamplers[1], 2, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_SHADER_VISIBILITY_ALL);
 
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
         memset(&rootSignatureDesc, 0, sizeof(rootSignatureDesc));

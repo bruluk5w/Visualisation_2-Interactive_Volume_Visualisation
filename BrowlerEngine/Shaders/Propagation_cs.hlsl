@@ -5,10 +5,14 @@ cbuffer constants : register(b0)
     float3 bboxmin;
     float3 bboxmax;
     float3 deltaSlice;
+    float3 planeRight;
+    float3 planeDown;
+    float3 topLeft;
 };
 
 SamplerState preintegrationSampler : register(s0);
 SamplerState volumeSampler : register(s1);
+SamplerState lightSampler : register(s2);
 
 RWTexture2D<float4> lightBufferWrite : register(u0);
 RWTexture2D<float4> lightDirectionBufferWrite : register(u1);
@@ -60,9 +64,20 @@ float4 cookTorrance(float3 normal, float3 view, float3 light, float fromIdxOfRef
 
 
 
-float3 getUVCoordinates(float3 coordinate)
+float3 getUVCoordinatesVolume(float3 worldCoord)
 {
-	return (coordinate - bboxmin) / (bboxmax - bboxmin);
+	return (worldCoord - bboxmin) / (bboxmax - bboxmin);
+}
+
+float2 sampleLightTextures(float3 worldCoord, out float3 lightDirection, out float3 lightIntensity)
+{
+    uint2 texDim;
+    lightBufferRead.GetDimensions(texDim.x, texDim.y);
+    const float3 offset = worldCoord - topLeft;
+    const float2 uv = float2(dot(offset, planeRight), dot(offset, planeDown)) / texDim; // todo make multiplication and set as constant
+    //lightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, uv, 0).xyz;
+    //lightIntensity = lightBufferRead.SampleLevel(lightSampler, uv, 0).xyz;
+    return float2(0, 0);
 }
 
 
@@ -146,12 +161,15 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     // TODO: float3 specularLight = specularBDRF(currentLightDirection, currentViewingRayDirection, delta f);
     float3 specularLight = float3(0, 0, 0);
     
-    
+    // Sampling light information
+    float3 lightDirection;
+    float3 lightIntensity;
+    sampleLightTextures(currentViewingRayPosition, lightDirection, lightIntensity);
+
     // Sampling the volume
     // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/8 of the normalized range is utilized.
-    const float previousScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinates(previousViewingRayPosition), 0) * 8;
-    const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinates(currentViewingRayPosition), 0) * 8;
-    
+    const float previousScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(previousViewingRayPosition), 0) * 8;
+    const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentViewingRayPosition), 0) * 8;
     float3 color = integrationTable(previousScalarSample, currentScalarSample, particleColIntegTex);
     float3 alpha = integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex);
     float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
