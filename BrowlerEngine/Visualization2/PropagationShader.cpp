@@ -95,7 +95,7 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
         D3D12_STATIC_SAMPLER_DESC staticSamplers[3];
         makeStaticSamplerDescription(staticSamplers[0], 0, D3D12_TEXTURE_ADDRESS_MODE_BORDER, D3D12_SHADER_VISIBILITY_ALL);
         makeStaticSamplerDescription(staticSamplers[1], 1, D3D12_TEXTURE_ADDRESS_MODE_BORDER, D3D12_SHADER_VISIBILITY_ALL);
-        makeStaticSamplerDescription(staticSamplers[1], 2, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_SHADER_VISIBILITY_ALL);
+        makeStaticSamplerDescription(staticSamplers[2], 2, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_SHADER_VISIBILITY_ALL);
 
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
         memset(&rootSignatureDesc, 0, sizeof(rootSignatureDesc));
@@ -110,10 +110,12 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
             D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
             D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
+        
 
         ComPtr<ID3DBlob> blob = nullptr;
         if (!BRWL_VERIFY(SUCCEEDED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &blob, NULL)), BRWL_CHAR_LITERAL("Failed to serialize root signature.")))
         {
+            ::BRWL::PAL::ShowLastWindowsError();
             destroy();
             return;
         }
