@@ -28,9 +28,9 @@ Visualization2Renderer::Visualization2Renderer() :
     // trigger building the preintegration tables
     for (int i = 0; i < countof(((UIResult::TransferFunctionCollection*)0)->array); ++i)
     {
-        UIResult::TransferFunction& tFunc = uiResults[0].transferFunctions.array[i];
-        const bool is8bit = tFunc.bitDepth == UIResult::TransferFunction::BitDepth::BIT_DEPTH_8_BIT;
-        tFunc.bitDepth = is8bit ? UIResult::TransferFunction::BitDepth::BIT_DEPTH_10_BIT : UIResult::TransferFunction::BitDepth::BIT_DEPTH_8_BIT;
+        BaseTransferFunction* tFunc = uiResults[0].transferFunctions.array[i];
+        const bool is8bit = tFunc->bitDepth == BaseTransferFunction::BitDepth::BIT_DEPTH_8_BIT;
+        tFunc->bitDepth = is8bit ? BaseTransferFunction::BitDepth::BIT_DEPTH_10_BIT : BaseTransferFunction::BitDepth::BIT_DEPTH_8_BIT;
     }
 }
 
@@ -153,7 +153,7 @@ void Visualization2Renderer::render(Renderer* renderer)
     for (int i = 0; i < countof(pitCollection.array); ++i)
     {
         const BaseTextureHandle& pitImage = pitCollection.array[i];
-        v.transferFunctions.array[i].textureID = pitImage.isResident() ? (ImTextureID)pitImage.asPlatformHandle()->getDescriptorHandle()->getResident().residentGpu.ptr : nullptr;
+        v.transferFunctions.array[i]->textureID = pitImage.isResident() ? (ImTextureID)pitImage.asPlatformHandle()->getDescriptorHandle()->getResident().residentGpu.ptr : nullptr;
     }
 
     v.remainingSlices = mainShader.getNumRemainingSlices();
@@ -173,12 +173,16 @@ void Visualization2Renderer::render(Renderer* renderer)
     bool mustRecompute[countof(*((decltype(pitCollection.array)*)nullptr))] = { false };
     bool anyRecompute = false;
 
-        BaseTextureHandle& pitImage = pitCollection.tables.mediumColorPit;
-        if (!pitImage->isValid() || v.transferFunctions.mediumColorTransFunc != r.transferFunctions.mediumColorTransFunc)
+    for (int i = 0; i < countof(pitCollection.array); ++i)
+    {
+        BaseTextureHandle& pitImage = pitCollection.array[i];
+        BaseTransferFunction* tFuncValue = v.transferFunctions.array[i];
+        BaseTransferFunction* tFuncResult = r.transferFunctions.array[i];
+        if (!pitImage->isValid() || *tFuncValue != *tFuncResult)
         {
             mustRecompute[i] = anyRecompute = true;
         }
-    
+    }
 
     if (anyRecompute)
     {
@@ -187,12 +191,12 @@ void Visualization2Renderer::render(Renderer* renderer)
         // Recompute
         for (int i = 0; i < countof(pitCollection.array); ++i)
         {
-            UIResult::TransferFunction& tFuncValue = v.transferFunctions.array[i];
-            UIResult::TransferFunction& tFuncResult = r.transferFunctions.array[i];
+            BaseTransferFunction* tFuncValue = v.transferFunctions.array[i];
+            BaseTransferFunction* tFuncResult = r.transferFunctions.array[i];
             if (mustRecompute[i])
             {
                 // Recompute texture
-                const int tableSize = tFuncResult.getArrayLength();
+                const int tableSize = tFuncResult->getArrayLength();
                 BaseTextureHandle& pitImage = pitCollection.array[i];
                 if (!pitImage->isValid() || pitImage->getSizeX() != tableSize)
                     pitImage->create(tableSize, tableSize);
@@ -200,10 +204,14 @@ void Visualization2Renderer::render(Renderer* renderer)
                     pitImage->zero();
 
                 if ((*pitImage).getSampleFormat() == SampleFormat::F32) {
-                    makePreintegrationTable<>(*dynamic_cast<PitCollection::PitImage*>(&*pitImage), tFuncResult.transferFunction, tFuncResult.getArrayLength());
+                    makePreintegrationTable<>(
+                        *dynamic_cast<PitCollection::PitImage*>(&*pitImage),
+                        dynamic_cast<TransferFunction<PitCollection::PitImage::sampleFormat>*>(tFuncResult)->transferFunction, tFuncResult->getArrayLength());
                 }
                 else {
-                    makePreintegrationTable<>(*dynamic_cast<PitCollection::ColorPitImage*>(&*pitImage), tFuncResult.transferFunction, tFuncResult.getArrayLength());
+                    makePreintegrationTable<>(
+                        *dynamic_cast<PitCollection::ColorPitImage*>(&*pitImage),
+                        dynamic_cast<TransferFunction<PitCollection::ColorPitImage::sampleFormat>*>(tFuncResult)->transferFunction, tFuncResult->getArrayLength());
                 }
 
                 pitImage.startLoad();
@@ -211,7 +219,7 @@ void Visualization2Renderer::render(Renderer* renderer)
 
             // set front-end request satisfied
             // todo: remove copy and maybe use only one instance of transfer function struct
-            tFuncValue = tFuncResult;
+            *tFuncValue = *tFuncResult;
         }
     }
 

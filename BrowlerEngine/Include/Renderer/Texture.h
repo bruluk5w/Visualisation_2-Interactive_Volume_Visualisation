@@ -64,6 +64,7 @@ public:
 	 * The type of one sample/pixel. For multiple channels this is supposed to be a struct.
 	 */
 	using sampleT = typename SampleFormatTrait<S>::type;
+	static const SampleFormat sampleFormat = S;
 
 	/*!
 	 * Returns a pointer to the start of the internal buffer.

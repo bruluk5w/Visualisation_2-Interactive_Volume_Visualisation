@@ -360,6 +360,7 @@
     </ClInclude>
     <ClInclude Include="DxHelpers.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="GuiTransferFunction.h" />
     <ClInclude Include="ImposterShader.h">
       <SubType>
       </SubType>
@@ -398,6 +399,7 @@
     <ClCompile Include="CLogEdit.cpp" />
     <ClCompile Include="ComputeBuffers.cpp" />
     <ClCompile Include="DxHelpers.cpp" />
+    <ClCompile Include="GuiTransferFunction.cpp" />
     <ClCompile Include="ImposterShader.cpp" />
     <ClCompile Include="InitializationShader.cpp" />
     <ClCompile Include="LogHandler.cpp" />

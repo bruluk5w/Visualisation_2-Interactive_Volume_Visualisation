@@ -26,9 +26,9 @@ RWTexture2D<float4> viewingRayPositionBufferRead : register(u10);
 RWTexture2D<float4> viewingRayDirectionBufferRead : register(u11);
 
 Texture2D<float> refractionIntegTex : register(t0);
-Texture2D<float> particleColIntegTex : register(t1);
+Texture2D<float4> particleColIntegTex : register(t1);
 Texture2D<float> opacityIntegTex : register(t2);
-Texture2D<float> mediumIntegTex : register(t3);
+Texture2D<float4> mediumIntegTex : register(t3);
 Texture3D<float> volumeTexture : register(t4);
 
 static const float PI = 3.14159265f;
@@ -69,6 +69,11 @@ float3 getUVCoordinates(float3 coordinate)
 float3 integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float> tex)
 {
     return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).r;
+}
+
+float3 integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float4> tex)
+{
+    return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).rgb;
 }
 
 bool rayIntersectsVolume(float3 rayPos, float3 rayDir)

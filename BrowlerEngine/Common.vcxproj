@@ -102,6 +102,7 @@
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="Source\Common\Spline.cpp" />
     <ClCompile Include="Source\Common\Transform.cpp">
       <SubType>
       </SubType>

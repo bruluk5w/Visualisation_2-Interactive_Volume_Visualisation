@@ -2,17 +2,10 @@
 
 #include "UI/ImGui/imgui.h"
 #include "UI/ImGui/imgui_plot.h"
-#include "Common/Spline.h"
 
 
 BRWL_NS
 
-namespace {
-    const char* bitDepthNames[ENUM_CLASS_TO_NUM(TransferFunctionBitDepth::MAX)] = {
-    "8 Bit",
-    "10 Bit"
-    };
-}
 
 const char* UIResult::Settings::fontNames[] = {
     "Open Sans Light",
@@ -51,7 +44,13 @@ UIResult::TransferFunctionCollection::TransferFunctionCollection() :
     refractionTansFunc(), 
     particleColorTransFunc(), 
     opacityTransFunc(), 
-    mediumColorTransFunc()
+    mediumColorTransFunc(),
+    array { 
+        &refractionTansFunc,
+        &particleColorTransFunc,
+        &opacityTransFunc,
+        &mediumColorTransFunc,
+    }
 { }
 
 
@@ -139,16 +138,12 @@ void renderAppUI(UIResult& result, const UIResult& values)
 
         Begin("Tools", &showTransferFunctions);
         {
-           ;
-            int item_current = ENUM_CLASS_TO_NUM(result.transferFunctions.opacityTransFunc.bitDepth);
-            ::ImGui::Text("Bit Depth");
-            ::ImGui::Combo("", &item_current, bitDepthNames, IM_ARRAYSIZE(bitDepthNames));
-            TransferFunctionBitDepth resultBitDepth = (TransferFunctionBitDepth)Utils::clamp<std::underlying_type_t<TransferFunctionBitDepth>>(item_current, ENUM_CLASS_TO_NUM(TransferFunctionBitDepth::MIN), ENUM_CLASS_TO_NUM(TransferFunctionBitDepth::MAX));
-            result.transferFunctions.mediumColorTransFunc.bitDepth = resultBitDepth;
-            result.transferFunctions.opacityTransFunc.bitDepth = resultBitDepth;
-            result.transferFunctions.particleColorTransFunc.bitDepth = resultBitDepth;
-            result.transferFunctions.refractionTansFunc.bitDepth = resultBitDepth;
-
+           BaseTransferFunction::BitDepth resultBitDepth;
+           ENUM_SELECT("Bit Depth", values.transferFunctions.array[0]->bitDepth, resultBitDepth, BaseTransferFunction, BitDepth, bitDepthNames);
+           for (int i = 0; i < countof(result.transferFunctions.array); ++i)
+           {
+               result.transferFunctions.array[i]->bitDepth = resultBitDepth;
+           }
 
             thread_local bool lockAspect = false;
             float plotWidthBefore = plotWidth;
@@ -193,7 +188,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
             {
                 for (int i = 0; i < ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::MAX); i++)
                 {
-                    // initially autoselect opacity tab whenopening for the first time
+                    // initially autoselect opacity tab when opening for the first time
                     thread_local bool openedDefault = false;
                     ImGuiTabItemFlags flags = openedDefault || i != ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::OPACITY) ? ImGuiTabItemFlags_None : ImGuiTabItemFlags_SetSelected;
                     if (ImGui::BeginTabItem(UIResult::TransferFunctionCollection::transferFuncNames[i], nullptr, flags))
@@ -202,51 +197,90 @@ void renderAppUI(UIResult& result, const UIResult& values)
                             openedDefault = true;
 
                         Text(UIResult::TransferFunctionCollection::transferFuncNames[i]);
-                        const UIResult::TransferFunction& valueTFunc = values.transferFunctions.array[i];
-                        UIResult::TransferFunction& resultTFunc = result.transferFunctions.array[i];
+                        const BaseTransferFunction* valueTFunc = values.transferFunctions.array[i];
+                        BaseTransferFunction* resultTFunc = result.transferFunctions.array[i];
 
-                        bool ctrlPointsChanged = false;
+                        const uint8_t numChannels = ImMin((uint8_t)4, resultTFunc->getNumChannels());
+                        const unsigned int l = resultTFunc->getArrayLength();
+                        const unsigned int nSamples[4] = { l, l, l, l };
+
+                        // y layout
+                        unsigned int yBaseIndices[4] = { 0 };
+                        for (int j = 0; j < numChannels; ++j) {
+                            yBaseIndices[j] = resultTFunc->getChannelOffsets(j);
+                        }
+
+                        unsigned int yStrides[4] = { 0 };
+                        for (int j = 0; j < numChannels; ++j) {
+                            yStrides[j] = resultTFunc->getChannelStrides(j);
+                        }
+
+                        const float* yData[4] = { nullptr };
+                        {
+                            const float* data = resultTFunc->getData();
+                            for (int j = 0; j < numChannels; ++j) {
+                                yData[j] = data;
+                            }
+                        }
+
+                        // x layout
+                        const float* xData[4] = { nullptr }; // use monotonic indices
+
+                        // ctrl point groups
+                        CtrlPointGroup* ctrlPoints[4]{ nullptr };
+                        for (int j = 0; j < numChannels; ++j) {
+                            ctrlPoints[j] = resultTFunc->getCtrlPointGroup(j);
+                        }
+
+                        bool ctrlPointsChanged[4] = { false };
+
                         ImGui::PlotConfig conf{ };
-                        conf.values.count = resultTFunc.getArrayLength();
-                        conf.values.ys = resultTFunc.transferFunction; // use ys_list to draw several lines simultaneously
-                        conf.values.ys_count = 1;
-                        const ImU32 graphColor = ImColor(0, 255, 0);
-                        conf.values.colors = &graphColor;
+                        conf.values.nPlots = numChannels;
+                        conf.values.nSamples = nSamples;
+                        conf.values.yBaseIndices = yBaseIndices;
+                        conf.values.yValues = yData;
+                        conf.values.yStrides = yStrides;
+                        conf.values.xValues = xData;
+
+                        const ImU32 colors[4]{ ImColor(255, 0, 0), ImColor(0, 255, 0), ImColor(0, 0, 255), ImColor(255, 255, 255) };
+                        conf.values.colors = colors + (4 - numChannels);
                         conf.scale.min = 0;
                         conf.scale.max = 1;
                         conf.tooltip.show = showCoordinatesTooltip;
                         conf.tooltip.format = "Idx: %g, Cursor Value: %8.4g, Graph Value %8.4g";
-                        conf.grid_x.show = true;
-                        conf.grid_x.size = 128;
-                        conf.grid_x.subticks = 4;
-                        conf.grid_y.show = true;
-                        conf.grid_y.size = 1.0f;
-                        conf.grid_y.subticks = 5;
-                        conf.selection.show = false;
+                        //conf.grid_x.show = true;
+                        //conf.grid_x.size = 128;
+                        //conf.grid_x.subticks = 4;
+                        //conf.grid_y.show = true;
+                        //conf.grid_y.size = 1.0f;
+                        //conf.grid_y.subticks = 5;
+                        //conf.selection.show = false;
                         conf.ctrlPointSize = ctrlPtointScale;
-                        conf.values.ctrlPoints = &resultTFunc.controlPoints;
-                        conf.values.ctrlPointsChanged = &ctrlPointsChanged;
-                        //conf.selection.start = &selection_start;
-                        //conf.selection.length = &selection_length;
-                        int texSideLength = valueTFunc.getArrayLength();
-                        float width = texSideLength * plotWidth;
-                        float height = texSideLength * plotHeight;
-                        conf.frame_size = ImVec2(width, height);
-                        if (valueTFunc.textureID != nullptr)
+                        conf.values.ctrlPoints = ctrlPoints;
+                        conf.values.ctrlPointsChanged = ctrlPointsChanged;
+                        unsigned int texSideLength = valueTFunc->getArrayLength();
+                        BRWL_CHECK(plotWidth >= 0, nullptr);
+                        unsigned int width = (unsigned int )(texSideLength * plotWidth);
+                        unsigned int height = (unsigned int)(texSideLength * plotHeight);
+                        conf.frameSizeX = width;
+                        conf.frameSizeY = height;
+                        if (valueTFunc->textureID != nullptr)
                         {
                             conf.useBackGroundTextrue = true;
-                            conf.texID = valueTFunc.textureID;
+                            conf.texID = valueTFunc->textureID;
                             conf.maxTexVal = 1;
                         }
 
                         ImGui::Plot("plot1", conf, forcePlotHovered);
-                        ctrlPointsChanged |= valueTFunc.bitDepth != resultTFunc.bitDepth;
+                        for (int j = 0; j < numChannels; ++j) {
+                            ctrlPointsChanged[j] |= valueTFunc->bitDepth != resultTFunc->bitDepth;
+                        }
                         if (ctrlPointsChanged)
                         {
                             //::ImGui::CtrlPointGroup& g = resultTFunc.controlPoints;
                             //resultTFunc.controlPoints.sortRefs();
 
-                            resultTFunc.updateFunction();
+                            resultTFunc->updateFunction(ctrlPointsChanged);
                         }
 
                         ImGui::EndTabItem();
