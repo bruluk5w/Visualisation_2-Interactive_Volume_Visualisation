@@ -524,9 +524,13 @@ namespace PAL
 					if (handle->remove) continue;
 
 					// update occupied flag for gpu tracking
-					BRWL_EXCEPTION(cpuOccupied[handle->offset] == i, nullptr);
-					BRWL_EXCEPTION(gpuOccupied[handle->offset] == -1, nullptr); // must be free
-					gpuOccupied[handle->offset] = i;
+					for (unsigned int j = 0; j < handle->count; ++j)
+					{
+						BRWL_EXCEPTION(cpuOccupied[handle->offset + j] == i, nullptr);
+						BRWL_EXCEPTION(gpuOccupied[handle->offset + j] == -1, nullptr); // must be free
+						gpuOccupied[handle->offset + j] = i;
+					}
+
 					// we copy the initial contents from the cpu heap
 					D3D12_CPU_DESCRIPTOR_HANDLE target = gpuHeapCpuStart;
 					target.ptr += handle->offset * descriptorSize;
