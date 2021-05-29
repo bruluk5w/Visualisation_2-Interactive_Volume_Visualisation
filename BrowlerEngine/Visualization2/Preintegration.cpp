@@ -50,6 +50,10 @@ namespace
 template<SampleFormat S, template<SampleFormat> typename T>
 void makePreintegrationTable(T<S>& image, typename T<S>::sampleT* transferFunc, unsigned int lenFunc)
 {
+	// TODO: fix 10 bit preintegration texture
+	if (SampleFormat::VEC4F32 == S && lenFunc > 512)
+		return;
+
 	checkSize<S>(image, lenFunc);
 	const size_t yStep = image.getSizeX();
 	T<S>::sampleT* const table = (T<S>::sampleT*)image.getPtr();
@@ -64,6 +68,8 @@ void makePreintegrationTable(T<S>& image, typename T<S>::sampleT* transferFunc, 
 			}
 
 			lineStart[x] = sum / (float)(x - y);
+			//BRWL_EXCEPTION(lineStart + x < table + (lenFunc*lenFunc), nullptr);
+
 		}
 	}
 
@@ -73,6 +79,7 @@ void makePreintegrationTable(T<S>& image, typename T<S>::sampleT* transferFunc, 
 		for (size_t x = 0; x < y; ++x)
 		{
 			lineStart[x] = table[x * yStep + y];
+			//BRWL_EXCEPTION(lineStart + x < table + (lenFunc * lenFunc), nullptr);
 		}
 	}
 }

@@ -304,7 +304,7 @@ void Visualization2Renderer::destroy(Renderer* r)
         r->getEventSystem()->unregisterListener(Event::CAM_HAS_MOVED, hasCameraMovedListenerHandle);
     }
 
-    mainShader.destroy();
+    mainShader.destroy(r);
 
     initialized = false;
     {

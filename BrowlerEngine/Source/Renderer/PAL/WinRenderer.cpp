@@ -95,7 +95,7 @@ namespace PAL
         frameFenceEvent(NULL),
         frameFenceLastValue(0)
     {
-#if ENABLE_GRAPHICS_DEBUG_FEATURES || 1
+#if ENABLE_GRAPHICS_DEBUG_FEATURES
         ComPtr<ID3D12Debug> debugController0;
         if (BRWL_VERIFY(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController0))), BRWL_CHAR_LITERAL("Failed to enable D3D debug layer.")))
         {
@@ -559,7 +559,7 @@ namespace PAL
             sd.Width = framebufferWidth;
             sd.Height = framebufferHeight;
             sd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-            sd.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+            sd.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
             sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
             sd.SampleDesc.Count = 1;
             sd.SampleDesc.Quality = 0;

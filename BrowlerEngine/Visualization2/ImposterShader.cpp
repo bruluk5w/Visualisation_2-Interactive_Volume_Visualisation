@@ -29,16 +29,16 @@ ImposterShader::ImposterShader(ID3D12Device* device, const D3D12_INPUT_LAYOUT_DE
         param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
         // color texture
-        D3D12_DESCRIPTOR_RANGE uavRange;
-        uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        uavRange.NumDescriptors = 1;
-        uavRange.BaseShaderRegister = 0;
-        uavRange.RegisterSpace = 0;
-        uavRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        D3D12_DESCRIPTOR_RANGE srvRange;
+        srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        srvRange.NumDescriptors = 1;
+        srvRange.BaseShaderRegister = 0;
+        srvRange.RegisterSpace = 0;
+        srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
         param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         param[1].DescriptorTable.NumDescriptorRanges = 1;
-        param[1].DescriptorTable.pDescriptorRanges = &uavRange;
+        param[1].DescriptorTable.pDescriptorRanges = &srvRange;
         param[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
         // color tex sampler

@@ -33,17 +33,17 @@
         </Command>
         <Outputs Condition="'$([System.String]::new(%(FileName)).EndsWith(`vs`))' == 'True'">Shaders/Compiled/%(Filename)_vs.h;</Outputs>
         <Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`ps`))' == 'True' And '$(Configuration)'=='Submission'">
-		  "$(WDKBinRoot)\x86\dxc.exe" -T ps_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_ps.h -Vn %(Filename)_ps -res_may_alias
+		  "$(WDKBinRoot)\x86\dxc.exe" -T ps_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_ps.h -Vn %(Filename)_ps
 		</Command>
 		<Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`ps`))' == 'True' And '$(Configuration)'!='Submission'">
-		  "$(WDKBinRoot)\x86\dxc.exe" -T ps_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_ps.h -Vn %(Filename)_ps -res_may_alias -Zi -Od -Fd Shaders/Compiled/%(Filename)_ps.pdb
+		  "$(WDKBinRoot)\x86\dxc.exe" -T ps_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_ps.h -Vn %(Filename)_ps -Zi -Od -Fd Shaders/Compiled/%(Filename)_ps.pdb
 		</Command>
         <Outputs Condition="'$([System.String]::new(%(FileName)).EndsWith(`ps`))' == 'True'">Shaders/Compiled/%(Filename)_ps.h;</Outputs>
 		<Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`cs`))' == 'True' And '$(Configuration)'=='Submission'">
-          "$(WDKBinRoot)\x86\dxc.exe" -T cs_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_cs.h -Vn %(Filename)_cs -res_may_alias
+          "$(WDKBinRoot)\x86\dxc.exe" -T cs_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_cs.h -Vn %(Filename)_cs
         </Command>
 		<Command Condition="'$([System.String]::new(%(FileName)).EndsWith(`cs`))' == 'True'  And '$(Configuration)'!='Submission'">
-          "$(WDKBinRoot)\x86\dxc.exe" -T cs_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_cs.h -Vn %(Filename)_cs -res_may_alias -Zi -Od -Fd Shaders/Compiled/%(Filename)_cs.pdb 
+          "$(WDKBinRoot)\x86\dxc.exe" -T cs_6_0 -E main %(Identity) -Fh Shaders/Compiled/%(Filename)_cs.h -Vn %(Filename)_cs -Zi -Od -Fd Shaders/Compiled/%(Filename)_cs.pdb 
         </Command>
         <Outputs Condition="'$([System.String]::new(%(FileName)).EndsWith(`cs`))' == 'True'">Shaders/Compiled/%(Filename)_cs.h;</Outputs>
         <AdditionalInputs>$(ShaderHeaders)</AdditionalInputs>

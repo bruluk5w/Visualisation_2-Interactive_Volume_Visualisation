@@ -22,18 +22,18 @@ RWTexture2D<float4> viewingRayPositionBufferWrite : register(u4);
 RWTexture2D<float4> viewingRayDirectionBufferWrite : register(u5);
 
 
-RWTexture2D<float4> lightBufferRead : register(u6);
-RWTexture2D<float4> lightDirectionBufferRead : register(u7);
-RWTexture2D<float4> colorBufferRead : register(u8);
-RWTexture2D<float4> mediumBufferRead : register(u9);
-RWTexture2D<float4> viewingRayPositionBufferRead : register(u10);
-RWTexture2D<float4> viewingRayDirectionBufferRead : register(u11);
+Texture2D<float4> lightBufferRead : register(t0);           // have to be SRVs to support light sampling during shading along viewing ray
+Texture2D<float4> lightDirectionBufferRead : register(t1);  //
+RWTexture2D<float4> colorBufferRead : register(u6);                 // may stay UAVs because Load and Store are probably enough for data that is full aligned with the viewing rays
+RWTexture2D<float4> mediumBufferRead : register(u7);                //
+RWTexture2D<float4> viewingRayPositionBufferRead : register(u8);    //
+RWTexture2D<float4> viewingRayDirectionBufferRead : register(u9);   //
 
-Texture2D<float> refractionIntegTex : register(t0);
-Texture2D<float4> particleColIntegTex : register(t1);
-Texture2D<float> opacityIntegTex : register(t2);
-Texture2D<float4> mediumIntegTex : register(t3);
-Texture3D<float> volumeTexture : register(t4);
+Texture2D<float> refractionIntegTex : register(t2);
+Texture2D<float4> particleColIntegTex : register(t3);
+Texture2D<float> opacityIntegTex : register(t4);
+Texture2D<float4> mediumIntegTex : register(t5);
+Texture3D<float> volumeTexture : register(t6);
 
 static const float PI = 3.14159265f;
 

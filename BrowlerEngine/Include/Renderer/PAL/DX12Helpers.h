@@ -4,9 +4,20 @@
 
 BRWL_RENDERER_NS
 
-namespace PAL {
+namespace PAL
+{
+    
+    
+    enum class Split : uint8_t
+    {
+        NONE = 0,
+        BEGIN,
+        END,
+        MAX,
+        MIN = 0
+    };
 
-    template<D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after, size_t length>
+    template<D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after, Split splitType = Split::NONE, size_t length>
     void stateTransition(ID3D12GraphicsCommandList* cmd, ID3D12Resource* (&resources)[length])
     {
         D3D12_RESOURCE_BARRIER barriers[length];
@@ -18,12 +29,14 @@ namespace PAL {
             barriers[i].Transition.StateBefore = before;
             barriers[i].Transition.StateAfter = after;
             barriers[i].Transition.Subresource = 0;
+            if constexpr (splitType != Split::NONE)
+                barriers[i].Flags = splitType == Split::BEGIN ? D3D12_RESOURCE_BARRIER_FLAG_BEGIN_ONLY : D3D12_RESOURCE_BARRIER_FLAG_END_ONLY;
         }
 
         cmd->ResourceBarrier((unsigned int)countof(barriers), barriers);
     }
-
-    template<D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after, size_t length>
+    
+    template<D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after, Split splitType = Split::NONE, size_t length>
     void stateTransition(ID3D12GraphicsCommandList* cmd, ComPtr<ID3D12Resource> (&resources)[length])
     {
         D3D12_RESOURCE_BARRIER barriers[length];
@@ -35,10 +48,13 @@ namespace PAL {
             barriers[i].Transition.StateBefore = before;
             barriers[i].Transition.StateAfter = after;
             barriers[i].Transition.Subresource = 0;
+            if constexpr (splitType != Split::NONE)
+                barriers[i].Flags = splitType == Split::BEGIN ? D3D12_RESOURCE_BARRIER_FLAG_BEGIN_ONLY : D3D12_RESOURCE_BARRIER_FLAG_END_ONLY;
         }
 
         cmd->ResourceBarrier((unsigned int)countof(barriers), barriers);
     }
+
 
 }
 

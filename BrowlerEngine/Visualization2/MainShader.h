@@ -56,7 +56,7 @@ public:
 
     bool create(Renderer* renderer);
     void render(ID3D12GraphicsCommandList* cmd);
-    void destroy();
+    void destroy(Renderer* renderer);
 
     struct DrawData {
         static const unsigned int gatherTextureSize = 1024;

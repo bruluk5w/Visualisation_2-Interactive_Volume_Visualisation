@@ -14,7 +14,7 @@ public:
 	// todo: this is kind of a hack. Resource states should probably be tracked by texture manager
 	void setInitialResourceState(ID3D12GraphicsCommandList* cmd);
 
-	void destroy();
+	void destroy(PAL::DescriptorHeap* srvHeap);
 	bool isResident() const;
 	// to be called before resources are used in the compute shaders
 	// swaps the source resources with the target resources and the ping pong variable
@@ -24,21 +24,24 @@ public:
     // starts the barrier that ensures that writes to the current target (next source) have finished before we read.
 	void afterComputeUse(ID3D12GraphicsCommandList* cmd);
 	
-	// target buffer 0 - numBuffers are guaranted to be a contiguous range
+	// target buffer 0 to numBuffers are guaranted to be a contiguous range
 	// the resource to write to
 	// if before is true, then returns the resource which has been the target before
 	ID3D12Resource* getTargetResource(unsigned int idx, bool before = false);
-	// source buffer 0 - numBuffers are guaranted to be a contiguous range
+	// source buffer 0 to numBuffers are guaranted to be a contiguous range
 	// the resource to read from
-	// if before is true, then returns the resource which has been the sourcee before
-	// the source resources may be not written to in the shader!
+	// if before is true, then returns the resource which has been the source before
+	// the source resources may not be written to in the shader!
 	ID3D12Resource* getSourceResource(unsigned int idx, bool before = false);
 
-	// target buffer 0 - numBuffers are guaranted to be a contiguous descriptor range
+
+	// target uav descriptor 0 - numBuffers are guaranted to be a contiguous descriptor range
 	PAL::DescriptorHandle::ResidentHandles getTargetResourceDescriptorHandle(unsigned int idx);
-	// source buffer 0 - numBuffers are guaranted to be a contiguous range
-	PAL::DescriptorHandle::ResidentHandles getSourceResourceDescriptorHandle(unsigned int idx);
-	
+	// source uav descriptor - numBuffers are guaranted to be a contiguous range
+	PAL::DescriptorHandle::ResidentHandles getSourceUavResourceDescriptorHandle(unsigned int idx);
+	// source srv descriptor 0 to numSrvReadBuffers are guaranted to be a contiguous range
+	PAL::DescriptorHandle::ResidentHandles getSourceSrvResourceDescriptorHandle(unsigned int idx);
+
 	unsigned int getWidth() const { return bufferWidth; }
 	unsigned int getHeight() const { return bufferHeight; }
 	bool isCreated() const { return created; }
@@ -46,18 +49,21 @@ public:
 	const static unsigned int numBuffers = 6;
 	const static unsigned int numLayers = 2;
 	const static unsigned int colorBufferIdx = 2;
+	const static unsigned int srvReadBufferOffset = 0;	// signifies the range of bufferes that are transitioned for UAVs to SRVs (and back) when switched to become the read layer
+	const static unsigned int numSrvReadBuffers = 2;	//
 
 private:
 	void closeUavBarrier(ID3D12GraphicsCommandList* cmd);
 	unsigned int bufferWidth;
 	unsigned int bufferHeight;
-	ComPtr<ID3D12Resource> uavBuffers[numLayers * numBuffers];
+	ComPtr<ID3D12Resource> resources[numLayers * numBuffers];
 
 	ComPtr<ID3D12Heap> bufferHeap;
 	PAL::DescriptorHandle* uavDescriptorRange;
+	PAL::DescriptorHandle* srvDescriptorRange;
 	bool created;
 
-	bool pingPong;
+	bool pingPong; // if true then read layer starts at offset 0, else at numBuffers
 #if USE_UAV_SPLIT_BARRIER
 	bool uavBarrierActive;
 #endif

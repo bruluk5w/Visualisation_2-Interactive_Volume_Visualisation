@@ -204,13 +204,13 @@ bool MainShader::create(Renderer* renderer)
             if (errorBlob != nullptr) {
                 engine->logger->error((BRWL_CHAR*)errorBlob->GetBufferPointer());
             }
-            destroy();
+            destroy(renderer);
             return false;
         }
 
         if (!BRWL_VERIFY(SUCCEEDED(device->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&mainRootSignature))), BRWL_CHAR_LITERAL("Failed to create root signature")))
         {
-            destroy();
+            destroy(renderer);
             return false;
         }
 
@@ -276,7 +276,7 @@ bool MainShader::create(Renderer* renderer)
 
         if (!BRWL_VERIFY(SUCCEEDED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&mainPipelineState))), BRWL_CHAR_LITERAL("Failed to create pipeline state.")))
         {
-            destroy();
+            destroy(renderer);
             return false;
         }
     }
@@ -307,13 +307,13 @@ bool MainShader::create(Renderer* renderer)
         ComPtr<ID3DBlob> blob = nullptr;
         if (!BRWL_VERIFY(SUCCEEDED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &blob, NULL)), BRWL_CHAR_LITERAL("Failed to serialize root signature.")))
         {
-            destroy();
+            destroy(renderer);
             return false;
         }
 
         if (!BRWL_VERIFY(SUCCEEDED(device->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&guidesRootSignature))), BRWL_CHAR_LITERAL("Failed to create root signature")))
         {
-            destroy();
+            destroy(renderer);
             return false;
         }
 
@@ -379,7 +379,7 @@ bool MainShader::create(Renderer* renderer)
 
         if (!BRWL_VERIFY(SUCCEEDED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&guidesPipelineState))), BRWL_CHAR_LITERAL("Failed to create pipeline state.")))
         {
-            destroy();
+            destroy(renderer);
             return false;
         }
     }
@@ -390,7 +390,7 @@ bool MainShader::create(Renderer* renderer)
         ProceduralGeometry::makeQuad(1, 1, tris);
         if (!BRWL_VERIFY(viewingPlane.load(device, tris.data(), (unsigned int)tris.size()), BRWL_CHAR_LITERAL("Failed to load viewing plane geometry.")))
         {
-            destroy();
+            destroy(renderer);
             return false;
         }
 
@@ -399,7 +399,7 @@ bool MainShader::create(Renderer* renderer)
         ProceduralGeometry::makeCube(1, 1, 1, tris);
         if (!BRWL_VERIFY(assetBounds.load(device, tris.data(), (unsigned int)tris.size()), BRWL_CHAR_LITERAL("Failed to load viewing plane geometry.")))
         {
-            destroy();
+            destroy(renderer);
             return false;
         }
         
@@ -409,7 +409,7 @@ bool MainShader::create(Renderer* renderer)
     // Create compute buffers
     if (!computeBuffers->create(device, &renderer->getSrvHeap(), DrawData::gatherTextureSize, DrawData::gatherTextureSize))
     {
-        destroy();
+        destroy(renderer);
         return false;
     }
 
@@ -504,8 +504,6 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
         {
             remainingSlices = (unsigned int)numSlices;
 
-            switchToCompute(cmd, data);
-
             InitializationShader::ShaderConstants initParams;
             memset(&initParams, 0, sizeof(initParams));
             initParams.horizontalPlaneDirection = right;
@@ -551,11 +549,17 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
             imposterVsConstants.modelviewProjection = viewingPlaneModelMatrix * viewProjection;
         }
         
-        PAL::DescriptorHandle::ResidentHandles colorBufferDescriptorHandle = computeBuffers->getSourceResourceDescriptorHandle(ComputeBuffers::colorBufferIdx);
+        PAL::DescriptorHandle::ResidentHandles colorBufferDescriptorHandle = computeBuffers->getSourceUavResourceDescriptorHandle(ComputeBuffers::colorBufferIdx);
+        ID3D12Resource* colorBuffer[1] = {
+            computeBuffers->getSourceResource(ComputeBuffers::colorBufferIdx)
+        };
+        PAL::stateTransition<D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE>(cmd, colorBuffer);
         switchToPixelShader(cmd, data);
-        imposterShader->setupDraw(cmd, imposterVsConstants, colorBufferDescriptorHandle);
 
+        imposterShader->setupDraw(cmd, imposterVsConstants, colorBufferDescriptorHandle);
         cmd->DrawInstanced(viewingPlane.vertexBufferLength, 1, 0, 0);
+
+        PAL::stateTransition<D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS>(cmd, colorBuffer);
     }
 
     // scissor
@@ -616,9 +620,9 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
     }
 }
 
-void MainShader::destroy()
+void MainShader::destroy(Renderer* renderer)
 {
-    computeBuffers->destroy();
+    computeBuffers->destroy(&renderer->getSrvHeap());
     propagationShader = nullptr;
     initializationShader = nullptr;
     imposterShader = nullptr;

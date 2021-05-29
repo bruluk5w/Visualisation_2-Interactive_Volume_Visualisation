@@ -21,14 +21,14 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
     slicesPerInvocation(10)
 {
     destroy();
-    // building pipeline state object and rootsignature
 
+    // building pipeline state object and rootsignature
     {
         unsigned int uavRegisterIdx = 0;
         unsigned int srvRegisterIdx = 0;
 
-        // pong buffers - write
-        D3D12_DESCRIPTOR_RANGE pingPongRanges[2];
+        // UAV pong buffers - write
+        D3D12_DESCRIPTOR_RANGE pingPongRanges[3];
         D3D12_DESCRIPTOR_RANGE& uavRangePong = pingPongRanges[0];
         memset(&uavRangePong, 0, sizeof(uavRangePong));
         uavRangePong.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
@@ -39,18 +39,29 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
         
         uavRegisterIdx += uavRangePong.NumDescriptors;
 
-        // ping buffers - read
+        // UAV ping buffers - read
         D3D12_DESCRIPTOR_RANGE& uavRangePing = pingPongRanges[1];
         memset(&uavRangePing, 0, sizeof(uavRangePing));
         uavRangePing.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        uavRangePing.NumDescriptors = ComputeBuffers::numBuffers;
+        uavRangePing.NumDescriptors = ComputeBuffers::numBuffers - ComputeBuffers::numSrvReadBuffers;
         uavRangePing.BaseShaderRegister = uavRegisterIdx;
         uavRangePing.RegisterSpace = 0;
         uavRangePing.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
         uavRegisterIdx += uavRangePing.NumDescriptors;
 
-        D3D12_ROOT_PARAMETER param[8];
+        // SRV ping buffers - read
+        D3D12_DESCRIPTOR_RANGE& srvRangePing = pingPongRanges[2];
+        memset(&srvRangePing, 0, sizeof(srvRangePing));
+        srvRangePing.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        srvRangePing.NumDescriptors = ComputeBuffers::numSrvReadBuffers;
+        srvRangePing.BaseShaderRegister = srvRegisterIdx;
+        srvRangePing.RegisterSpace = 0;
+        srvRangePing.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        srvRegisterIdx += srvRangePing.NumDescriptors;
+
+        D3D12_ROOT_PARAMETER param[9];
         memset(&param, 0, sizeof(param));
         param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
         param[0].Constants.Num32BitValues = PropagationShader::DrawData::constantCount;
@@ -67,6 +78,11 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
         param[2].DescriptorTable.NumDescriptorRanges = 1;
         param[2].DescriptorTable.pDescriptorRanges = &uavRangePing;
         param[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+        param[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        param[3].DescriptorTable.NumDescriptorRanges = 1;
+        param[3].DescriptorTable.pDescriptorRanges = &srvRangePing;
+        param[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
         // preintegration tables and volume texture
         D3D12_DESCRIPTOR_RANGE descriptorRanges[ENUM_CLASS_TO_NUM(PitTex::MAX) + 1];
@@ -85,10 +101,10 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
 
         for (int i = 0; i < countof(descriptorRanges); ++i)
         {
-            param[3 + i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-            param[3 + i].DescriptorTable.NumDescriptorRanges = 1;
-            param[3 + i].DescriptorTable.pDescriptorRanges = &descriptorRanges[i];
-            param[3 + i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+            param[4 + i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+            param[4 + i].DescriptorTable.NumDescriptorRanges = 1;
+            param[4 + i].DescriptorTable.pDescriptorRanges = &descriptorRanges[i];
+            param[4 + i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
         }
 
         // volume and preintergration sampler are static samplers since they never change
@@ -110,12 +126,9 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
             D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
             D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
-        
-
         ComPtr<ID3DBlob> blob = nullptr;
         if (!BRWL_VERIFY(SUCCEEDED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &blob, NULL)), BRWL_CHAR_LITERAL("Failed to serialize root signature.")))
         {
-            ::BRWL::PAL::ShowLastWindowsError();
             destroy();
             return;
         }
@@ -162,60 +175,63 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
     BRWL_EXCEPTION(computeBuffers, nullptr);
     BRWL_EXCEPTION(computeBuffers->isResident(), nullptr);
 
-    if (remainingSlices > 0)
+    if (remainingSlices <= 0)
+        return 0;
+
+    const float targetDt = 1.0f / 60.f;
+    const float currentDt = engine->time->getDeltaTime();
+    // adjust slices per invocation to framerate
+    if (currentDt < targetDt - 0.02f * targetDt)
     {
-        const float targetDt = 1.0f / 60.f;
-        const float currentDt = engine->time->getDeltaTime();
-        // adjust slices per invocation to framerate
-        if (currentDt < targetDt - 0.02f * targetDt) {
-            ++slicesPerInvocation;
-        }
-        else if (currentDt > targetDt + 0.02f * targetDt) {
-            slicesPerInvocation = Utils::max(slicesPerInvocation - 10, 10);
-        }
+        ++slicesPerInvocation;
+    }
+    else if (currentDt > targetDt + 0.02f * targetDt)
+    {
+        slicesPerInvocation = Utils::max(slicesPerInvocation - 10, 10);
+    }
 
-        cmd->SetPipelineState(pipelineState.Get());
-        cmd->SetComputeRootSignature(rootSignature.Get());
+    cmd->SetPipelineState(pipelineState.Get());
+    cmd->SetComputeRootSignature(rootSignature.Get());
 
-        // constants
-        cmd->SetComputeRoot32BitConstants(0, data.constantCount, &data, 0);
+    // Constants
+    cmd->SetComputeRoot32BitConstants(0, data.constantCount, &data, 0);
 
-        // Set preintegration tables
-        for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
+    // Set preintegration tables
+    for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
+    {
+        cmd->SetComputeRootDescriptorTable(4 + i, pitCollection.array[i].asPlatformHandle()->getDescriptorHandle()->getResident().residentGpu);
+    }
+
+    // Set volume texture
+    cmd->SetComputeRootDescriptorTable(4 + ENUM_CLASS_TO_NUM(PitTex::MAX), volumeTexture.getDescriptorHandle()->getResident().residentGpu);
+
+    unsigned int budgetCounter = 0;
+    do {
+        computeBuffers->beforeComputeUse(cmd);
+        
         {
-            cmd->SetComputeRootDescriptorTable(3 + i, pitCollection.array[i].asPlatformHandle()->getDescriptorHandle()->getResident().residentGpu);
-        }
-
-        // set volume texture
-        cmd->SetComputeRootDescriptorTable(3 + ENUM_CLASS_TO_NUM(PitTex::MAX), volumeTexture.getDescriptorHandle()->getResident().residentGpu);
-
-        // Only propagate without the buffered outer region. This only works for directional lights where the the out-of-bounds
-        // default values are constant.
-        // point lights with falloff would need different values for the skirt on each new slice.
-        unsigned int budgetCounter = 0;
-        do {
-            computeBuffers->beforeComputeUse(cmd);
-            // cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
-            cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetResourceDescriptorHandle(0).residentGpu);
-            cmd->SetComputeRootDescriptorTable(2, computeBuffers->getSourceResourceDescriptorHandle(0).residentGpu);
+            static_assert(ComputeBuffers::srvReadBufferOffset == 0, "If buffer offset is not 0 then code below would have to be updated because we assume two contiguous ranges in source resouces, one for SRVs and one for UAVs ");
+            cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetResourceDescriptorHandle(0).residentGpu); // write UAV
+            cmd->SetComputeRootDescriptorTable(2, computeBuffers->getSourceUavResourceDescriptorHandle(ComputeBuffers::numSrvReadBuffers).residentGpu); // read UAV
+            cmd->SetComputeRootDescriptorTable(3, computeBuffers->getSourceSrvResourceDescriptorHandle(0).residentGpu); // read SRV
 
             cmd->Dispatch(
                 (unsigned int)std::ceil(computeBuffers->getWidth() / (float)DrawData::threadGroupSizeX),
                 (unsigned int)std::ceil(computeBuffers->getHeight() / (float)DrawData::threadGroupSizeY),
                 1
             );
-
-            computeBuffers->afterComputeUse(cmd);
-
-            ++budgetCounter;
-            --remainingSlices;
-        } while (budgetCounter < slicesPerInvocation && remainingSlices > 0);
-
-        // swap one last time to make the last written texture the new source resource and complete all writes
-        if (remainingSlices <= 0)
-        {
-            computeBuffers->beforeComputeUse(cmd);
         }
+
+        computeBuffers->afterComputeUse(cmd);
+
+        ++budgetCounter;
+        --remainingSlices;
+    } while (budgetCounter < slicesPerInvocation && remainingSlices > 0);
+
+    // swap one last time to make the last written texture the new source resource and complete all writes
+    if (remainingSlices <= 0)
+    {
+        computeBuffers->beforeComputeUse(cmd);
     }
 
     return remainingSlices;
