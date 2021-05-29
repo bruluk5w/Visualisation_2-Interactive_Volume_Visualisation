@@ -81,7 +81,7 @@ void sampleLightTextures(float3 worldCoord, out float3 lightDirection, out float
 }
 
 
-float3 integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float> tex)
+float integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float> tex)
 {
     return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).r;
 }
@@ -120,7 +120,21 @@ float3 reconstructGradient(float3 worldPos)
     float top    = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(   0, -0.5,    0)), 0);
     float bottom = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(   0,  0.5,    0)), 0);
                
-    return normalize(float3(right - left, bottom - top, back - front)+0.5); // should this be normalized?
+    return normalize(float3(right - left, bottom - top, back - front)); // should this be normalized?
+}
+
+float3 phongSpecular(float3 lightDir, float3 viewingDir, float3 normal, float reflectivity)
+{
+    //viewingDir = normalize(viewingDir);
+    //lightDir = normalize(lightDir);
+    //if (dot(normal, lightDir) > 0)
+    {
+        //normal.z = -normal.z;
+        float3 lightReflected = -lightDir - 2.0 * dot(-lightDir, normal) * normal; //reflect(-lightDir, normal);
+        float specularAngle = max(dot(lightReflected, viewingDir), 0.00001);
+        return pow(specularAngle, reflectivity);
+    }
+    //return 0;
 }
 
 
@@ -177,32 +191,41 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     // reconstruct gradient of scalar field
     float3 delta_f = reconstructGradient(currentViewingRayPosition);
     //float3 specularLight = specularBDRF(currentLightDirection, currentViewingRayDirection, delta_f);
-    float3 specularLight = float3(0, 0, 0);
     
-
+    
+    
 
     // Sampling the volume
     // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/8 of the normalized range is utilized.
     const float previousScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(previousViewingRayPosition), 0) * 8;
     const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentViewingRayPosition), 0) * 8;
-    float3 color = integrationTable(previousScalarSample, currentScalarSample, particleColIntegTex);
-    float3 alpha = integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex);
-    float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
     
-    float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * diffuseLight + specularLight);
-    float nextAlpha = currentColor.w + (1 - currentColor.w) * alpha.x;
-    float3 nextMediumColor = currentMediumColor * (1 - medium);
+    float currentIndexOfRefraction = integrationTable(previousScalarSample, currentScalarSample, refractionIntegTex);
     
     // Advance viewing ray in world space
     float len = dot(currentViewingRayDirection, normalize(deltaSlice));
     const float3 nextViewingRayPosition = currentViewingRayPosition + currentViewingRayDirection * length(deltaSlice) / len;
     const float3 nextViewingRayDirection = currentViewingRayDirection; // todo
     
+    const float nextScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(nextViewingRayPosition), 0) * 8;
+    
+    float3 color = integrationTable(previousScalarSample, currentScalarSample, particleColIntegTex);
+    float alpha = integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex);
+    float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
+    
+    float nextIndexOfRefraction = integrationTable(currentScalarSample, nextScalarSample, refractionIntegTex);
+    float reflectivity = 50 * (nextIndexOfRefraction + 0.00001) / (currentIndexOfRefraction + 0.00001);
+    float3 specularLight = phongSpecular(lightDirection, currentViewingRayDirection, delta_f, reflectivity);
+    
+    float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * diffuseLight + specularLight);
+    float nextAlpha = currentColor.w + (1 - currentColor.w) * alpha.x;
+    float3 nextMediumColor = currentMediumColor * (1 - medium);
+    
    
     
     viewingRayPositionBufferWrite[write_idx].xyz = nextViewingRayPosition;
     viewingRayDirectionBufferWrite[write_idx].xyz = nextViewingRayDirection; // has to be normalized
-    colorBufferWrite[write_idx].xyz = delta_f; //nextColor;
-    colorBufferWrite[write_idx].w = 1; // nextAlpha;
+    colorBufferWrite[write_idx].xyz = nextColor;
+    colorBufferWrite[write_idx].w = nextAlpha;
     mediumBufferWrite[write_idx].xyz = nextMediumColor;
 }
