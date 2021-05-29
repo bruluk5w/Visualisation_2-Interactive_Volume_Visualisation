@@ -32,6 +32,9 @@ namespace ImGui
             // colors for each plot (optional)
             const ImU32* colors = nullptr;
 
+            // index of the plot to edit
+            unsigned int editPlotIdx = 0;
+
             // control points for each plot
             CtrlPointGroup* const* ctrlPoints = nullptr;
 

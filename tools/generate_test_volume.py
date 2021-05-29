@@ -14,7 +14,7 @@ SIZE_Z = 32
 
 SHAPE = Shape.SPHERE
 
-OUTPUT = r'E:\repos\browler_engine\BrowlerEngine\Assets\DataSets\Sphere.dat'
+OUTPUT = r'D:\repos\browler_engine\BrowlerEngine\Assets\DataSets\Sphere.dat'
 
 BIT_DEPTH = 10
 
@@ -35,7 +35,7 @@ def main():
 
 
 def make_sphere(v: np.ndarray):
-    dim = np.array((SIZE_X, SIZE_Y, SIZE_Z), np.float)
+    dim = np.array((SIZE_X, SIZE_Y, SIZE_Z), np.float32)
     center_x = SIZE_X * 0.5
     center_y = SIZE_Y * 0.5
     center_z = SIZE_Z * 0.5
@@ -53,11 +53,11 @@ def make_sphere(v: np.ndarray):
 
     np.sqrt(v, v)
     np.subtract(1, v, v)
-    np.multiply(v, 2 ** BIT_DEPTH, v)
+    np.multiply(v, 1 << BIT_DEPTH, v)
 
 
 def make_box(v: np.ndarray):
-    dim = np.array((SIZE_X, SIZE_Y, SIZE_Z), np.float)
+    dim = np.array((SIZE_X, SIZE_Y, SIZE_Z), np.float32)
     center_x = SIZE_X * 0.5
     center_y = SIZE_Y * 0.5
     center_z = SIZE_Z * 0.5
@@ -76,7 +76,7 @@ def make_box(v: np.ndarray):
         v[z, :, :][mask] = z_dist
 
     np.subtract(1, v, v)
-    np.multiply(v, 2 ** BIT_DEPTH, v)
+    np.multiply(v, 1 << BIT_DEPTH, v)
 
 
 if __name__ == '__main__':

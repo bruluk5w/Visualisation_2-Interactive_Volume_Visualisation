@@ -25,7 +25,7 @@ UIResult::UIResult() :
     settings {
         UIResult::Settings::Font::OPEN_SANS_REGULAR, // font
         22, // fontSize
-        0.3f, // numSlicesPerVoxel
+        1.0f, // numSlicesPerVoxel
         false, // vsync
         false, // freeCamMovement
         true, // drawAssetBoundaries
@@ -234,6 +234,9 @@ void renderAppUI(UIResult& result, const UIResult& values)
 
                         bool ctrlPointsChanged[4] = { false };
 
+                        thread_local int editChannelIdx = 0;
+                        editChannelIdx = ImMin(editChannelIdx, (int)resultTFunc->getNumChannels());
+
                         ImGui::PlotConfig conf{ };
                         conf.values.nPlots = numChannels;
                         conf.values.nSamples = nSamples;
@@ -242,8 +245,11 @@ void renderAppUI(UIResult& result, const UIResult& values)
                         conf.values.yStrides = yStrides;
                         conf.values.xValues = xData;
 
-                        const ImU32 colors[4]{ ImColor(255, 0, 0), ImColor(0, 255, 0), ImColor(0, 0, 255), ImColor(255, 255, 255) };
-                        conf.values.colors = colors + (4 - numChannels);
+                        static const ImU32 rgbCol[3] { ImColor(255, 30, 30), ImColor(30, 255, 30), ImColor(30, 30, 255) };
+                        static const ImU32 greyCol[1] { ImColor(255, 255, 255) };
+                        const ImU32* colors = resultTFunc->getNumChannels() == 1 ? greyCol : rgbCol;
+                        
+                        conf.values.colors = colors;
                         conf.scale.min = 0;
                         conf.scale.max = 1;
                         conf.tooltip.show = showCoordinatesTooltip;
@@ -255,6 +261,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
                         //conf.grid_y.size = 1.0f;
                         //conf.grid_y.subticks = 5;
                         //conf.selection.show = false;
+                        conf.values.editPlotIdx = editChannelIdx;
                         conf.ctrlPointSize = ctrlPtointScale;
                         conf.values.ctrlPoints = ctrlPoints;
                         conf.values.ctrlPointsChanged = ctrlPointsChanged;
@@ -270,7 +277,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
                             conf.texID = valueTFunc->textureID;
                             conf.maxTexVal = 1;
                         }
-
+                        
                         ImGui::Plot("plot1", conf, forcePlotHovered);
                         for (int j = 0; j < numChannels; ++j) {
                             ctrlPointsChanged[j] |= valueTFunc->bitDepth != resultTFunc->bitDepth;
@@ -281,6 +288,13 @@ void renderAppUI(UIResult& result, const UIResult& values)
                             //resultTFunc.controlPoints.sortRefs();
 
                             resultTFunc->updateFunction(ctrlPointsChanged);
+                        }
+                          
+                        Text("Edit Channel");
+                        const static char* rgbLabel[] = { "R", "G", "B" };
+                        for (int channelIdx = 0; channelIdx < ImMin(countof(rgbLabel), (size_t)resultTFunc->getNumChannels()); ++channelIdx)
+                        {
+                             SameLine(); RadioButton(rgbLabel[channelIdx], &editChannelIdx, channelIdx);
                         }
 
                         ImGui::EndTabItem();

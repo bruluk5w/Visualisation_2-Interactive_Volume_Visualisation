@@ -527,6 +527,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
             memset(&propParams, 0, sizeof(propParams));
             {
                 propParams.bboxmin = bbox.min;
+                propParams.texDimToUV = 1.0f / DrawData::gatherTextureSize;
                 propParams.bboxmax = bbox.max;
                 propParams.deltaSlice = deltaSlice;
                 propParams.planeRight = right;

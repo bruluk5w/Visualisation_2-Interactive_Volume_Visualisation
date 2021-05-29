@@ -5,19 +5,9 @@
 #endif
 #include "ImGui/imgui_internal.h"
 
-namespace ImGui {
+namespace ImGui
+{
 
-
-//static void cursor_to_normalized_coords(const ImVec2& pos, ImVec2& normalizedOut, const ImRect& bb);
-
-//static void cursor_to_idx(const ImVec2& pos, int& idx, float& amplitude, const ImRect& bb, int count)
-//{
-//    ImVec2 out;
-//    cursor_to_normalized_coords(pos, out, bb);
-//    idx = (int)(out.x * (count - 1));
-//    amplitude = out.y;
-//    IM_ASSERT(idx < count);
-//}
 
 static void cursor_to_normalized_coords(const ImVec2& pos, ImVec2& normalizedOut, const ImRect& bb)
 {
@@ -134,7 +124,10 @@ void Plot(const char* label, const PlotConfig& conf, const bool forceDisplayHand
             }
         }
 
-        ctrlPointsChanged = ctrlPointGroup->update(window, hovered, inner_bb, GetIO().MousePos, conf.ctrlPointSize, forceDisplayHandles);
+        if (conf.values.editPlotIdx == i)
+        {
+            ctrlPointsChanged = ctrlPointGroup->update(window, hovered, inner_bb, GetIO().MousePos, conf.ctrlPointSize, forceDisplayHandles);
+        }
     }
 
     

@@ -1,8 +1,12 @@
 #include "Common.hlsli"
 
+#define THREAD_GROUP_SIZE_X 16
+#define THREAD_GROUP_SIZE_Y 16
+
 cbuffer constants : register(b0)
 {
     float3 bboxmin;
+    float texDimToUV;
     float3 bboxmax;
     float3 deltaSlice;
     float3 planeRight;
@@ -69,15 +73,12 @@ float3 getUVCoordinatesVolume(float3 worldCoord)
 	return (worldCoord - bboxmin) / (bboxmax - bboxmin);
 }
 
-float2 sampleLightTextures(float3 worldCoord, out float3 lightDirection, out float3 lightIntensity)
+void sampleLightTextures(float3 worldCoord, out float3 lightDirection, out float3 lightIntensity)
 {
-    uint2 texDim;
-    lightBufferRead.GetDimensions(texDim.x, texDim.y);
     const float3 offset = worldCoord - topLeft;
-    const float2 uv = float2(dot(offset, planeRight), dot(offset, planeDown)) / texDim; // todo make multiplication and set as constant
-    //lightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, uv, 0).xyz;
-    //lightIntensity = lightBufferRead.SampleLevel(lightSampler, uv, 0).xyz;
-    return float2(0, 0);
+    const float2 uv = float2(dot(offset, planeRight), dot(offset, planeDown)) * texDimToUV;
+    lightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, uv, 0).xyz;
+    lightIntensity = lightBufferRead.SampleLevel(lightSampler, uv, 0).xyz;
 }
 
 
@@ -112,7 +113,7 @@ bool rayIntersectsVolume(float3 rayPos, float3 rayDir)
 }
 
 
-[numthreads(16, 16, 1)]
+[numthreads(THREAD_GROUP_SIZE_X, THREAD_GROUP_SIZE_Y, 1)]
 void main ( uint3 DTid : SV_DispatchThreadID )
 
 {
@@ -121,8 +122,8 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     const float sliceDepth = length(deltaSlice);
     
     /*
-        Light Propagation
-    */
+     *    Light Propagation
+     */
     
     // TODO: Add refraction here
     const float3 currentLightDirection = lightDirectionBufferRead.Load(read_idx).xyz;
@@ -133,8 +134,8 @@ void main ( uint3 DTid : SV_DispatchThreadID )
 
 
     /*
-        Viewing Ray Propagation
-    */
+     *   Viewing Ray Propagation
+     */
     const float3 currentViewingRayPosition = viewingRayPositionBufferRead.Load(read_idx).xyz;
     const float3 currentViewingRayDirection = viewingRayDirectionBufferRead.Load(read_idx).xyz;
     
@@ -150,7 +151,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     }
     if (!rayIntersectsVolume(currentViewingRayPosition, currentViewingRayDirection))
     {
-        colorBufferWrite[write_idx].xyz = currentColor + checkerBoard(currentViewingRayDirection) * (1 - currentColor.w);
+        colorBufferWrite[write_idx].xyz = currentColor.xyz + checkerBoard(currentViewingRayDirection) * (1 - currentColor.w);
         colorBufferWrite[write_idx].w = 1;
         return;
     }
@@ -158,7 +159,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float3 currentMediumColor = mediumBufferRead.Load(read_idx).xyz;
     
     float3 diffuseLight = lightBufferRead.Load(read_idx).xyz; // Need to calculate values first
-    // TODO: float3 specularLight = specularBDRF(currentLightDirection, currentViewingRayDirection, delta f);
+    //float3 specularLight = specularBDRF(currentLightDirection, currentViewingRayDirection, delta_f);
     float3 specularLight = float3(0, 0, 0);
     
     // Sampling light information

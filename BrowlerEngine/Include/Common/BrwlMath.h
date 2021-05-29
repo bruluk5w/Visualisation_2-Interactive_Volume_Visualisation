@@ -147,6 +147,12 @@ namespace DirectX
 		return ret;
 	}
 
+	inline ::BRWL::Vec2 operator/(const float lhs, const ::BRWL::Vec2 rhs) {
+		::BRWL::Vec2 ret;
+		XMStoreFloat2(&ret, XMVectorDivide(XMVectorSet(lhs, lhs, 0.f, 0.f), XMLoadFloat2(&rhs)));
+		return ret;
+	}
+
 	//inline ::BRWL::IntVec2& operator-=(::BRWL::IntVec2& lhs, const ::BRWL::IntVec2& rhs) {
 	//	XMStoreSInt2(&lhs, XMVectorAdd(XMVectorSet(lhs.x, lhs.y, 0.f, 0.f), XMVectorNegate(XMVectorSet(rhs.x, rhs.y, 0.f, 0.f))));
 	//	return lhs;
