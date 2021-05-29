@@ -113,28 +113,29 @@ bool rayIntersectsVolume(float3 rayPos, float3 rayDir)
 
 float3 reconstructGradient(float3 worldPos)
 {
-    float front  = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(   0,    0, -0.5)), 0);
-    float back   = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(   0,    0,  0.5)), 0);
-    float left   = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(-0.5,    0,    0)), 0);
-    float right  = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3( 0.5,    0,    0)), 0);
-    float top    = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(   0, -0.5,    0)), 0);
-    float bottom = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(   0,  0.5,    0)), 0);
+    const float stepLength = 0.5;
+    float left =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(stepLength, 0, 0)), 0);
+    float right =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(stepLength, 0, 0)), 0);
+    float top =     volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, stepLength, 0)), 0);
+    float bottom =  volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, stepLength, 0)), 0);
+    float front =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, 0, stepLength)), 0);
+    float back =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, 0, stepLength)), 0);
                
-    return normalize(float3(right - left, bottom - top, back - front)); // should this be normalized?
+    return normalize(float3(left - right, top - bottom, front - back)); // should this be normalized?
 }
 
-float3 phongSpecular(float3 lightDir, float3 viewingDir, float3 normal, float reflectivity)
+float phongSpecular(float3 lightDir, float3 viewingDir, float3 normal, float reflectivity)
 {
-    //viewingDir = normalize(viewingDir);
-    //lightDir = normalize(lightDir);
-    //if (dot(normal, lightDir) > 0)
+    viewingDir = normalize(viewingDir);
+    lightDir = normalize(lightDir);
+    if (dot(normal, lightDir) > 0)
     {
         //normal.z = -normal.z;
         float3 lightReflected = -lightDir - 2.0 * dot(-lightDir, normal) * normal; //reflect(-lightDir, normal);
         float specularAngle = max(dot(lightReflected, viewingDir), 0.00001);
         return pow(specularAngle, reflectivity);
     }
-    //return 0;
+    return 0;
 }
 
 
@@ -214,7 +215,9 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
     
     float nextIndexOfRefraction = integrationTable(currentScalarSample, nextScalarSample, refractionIntegTex);
-    float reflectivity = 50 * (nextIndexOfRefraction + 0.00001) / (currentIndexOfRefraction + 0.00001);
+    // the lower reflectivity the more it reflects, therefore the higher the difference, the more is subtracted
+    // maybe a non-linear function would be better here (todo), also pay attention at dividing by zero
+    float reflectivity = 10 - 0.0001 * ((nextIndexOfRefraction + 0.0001) / (currentIndexOfRefraction + 0.0001));
     float3 specularLight = phongSpecular(lightDirection, currentViewingRayDirection, delta_f, reflectivity);
     
     float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * diffuseLight + specularLight);
