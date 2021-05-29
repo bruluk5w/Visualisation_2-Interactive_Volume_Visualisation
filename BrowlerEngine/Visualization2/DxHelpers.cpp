@@ -3,7 +3,7 @@
 void makeStaticSamplerDescription(D3D12_STATIC_SAMPLER_DESC& staticSampler, unsigned int shaderRegister, D3D12_TEXTURE_ADDRESS_MODE addressMode, D3D12_SHADER_VISIBILITY visibility)
 {
     memset(&staticSampler, 0, sizeof(staticSampler));
-    staticSampler.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+    staticSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
     staticSampler.AddressU = addressMode;
     staticSampler.AddressV = addressMode;
     staticSampler.AddressW = addressMode;

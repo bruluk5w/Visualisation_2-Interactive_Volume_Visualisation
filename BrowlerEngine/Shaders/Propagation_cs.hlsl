@@ -67,7 +67,6 @@ float4 cookTorrance(float3 normal, float3 view, float3 light, float fromIdxOfRef
 }
 
 
-
 float3 getUVCoordinatesVolume(float3 worldCoord)
 {
 	return (worldCoord - bboxmin) / (bboxmax - bboxmin);
@@ -110,6 +109,18 @@ bool rayIntersectsVolume(float3 rayPos, float3 rayDir)
     
     return (intersectsNegativeX || intersectsNegativeY || intersectsNegativeZ || 
             intersectsPositiveX || intersectsPositiveY || intersectsPositiveZ);
+}
+
+float3 reconstructGradient(float3 worldPos)
+{
+    float front  = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(   0,    0, -0.5)), 0);
+    float back   = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(   0,    0,  0.5)), 0);
+    float left   = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(-0.5,    0,    0)), 0);
+    float right  = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3( 0.5,    0,    0)), 0);
+    float top    = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(   0, -0.5,    0)), 0);
+    float bottom = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(   0,  0.5,    0)), 0);
+               
+    return normalize(float3(right - left, bottom - top, back - front)+0.5); // should this be normalized?
 }
 
 
@@ -159,13 +170,16 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float3 currentMediumColor = mediumBufferRead.Load(read_idx).xyz;
     
     float3 diffuseLight = lightBufferRead.Load(read_idx).xyz; // Need to calculate values first
-    //float3 specularLight = specularBDRF(currentLightDirection, currentViewingRayDirection, delta_f);
-    float3 specularLight = float3(0, 0, 0);
-    
     // Sampling light information
     float3 lightDirection;
     float3 lightIntensity;
     sampleLightTextures(currentViewingRayPosition, lightDirection, lightIntensity);
+    // reconstruct gradient of scalar field
+    float3 delta_f = reconstructGradient(currentViewingRayPosition);
+    //float3 specularLight = specularBDRF(currentLightDirection, currentViewingRayDirection, delta_f);
+    float3 specularLight = float3(0, 0, 0);
+    
+
 
     // Sampling the volume
     // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/8 of the normalized range is utilized.
@@ -188,7 +202,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     
     viewingRayPositionBufferWrite[write_idx].xyz = nextViewingRayPosition;
     viewingRayDirectionBufferWrite[write_idx].xyz = nextViewingRayDirection; // has to be normalized
-    colorBufferWrite[write_idx].xyz = nextColor;
-    colorBufferWrite[write_idx].w = nextAlpha;
+    colorBufferWrite[write_idx].xyz = delta_f; //nextColor;
+    colorBufferWrite[write_idx].w = 1; // nextAlpha;
     mediumBufferWrite[write_idx].xyz = nextMediumColor;
 }
