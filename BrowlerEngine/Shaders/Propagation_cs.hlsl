@@ -122,6 +122,18 @@ void reconstructGradient(float3 worldPos, out float3 gradient, out float3 refrac
     float back =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, 0, stepLength)), 0);
                
     gradient = normalize(float3(left - right, top - bottom, front - back));
+    
+    uint2 texDim;
+    refractionIntegTex.GetDimensions(texDim.x, texDim.y);
+    float leftIOR =     integrationTable(left, left + (1.0f / texDim.x), refractionIntegTex);
+    float rightIOR =    integrationTable(right, right + (1.0f / texDim.x), refractionIntegTex);
+    float topIOR =      integrationTable(top, top + (1.0f / texDim.x), refractionIntegTex);
+    float bottomIOR =   integrationTable(bottom, bottom + (1.0f / texDim.x), refractionIntegTex);
+    float frontIOR =    integrationTable(front, front + (1.0f / texDim.x), refractionIntegTex);
+    float backIOR =     integrationTable(back, back + (1.0f / texDim.x), refractionIntegTex);
+    
+    refractionGradient = float3(leftIOR - rightIOR, topIOR - bottomIOR, frontIOR - backIOR);
+
 }
 
 float phongSpecular(float3 lightDir, float3 viewingDir, float3 normal, float reflectivity)
@@ -150,12 +162,22 @@ void main ( uint3 DTid : SV_DispatchThreadID )
      *    Light Propagation
      */
     
-    // TODO: Add refraction here
+    {
+    
+    
     const float3 currentLightDirection = lightDirectionBufferRead.Load(read_idx).xyz;
     const float3 currentLightIntensity = lightBufferRead.Load(read_idx).xyz;
     
+    float len = dot(currentLightDirection, normalize(deltaSlice));
+    const float2 previousLightPos = (DTid - currentLightDirection * length(deltaSlice) / len).xy;
+    
+    float3 lightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, previousLightPos * texDimToUV, 0).xyz;
+    lightIntensity = lightBufferRead.SampleLevel(lightSampler, previousLightPos * texDimToUV, 0).xyz;
+    
     lightDirectionBufferWrite[write_idx].xyz = currentLightDirection;
     lightBufferWrite[write_idx].xyz = currentLightIntensity;
+        
+    }
 
 
     /*
@@ -189,7 +211,9 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float3 lightIntensity;
     sampleLightTextures(currentViewingRayPosition, lightDirection, lightIntensity);
     // reconstruct gradient of scalar field
-    float3 delta_f = reconstructGradient(currentViewingRayPosition);
+    float3 gradient;
+    float3 refractionGradient;
+    reconstructGradient(currentViewingRayPosition, gradient, refractionGradient);
     //float3 specularLight = specularBDRF(currentLightDirection, currentViewingRayDirection, delta_f);
     
     
@@ -205,7 +229,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     // Advance viewing ray in world space
     float len = dot(currentViewingRayDirection, normalize(deltaSlice));
     const float3 nextViewingRayPosition = currentViewingRayPosition + currentViewingRayDirection * length(deltaSlice) / len;
-    const float3 nextViewingRayDirection = currentViewingRayDirection; // todo
+    const float3 nextViewingRayDirection = currentViewingRayDirection + sliceDepth * refractionGradient;
     
     const float nextScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(nextViewingRayPosition), 0) * 8;
     
@@ -216,7 +240,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float nextIndexOfRefraction = integrationTable(currentScalarSample, nextScalarSample, refractionIntegTex);
     // the lower reflectivity the more it reflects, therefore the higher the difference, the more is subtracted
     float reflectivity = 20 - 50 * abs(nextIndexOfRefraction - currentIndexOfRefraction);
-    float3 specularLight = phongSpecular(lightDirection, currentViewingRayDirection, delta_f, reflectivity);
+    float3 specularLight = phongSpecular(lightDirection, currentViewingRayDirection, gradient, reflectivity);
     
     float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * diffuseLight + specularLight);
     float nextAlpha = currentColor.w + (1 - currentColor.w) * alpha.x;
