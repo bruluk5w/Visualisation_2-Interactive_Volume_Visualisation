@@ -111,7 +111,7 @@ bool rayIntersectsVolume(float3 rayPos, float3 rayDir)
             intersectsPositiveX || intersectsPositiveY || intersectsPositiveZ);
 }
 
-float3 reconstructGradient(float3 worldPos)
+void reconstructGradient(float3 worldPos, out float3 gradient, out float3 refractionGradient)
 {
     const float stepLength = 0.5;
     float left =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(stepLength, 0, 0)), 0);
@@ -121,21 +121,20 @@ float3 reconstructGradient(float3 worldPos)
     float front =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, 0, stepLength)), 0);
     float back =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, 0, stepLength)), 0);
                
-    return normalize(float3(left - right, top - bottom, front - back)); // should this be normalized?
+    gradient = normalize(float3(left - right, top - bottom, front - back));
 }
 
 float phongSpecular(float3 lightDir, float3 viewingDir, float3 normal, float reflectivity)
 {
-    viewingDir = normalize(viewingDir);
-    lightDir = normalize(lightDir);
-    if (dot(normal, lightDir) > 0)
+    if (dot(normal, lightDir) > 0) //Lamberts Cosine Law, see also http://www.cs.toronto.edu/~jacobson/phong-demo/
     {
-        //normal.z = -normal.z;
-        float3 lightReflected = -lightDir - 2.0 * dot(-lightDir, normal) * normal; //reflect(-lightDir, normal);
+        lightDir = normalize(lightDir);
+        viewingDir = normalize(viewingDir);
+        float3 lightReflected = reflect(-lightDir, normal);
         float specularAngle = max(dot(lightReflected, viewingDir), 0.00001);
         return pow(specularAngle, reflectivity);
     }
-    return 0;
+    else return 0;
 }
 
 
@@ -216,8 +215,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     
     float nextIndexOfRefraction = integrationTable(currentScalarSample, nextScalarSample, refractionIntegTex);
     // the lower reflectivity the more it reflects, therefore the higher the difference, the more is subtracted
-    // maybe a non-linear function would be better here (todo), also pay attention at dividing by zero
-    float reflectivity = 10 - 0.0001 * ((nextIndexOfRefraction + 0.0001) / (currentIndexOfRefraction + 0.0001));
+    float reflectivity = 20 - 50 * abs(nextIndexOfRefraction - currentIndexOfRefraction);
     float3 specularLight = phongSpecular(lightDirection, currentViewingRayDirection, delta_f, reflectivity);
     
     float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * diffuseLight + specularLight);
