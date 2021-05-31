@@ -191,11 +191,8 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     /*
      *   Viewing Ray Propagation
      */
-    const float3 currentViewingRayPosition = viewingRayPositionBufferRead.Load(read_idx).xyz;
+    const float4 currentViewingRayPosition = viewingRayPositionBufferRead.Load(read_idx); // w component holds previous scalar sample
     const float3 currentViewingRayDirection = viewingRayDirectionBufferRead.Load(read_idx).xyz;
-    
-    // We know that the write buffer holds the previous pixel's viewing ray position
-    const float3 previousViewingRayPosition = viewingRayPositionBufferWrite.Load(read_idx).xyz;
     
     float4 currentColor = colorBufferRead.Load(read_idx);
     
@@ -204,7 +201,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
         colorBufferWrite[write_idx] = currentColor;
         //return; 
     }
-    if (!rayIntersectsVolume(currentViewingRayPosition, currentViewingRayDirection))
+    if (!rayIntersectsVolume(currentViewingRayPosition.xyz, currentViewingRayDirection))
     {
         colorBufferWrite[write_idx].xyz = currentColor.xyz * currentColor.w + (1 - currentColor.w) * checkerBoard(currentViewingRayDirection);
         colorBufferWrite[write_idx].w = 1;
@@ -217,7 +214,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     // Sampling light information
     float3 lightDirection;
     float3 lightIntensity;
-    sampleLightTextures(currentViewingRayPosition, lightDirection, lightIntensity);
+    sampleLightTextures(currentViewingRayPosition.xyz, lightDirection, lightIntensity);
     // reconstruct gradient of scalar field
     float3 gradient;
     float3 refractionGradient;
@@ -228,8 +225,8 @@ void main ( uint3 DTid : SV_DispatchThreadID )
 
     // Sampling the volume
     // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/8 of the normalized range is utilized.
-    const float previousScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(previousViewingRayPosition), 0) * 8;
-    const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentViewingRayPosition), 0) * 8;
+    const float previousScalarSample = currentViewingRayPosition.w;
+    const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentViewingRayPosition.xyz), 0) * 8;
     
     uint2 texDim;
     refractionIntegTex.GetDimensions(texDim.x, texDim.y);
@@ -238,7 +235,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     
     // Advance viewing ray in world space
     float len = dot(currentViewingRayDirection, normalize(deltaSlice));
-    const float3 nextViewingRayPosition = currentViewingRayPosition + currentViewingRayDirection * length(deltaSlice) / len;
+    const float3 nextViewingRayPosition = currentViewingRayPosition.xyz + currentViewingRayDirection * length(deltaSlice) / len;
     const float3 nextViewingRayDirection = currentViewingRayDirection + sliceDepth * refractionGradient;
     
     const float nextScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(nextViewingRayPosition), 0) * 8;
@@ -265,7 +262,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     
    
     
-    viewingRayPositionBufferWrite[write_idx].xyz = nextViewingRayPosition;
+    viewingRayPositionBufferWrite[write_idx] = float4(nextViewingRayPosition, currentScalarSample); // we also save the current scalar sample to save looking it up again in the next frame
     viewingRayDirectionBufferWrite[write_idx].xyz = nextViewingRayDirection; // has to be normalized
     colorBufferWrite[write_idx].xyz = nextColor;
     colorBufferWrite[write_idx].w = nextAlpha;
