@@ -121,7 +121,7 @@ void reconstructGradient(float3 worldPos, out float3 gradient, out float3 refrac
     float front =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, 0, stepLength)), 0);
     float back =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, 0, stepLength)), 0);
                
-    gradient = normalize(float3(left - right, top - bottom, front - back));
+    gradient = normalize(float3(right - left, bottom - top, back - front));
     
     uint2 texDim;
     refractionIntegTex.GetDimensions(texDim.x, texDim.y);
@@ -132,21 +132,17 @@ void reconstructGradient(float3 worldPos, out float3 gradient, out float3 refrac
     float frontIOR =    integrationTable(front, front + (1.0f / texDim.x), refractionIntegTex);
     float backIOR =     integrationTable(back, back + (1.0f / texDim.x), refractionIntegTex);
     
-    refractionGradient = float3(leftIOR - rightIOR, topIOR - bottomIOR, frontIOR - backIOR);
+    refractionGradient = float3(rightIOR - leftIOR, bottomIOR - topIOR, backIOR - frontIOR);
 
 }
 
 float phongSpecular(float3 lightDir, float3 viewingDir, float3 normal, float reflectivity)
 {
-    if (dot(normal, lightDir) > 0) //Lamberts Cosine Law, see also http://www.cs.toronto.edu/~jacobson/phong-demo/
-    {
-        lightDir = normalize(lightDir);
-        viewingDir = normalize(viewingDir);
-        float3 lightReflected = reflect(-lightDir, normal);
-        float specularAngle = max(dot(lightReflected, viewingDir), 0.00001);
-        return pow(specularAngle, reflectivity);
-    }
-    else return 0;
+    lightDir = normalize(lightDir);
+    viewingDir = normalize(viewingDir);
+    float3 lightReflected = reflect(-lightDir, normal);
+    float specularAngle = max(dot(lightReflected, viewingDir), 0.00001);
+    return pow(specularAngle, reflectivity);
 }
 
 
@@ -165,17 +161,22 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     {
     
     
-    const float3 currentLightDirection = lightDirectionBufferRead.Load(read_idx).xyz;
-    const float3 currentLightIntensity = lightBufferRead.Load(read_idx).xyz;
+        const float3 currentLightDirection = lightDirectionBufferRead.Load(read_idx).xyz;
+        const float3 currentLightIntensity = lightBufferRead.Load(read_idx).xyz;
     
-    float len = dot(currentLightDirection, normalize(deltaSlice));
-    const float2 previousLightPos = (DTid - currentLightDirection * length(deltaSlice) / len).xy;
+        float len = dot(currentLightDirection, normalize(deltaSlice));
+        const float3 previousLightPos = (DTid - currentLightDirection * length(deltaSlice) / len);
     
-    float3 lightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, previousLightPos * texDimToUV, 0).xyz;
-    lightIntensity = lightBufferRead.SampleLevel(lightSampler, previousLightPos * texDimToUV, 0).xyz;
+        float3 lightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, previousLightPos.xy * texDimToUV, 0).xyz;
+        float3 lightIntensity = lightBufferRead.SampleLevel(lightSampler, previousLightPos.xy * texDimToUV, 0).xyz;
     
-    lightDirectionBufferWrite[write_idx].xyz = currentLightDirection;
-    lightBufferWrite[write_idx].xyz = currentLightIntensity;
+        float intensityCorrection = 1;
+        const float previousLightSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(previousLightPos), 0) * 8;
+        //float alpha = integrationTable(previousLightPos, currentLightPos, opacityIntegTex);
+        //float3 medium = integrationTable(previousLightPos, currentLightPos, mediumIntegTex);
+        
+        lightDirectionBufferWrite[write_idx].xyz = currentLightDirection;
+        lightBufferWrite[write_idx].xyz = currentLightIntensity;
         
     }
 
@@ -198,7 +199,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     }
     if (!rayIntersectsVolume(currentViewingRayPosition, currentViewingRayDirection))
     {
-        colorBufferWrite[write_idx].xyz = currentColor.xyz + checkerBoard(currentViewingRayDirection) * (1 - currentColor.w);
+        colorBufferWrite[write_idx].xyz = currentColor.xyz * currentColor.w + (1 - currentColor.w) * checkerBoard(currentViewingRayDirection);
         colorBufferWrite[write_idx].w = 1;
         return;
     }
@@ -214,7 +215,6 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float3 gradient;
     float3 refractionGradient;
     reconstructGradient(currentViewingRayPosition, gradient, refractionGradient);
-    //float3 specularLight = specularBDRF(currentLightDirection, currentViewingRayDirection, delta_f);
     
     
     
@@ -224,7 +224,10 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     const float previousScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(previousViewingRayPosition), 0) * 8;
     const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentViewingRayPosition), 0) * 8;
     
-    float currentIndexOfRefraction = integrationTable(previousScalarSample, currentScalarSample, refractionIntegTex);
+    uint2 texDim;
+    refractionIntegTex.GetDimensions(texDim.x, texDim.y);
+    float currentIndexOfRefraction = integrationTable(currentScalarSample, currentScalarSample + (1.0f / texDim.x), refractionIntegTex);
+    //float currentIndexOfRefraction = integrationTable(previousScalarSample, currentScalarSample, refractionIntegTex);
     
     // Advance viewing ray in world space
     float len = dot(currentViewingRayDirection, normalize(deltaSlice));
@@ -237,13 +240,21 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float alpha = integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex);
     float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
     
-    float nextIndexOfRefraction = integrationTable(currentScalarSample, nextScalarSample, refractionIntegTex);
+    float nextIndexOfRefraction = integrationTable(nextScalarSample, nextScalarSample + (1.0f / texDim.x), refractionIntegTex);
+    //float nextIndexOfRefraction = integrationTable(currentScalarSample, nextScalarSample, refractionIntegTex);
+    
     // the lower reflectivity the more it reflects, therefore the higher the difference, the more is subtracted
-    float reflectivity = 20 - 50 * abs(nextIndexOfRefraction - currentIndexOfRefraction);
-    float3 specularLight = phongSpecular(lightDirection, currentViewingRayDirection, gradient, reflectivity);
+    float lambertianTerm = max(dot(gradient, lightDirection), 0);
+    diffuseLight *= lambertianTerm;
+    float specularLight = 0;
+    if (lambertianTerm > 0)
+    {
+        float reflectivity = 20 - 50 * abs(nextIndexOfRefraction - currentIndexOfRefraction);
+        specularLight = phongSpecular(lightDirection, currentViewingRayDirection, gradient, reflectivity);
+    }
     
     float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * diffuseLight + specularLight);
-    float nextAlpha = currentColor.w + (1 - currentColor.w) * alpha.x;
+    float nextAlpha = currentColor.w + (1 - currentColor.w) * alpha;
     float3 nextMediumColor = currentMediumColor * (1 - medium);
     
    

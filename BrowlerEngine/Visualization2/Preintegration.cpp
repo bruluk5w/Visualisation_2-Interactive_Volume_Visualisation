@@ -64,10 +64,10 @@ void makePreintegrationTable(T<S>& image, typename T<S>::sampleT* transferFunc, 
 		{ // integrate from y to x
 			T<S>::sampleT sum = T<S>::sampleT();
 			for (size_t i = y + 1; i < x; ++i) {
-				sum = sum + (transferFunc[i - 1] + transferFunc[i]) * 0.5f;
+				sum = sum + (transferFunc[i - 1] + transferFunc[i]);
 			}
 
-			lineStart[x] = sum / (float)(x - y);
+			lineStart[x] = sum * 0.5f / (float)(x - y) ;
 			//BRWL_EXCEPTION(lineStart + x < table + (lenFunc*lenFunc), nullptr);
 
 		}

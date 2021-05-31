@@ -199,10 +199,10 @@ struct TransferFunction : public BaseTransferFunction
 				const Vec2& next = tessellatedPoints[cursor];
 				const Vec2 delta = next - previous;
 
-				data[stride * i] = previous.y + ((float)i / (float)numSamples - previous.x) * delta.y / delta.x;
+				data[stride * i] = Utils::max((previous.y + ((float)i / (float)numSamples - previous.x) * delta.y / delta.x), 0.f);
 			}
 
-			data[stride * (numSamples - 1)] = tessellatedPoints[numTessellatedPoints - 1].y;
+			data[stride * (numSamples - 1)] = Utils::max(tessellatedPoints[numTessellatedPoints - 1].y, 0.f);
 			vBuf.clear();
 		}
 	}
