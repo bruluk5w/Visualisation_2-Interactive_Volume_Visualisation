@@ -11,7 +11,7 @@ cbuffer constants : register(b0)
     float3 deltaSlice;
     float3 planeRight;
     float3 planeDown;
-    float3 topLeft;
+    float3 topLeft; //topLeft of current slice
 };
 
 SamplerState preintegrationSampler : register(s0);
@@ -136,13 +136,13 @@ void reconstructGradient(float3 worldPos, out float3 gradient, out float3 refrac
 
 }
 
-float phongSpecular(float3 lightDir, float3 viewingDir, float3 normal, float reflectivity)
+float3 phongSpecular(float3 lightDir, float3 viewingDir, float3 normal, float3 lightIntensity, float reflectivity)
 {
     lightDir = normalize(lightDir);
     viewingDir = normalize(viewingDir);
     float3 lightReflected = reflect(-lightDir, normal);
     float specularAngle = max(dot(lightReflected, viewingDir), 0.00001);
-    return pow(specularAngle, reflectivity);
+    return pow(specularAngle, reflectivity) * lightIntensity;
 }
 
 
@@ -167,16 +167,23 @@ void main ( uint3 DTid : SV_DispatchThreadID )
         float len = dot(currentLightDirection, normalize(deltaSlice));
         const float3 previousLightPos = (DTid - currentLightDirection * length(deltaSlice) / len);
     
-        float3 lightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, previousLightPos.xy * texDimToUV, 0).xyz;
-        float3 lightIntensity = lightBufferRead.SampleLevel(lightSampler, previousLightPos.xy * texDimToUV, 0).xyz;
-    
-        float intensityCorrection = 1;
-        const float previousLightSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(previousLightPos), 0) * 8;
-        //float alpha = integrationTable(previousLightPos, currentLightPos, opacityIntegTex);
-        //float3 medium = integrationTable(previousLightPos, currentLightPos, mediumIntegTex);
+        float3 previousLightIntensity = lightBufferRead.SampleLevel(lightSampler, previousLightPos.xy * texDimToUV, 0).xyz;
+        float3 previousLightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, previousLightPos.xy * texDimToUV, 0).xyz;
         
-        lightDirectionBufferWrite[write_idx].xyz = currentLightDirection;
-        lightBufferWrite[write_idx].xyz = currentLightIntensity;
+        float intensityCorrection = 1; //S[i-1] / S[i]
+        
+        const float3 previousLightWorldPos = previousLightPos.x * planeRight + previousLightPos.y * planeDown + topLeft;
+        const float3 currentLightWorldPos = DTid.x * planeRight + DTid.y * planeDown + topLeft;
+        const float previousScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(previousLightWorldPos), 0) * 8;
+        const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentLightWorldPos), 0) * 8;
+        float alpha = integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex);
+        float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
+        
+        const float3 nextLightIntensity = previousLightIntensity * intensityCorrection * (1 - alpha) * (1 - medium);
+        const float3 nextLightDirection = currentLightDirection;
+        
+        lightDirectionBufferWrite[write_idx].xyz = nextLightDirection;
+        lightBufferWrite[write_idx].xyz = nextLightIntensity;
         
     }
 
@@ -195,7 +202,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     if (currentColor.w >= 1)
     { // Would be sufficient to do it only once and write the second plane/layer into the next Buffer
         colorBufferWrite[write_idx] = currentColor;
-        return; 
+        //return; 
     }
     if (!rayIntersectsVolume(currentViewingRayPosition, currentViewingRayDirection))
     {
@@ -227,7 +234,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     uint2 texDim;
     refractionIntegTex.GetDimensions(texDim.x, texDim.y);
     float currentIndexOfRefraction = integrationTable(currentScalarSample, currentScalarSample + (1.0f / texDim.x), refractionIntegTex);
-    //float currentIndexOfRefraction = integrationTable(previousScalarSample, currentScalarSample, refractionIntegTex);
+
     
     // Advance viewing ray in world space
     float len = dot(currentViewingRayDirection, normalize(deltaSlice));
@@ -241,16 +248,15 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
     
     float nextIndexOfRefraction = integrationTable(nextScalarSample, nextScalarSample + (1.0f / texDim.x), refractionIntegTex);
-    //float nextIndexOfRefraction = integrationTable(currentScalarSample, nextScalarSample, refractionIntegTex);
     
     // the lower reflectivity the more it reflects, therefore the higher the difference, the more is subtracted
     float lambertianTerm = max(dot(gradient, lightDirection), 0);
     diffuseLight *= lambertianTerm;
-    float specularLight = 0;
+    float3 specularLight = (0, 0, 0);
     if (lambertianTerm > 0)
     {
         float reflectivity = 20 - 50 * abs(nextIndexOfRefraction - currentIndexOfRefraction);
-        specularLight = phongSpecular(lightDirection, currentViewingRayDirection, gradient, reflectivity);
+        specularLight = phongSpecular(lightDirection, currentViewingRayDirection, gradient, lightIntensity, reflectivity);
     }
     
     float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * diffuseLight + specularLight);

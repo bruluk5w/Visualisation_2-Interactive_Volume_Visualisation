@@ -532,7 +532,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
                 propParams.deltaSlice = deltaSlice;
                 propParams.planeRight = right;
                 propParams.planeDown = down;
-                propParams.topLeft = topLeft;
+                propParams.topLeft = topLeft + deltaSlice * (numSlices - remainingSlices);
             }
 
             remainingSlices = propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexturehandle, remainingSlices);
