@@ -165,15 +165,15 @@ void main ( uint3 DTid : SV_DispatchThreadID )
         const float3 currentLightIntensity = lightBufferRead.Load(read_idx).xyz;
     
         float len = dot(currentLightDirection, normalize(deltaSlice));
-        const float3 previousLightPos = (DTid - currentLightDirection * length(deltaSlice) / len);
+        const float3 currentLightWorldPos = (float) DTid.x * planeRight + (float)DTid.y * planeDown + topLeft;
+        const float3 previousLightWorldPos = (currentLightWorldPos - currentLightDirection * length(deltaSlice) / len);
     
-        float3 previousLightIntensity = lightBufferRead.SampleLevel(lightSampler, previousLightPos.xy * texDimToUV, 0).xyz;
-        float3 previousLightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, previousLightPos.xy * texDimToUV, 0).xyz;
+        float3 previousLightIntensity;
+        float3 previousLightDirection;
+        sampleLightTextures(previousLightWorldPos, previousLightDirection, previousLightIntensity);
         
         float intensityCorrection = 1; //S[i-1] / S[i]
         
-        const float3 previousLightWorldPos = previousLightPos.x * planeRight + previousLightPos.y * planeDown + topLeft;
-        const float3 currentLightWorldPos = DTid.x * planeRight + DTid.y * planeDown + topLeft;
         const float previousScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(previousLightWorldPos), 0) * 8;
         const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentLightWorldPos), 0) * 8;
         float alpha = integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex);
@@ -199,7 +199,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     if (currentColor.w >= 1)
     { // Would be sufficient to do it only once and write the second plane/layer into the next Buffer
         colorBufferWrite[write_idx] = currentColor;
-        //return; 
+        return; 
     }
     if (!rayIntersectsVolume(currentViewingRayPosition.xyz, currentViewingRayDirection))
     {
