@@ -199,14 +199,31 @@ void Visualization2Renderer::render(Renderer* renderer)
                 const int tableSize = tFuncResult->getArrayLength();
                 BaseTextureHandle& pitImage = pitCollection.array[i];
                 if (!pitImage->isValid() || pitImage->getSizeX() != tableSize)
-                    pitImage->create(tableSize, tableSize);
+                    if (i == 0) // first texture (refraction transfer function) is actually not a preintegration texture but just a lookup table
+                        pitImage->create(tableSize, 1);
+                    else
+                        pitImage->create(tableSize, tableSize);
+
                 else
                     pitImage->zero();
 
-                if ((*pitImage).getSampleFormat() == SampleFormat::F32) {
-                    makePreintegrationTable<>(
-                        *dynamic_cast<PitCollection::PitImage*>(&*pitImage),
-                        dynamic_cast<TransferFunction<PitCollection::PitImage::sampleFormat>*>(tFuncResult)->transferFunction, tFuncResult->getArrayLength());
+                if ((*pitImage).getSampleFormat() == SampleFormat::F32)
+                {
+                    PitCollection::PitImage* singleChannelImg = dynamic_cast<PitCollection::PitImage*>(&*pitImage);
+                    float* transferFunc = dynamic_cast<TransferFunction<PitCollection::PitImage::sampleFormat>*>(tFuncResult)->transferFunction;
+                    if (i == 0) // first texture (refraction transfer function) is actually not a preintegration texture but just a lookup table
+                    {
+                        BRWL_CHECK(singleChannelImg->getSampleByteSize() == sizeof(float), nullptr);
+                        BRWL_CHECK(singleChannelImg->getBufferSize() == tableSize * sizeof(float), nullptr);
+                        memcpy(singleChannelImg->getData(), transferFunc, singleChannelImg->getBufferSize());
+                    }
+                    else
+                    {
+                        makePreintegrationTable<>(
+                            *singleChannelImg,
+                            transferFunc,
+                            tFuncResult->getArrayLength());
+                    }
                 }
                 else {
                     makePreintegrationTable<>(

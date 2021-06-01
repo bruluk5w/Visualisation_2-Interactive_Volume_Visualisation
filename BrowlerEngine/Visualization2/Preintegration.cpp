@@ -56,7 +56,7 @@ void makePreintegrationTable(T<S>& image, typename T<S>::sampleT* transferFunc, 
 
 	checkSize<S>(image, lenFunc);
 	const size_t yStep = image.getSizeX();
-	T<S>::sampleT* const table = (T<S>::sampleT*)image.getPtr();
+	T<S>::sampleT* const table = static_cast<T<S>::sampleT*>(image.getData());
 	for (size_t y = 0; y < lenFunc; ++y)
 	{
 		T<S>::sampleT* lineStart = table + y * yStep;

@@ -663,7 +663,7 @@ void MainShader::switchToCompute(ID3D12GraphicsCommandList* cmd, MainShader::Dra
             data.pitCollection.tables.mediumColorPit.asPlatformHandle()->getLiveResource(),
             data.pitCollection.tables.opacityPit.asPlatformHandle()->getLiveResource(),
             data.pitCollection.tables.particleColorPit.asPlatformHandle()->getLiveResource(),
-            data.pitCollection.tables.refractionPit.asPlatformHandle()->getLiveResource(),
+            data.pitCollection.tables.refractionLut.asPlatformHandle()->getLiveResource(),
         };
 
         PAL::stateTransition<D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE>(cmd, resources);
@@ -682,7 +682,7 @@ void MainShader::switchToPixelShader(ID3D12GraphicsCommandList* cmd, MainShader:
             data.pitCollection.tables.mediumColorPit.asPlatformHandle()->getLiveResource(),
             data.pitCollection.tables.opacityPit.asPlatformHandle()->getLiveResource(),
             data.pitCollection.tables.particleColorPit.asPlatformHandle()->getLiveResource(),
-            data.pitCollection.tables.refractionPit.asPlatformHandle()->getLiveResource(),
+            data.pitCollection.tables.refractionLut.asPlatformHandle()->getLiveResource(),
         };
 
         PAL::stateTransition<D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE>(cmd, resources);

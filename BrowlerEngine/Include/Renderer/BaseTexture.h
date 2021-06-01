@@ -9,7 +9,8 @@ struct TextureResource;
 
 enum class TextureDimension : uint8_t
 {
-	TEXTURE_2D = 0,
+	TEXTURE_1D = 0,
+	TEXTURE_2D,
 	TEXTURE_3D,
 	MAX,
 	MIN = 0
@@ -70,7 +71,7 @@ public:
 	/*!
 	 * (Re)creates an empty CPU-side buffer for a texture of the the given size. Destroys old data if present
 	 */
-	void create(uint16_t sizeX, uint16_t sizeY, uint16_t sizeZ = 1, TextureDimension dim = TextureDimension::TEXTURE_2D, TextureCreationParams params = TextureCreationParams::INIT_ZERO_MEMORY);
+	void create(uint16_t sizeX, uint16_t sizeY = 1, uint16_t sizeZ = 1, TextureDimension dim = TextureDimension::TEXTURE_2D, TextureCreationParams params = TextureCreationParams::INIT_ZERO_MEMORY);
 	
 	/*!
 	 * \return Returns true if the CPU-side buffer exists.
@@ -81,7 +82,7 @@ public:
 	 * May only be called if that buffer exists.
 	 * \return Returns a pointer to the start of the internal buffer.
 	 */
-	const uint8_t* getPtr() const { checkValid(); return data.get(); }
+	uint8_t* getPtr() const { checkValid(); return data.get(); }
 	TextureDimension getDim() const { checkValid(); return dim; } //!< The dimensionality of the texture
 	uint16_t getSizeX() const { checkValid(); return sizeX; } //!< The number of colums.
 	uint16_t getSizeY() const { checkValid(); return sizeY; } //!< The number of rows.

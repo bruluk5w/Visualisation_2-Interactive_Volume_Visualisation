@@ -21,12 +21,14 @@ namespace PAL
 	{
 		D3D12_RESOURCE_DIMENSION texDimToResourceDim[ENUM_CLASS_TO_NUM(TextureDimension::MAX)]
 		{
+			D3D12_RESOURCE_DIMENSION_TEXTURE1D,
 			D3D12_RESOURCE_DIMENSION_TEXTURE2D,
 			D3D12_RESOURCE_DIMENSION_TEXTURE3D
 		};
 
 		D3D12_SRV_DIMENSION texDimToSrvDim[ENUM_CLASS_TO_NUM(TextureDimension::MAX)]
 		{
+			D3D12_SRV_DIMENSION_TEXTURE1D,
 			D3D12_SRV_DIMENSION_TEXTURE2D,
 			D3D12_SRV_DIMENSION_TEXTURE3D
 		};
@@ -353,6 +355,9 @@ namespace PAL
 			srvDesc.ViewDimension = texDimToSrvDim[ENUM_CLASS_TO_NUM(texture->getDim())];
 			switch (texture->getDim())
 			{
+			case TextureDimension::TEXTURE_1D:
+				srvDesc.Texture1D.MipLevels = 1;
+				break;
 			case TextureDimension::TEXTURE_2D:
 				srvDesc.Texture2D.MipLevels = 1;
 				srvDesc.Texture2D.PlaneSlice = 0;

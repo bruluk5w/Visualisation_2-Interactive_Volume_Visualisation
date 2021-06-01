@@ -23,7 +23,7 @@ union PitCollection
 	
 	// aliases to distinguish in the rest of the code
 	struct Aliases {
-		BaseTextureHandle refractionPit;
+		BaseTextureHandle refractionLut;
 		BaseTextureHandle particleColorPit;
 		BaseTextureHandle opacityPit;
 		BaseTextureHandle mediumColorPit;

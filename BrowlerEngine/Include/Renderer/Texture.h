@@ -70,7 +70,7 @@ public:
 	 * Returns a pointer to the start of the internal buffer.
 	 * May only be called if that buffer exists.
 	 */
-	const sampleT* getData() const { checkValid(); return data.get(); }
+	sampleT* getData() const { checkValid(); return (sampleT*)(data.get()); }
 
 	//! Inherited via BaseTexture
 	virtual int getSampleByteSize() const override

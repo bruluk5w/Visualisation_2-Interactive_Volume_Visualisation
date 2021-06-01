@@ -289,16 +289,13 @@ void renderAppUI(UIResult& result, const UIResult& values)
                         }
                         
                         ImGui::Plot("plot1", conf, forcePlotHovered);
+
                         for (int j = 0; j < numChannels; ++j) {
                             ctrlPointsChanged[j] |= valueTFunc->bitDepth != resultTFunc->bitDepth;
                         }
-                        if (ctrlPointsChanged)
-                        {
-                            //::ImGui::CtrlPointGroup& g = resultTFunc.controlPoints;
-                            //resultTFunc.controlPoints.sortRefs();
 
-                            resultTFunc->updateFunction(ctrlPointsChanged);
-                        }
+                        resultTFunc->updateFunction(ctrlPointsChanged);
+
                           
                         Text("Edit Channel");
                         const static char* rgbLabel[] = { "R", "G", "B" };

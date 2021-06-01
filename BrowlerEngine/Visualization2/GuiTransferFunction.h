@@ -128,7 +128,7 @@ struct TransferFunction : public BaseTransferFunction
 		if constexpr(S == RENDERER::SampleFormat::VEC4F32)
 			return channelIdx;
 		else
-			return 1;
+			return 0;
 	}
 
 	virtual uint8_t getChannelStrides(uint8_t channelIdx) const override

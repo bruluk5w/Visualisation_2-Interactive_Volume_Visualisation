@@ -33,7 +33,7 @@ RWTexture2D<float4> mediumBufferRead : register(u7);                //
 RWTexture2D<float4> viewingRayPositionBufferRead : register(u8);    //
 RWTexture2D<float4> viewingRayDirectionBufferRead : register(u9);   //
 
-Texture2D<float> refractionIntegTex : register(t2);
+Texture2D<float> refractionLut : register(t2);
 Texture2D<float4> particleColIntegTex : register(t3);
 Texture2D<float> opacityIntegTex : register(t4);
 Texture2D<float4> mediumIntegTex : register(t5);
@@ -80,6 +80,10 @@ void sampleLightTextures(float3 worldCoord, out float3 lightDirection, out float
     lightIntensity = lightBufferRead.SampleLevel(lightSampler, uv, 0).xyz;
 }
 
+float lut(float scalarSample, Texture2D<float> tex)
+{
+    return tex.SampleLevel(preintegrationSampler, float2(scalarSample, 0.5f), 0).r;
+}
 
 float integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float> tex)
 {
@@ -114,23 +118,21 @@ bool rayIntersectsVolume(float3 rayPos, float3 rayDir)
 void reconstructGradient(float3 worldPos, out float3 gradient, out float3 refractionGradient)
 {
     const float stepLength = 0.5;
-    float left =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(stepLength, 0, 0)), 0);
-    float right =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(stepLength, 0, 0)), 0);
-    float top =     volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, stepLength, 0)), 0);
-    float bottom =  volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, stepLength, 0)), 0);
-    float front =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, 0, stepLength)), 0);
-    float back =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, 0, stepLength)), 0);
-               
+    const float left =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(stepLength, 0, 0)), 0) * 8;
+    const float right =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(stepLength, 0, 0)), 0) * 8;
+    const float top =     volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, stepLength, 0)), 0) * 8;
+    const float bottom =  volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, stepLength, 0)), 0) * 8;
+    const float front =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, 0, stepLength)), 0) * 8;
+    const float back =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, 0, stepLength)), 0) * 8;
+            
     gradient = normalize(float3(right - left, bottom - top, back - front));
     
-    uint2 texDim;
-    refractionIntegTex.GetDimensions(texDim.x, texDim.y);
-    float leftIOR =     integrationTable(left, left + (1.0f / texDim.x), refractionIntegTex);
-    float rightIOR =    integrationTable(right, right + (1.0f / texDim.x), refractionIntegTex);
-    float topIOR =      integrationTable(top, top + (1.0f / texDim.x), refractionIntegTex);
-    float bottomIOR =   integrationTable(bottom, bottom + (1.0f / texDim.x), refractionIntegTex);
-    float frontIOR =    integrationTable(front, front + (1.0f / texDim.x), refractionIntegTex);
-    float backIOR =     integrationTable(back, back + (1.0f / texDim.x), refractionIntegTex);
+    const float leftIOR = lut(left, refractionLut);
+    const float rightIOR = lut(right, refractionLut);
+    const float topIOR = lut(top, refractionLut);
+    const float bottomIOR = lut(bottom, refractionLut);
+    const float frontIOR = lut(front, refractionLut);
+    const float backIOR = lut(back, refractionLut);
     
     refractionGradient = float3(rightIOR - leftIOR, bottomIOR - topIOR, backIOR - frontIOR);
 
@@ -218,7 +220,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     // reconstruct gradient of scalar field
     float3 gradient;
     float3 refractionGradient;
-    reconstructGradient(currentViewingRayPosition, gradient, refractionGradient);
+    reconstructGradient(currentViewingRayPosition.xyz, gradient, refractionGradient);
     
     
     
@@ -228,9 +230,8 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     const float previousScalarSample = currentViewingRayPosition.w;
     const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentViewingRayPosition.xyz), 0) * 8;
     
-    uint2 texDim;
-    refractionIntegTex.GetDimensions(texDim.x, texDim.y);
-    float currentIndexOfRefraction = integrationTable(currentScalarSample, currentScalarSample + (1.0f / texDim.x), refractionIntegTex);
+   
+    float currentIndexOfRefraction = lut(currentScalarSample, refractionLut);
 
     
     // Advance viewing ray in world space
@@ -244,12 +245,12 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float alpha = integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex);
     float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
     
-    float nextIndexOfRefraction = integrationTable(nextScalarSample, nextScalarSample + (1.0f / texDim.x), refractionIntegTex);
+    float nextIndexOfRefraction = lut(nextScalarSample, refractionLut);
     
     // the lower reflectivity the more it reflects, therefore the higher the difference, the more is subtracted
     float lambertianTerm = max(dot(gradient, lightDirection), 0);
     diffuseLight *= lambertianTerm;
-    float3 specularLight = (0, 0, 0);
+    float3 specularLight = float3(0, 0, 0);
     if (lambertianTerm > 0)
     {
         float reflectivity = 20 - 50 * abs(nextIndexOfRefraction - currentIndexOfRefraction);

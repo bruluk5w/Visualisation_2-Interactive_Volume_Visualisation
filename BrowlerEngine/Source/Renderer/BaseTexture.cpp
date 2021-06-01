@@ -20,6 +20,7 @@ BaseTexture::BaseTexture(const BRWL_CHAR* name) :
 void BaseTexture::create(uint16_t sizeX, uint16_t sizeY, uint16_t sizeZ, TextureDimension dim, TextureCreationParams params)
 {	
 	BRWL_EXCEPTION(sizeZ <= 1 || dim == TextureDimension::TEXTURE_3D, BRWL_CHAR_LITERAL("Multiple image slice require a 3d texture."));
+	BRWL_EXCEPTION(sizeY <= 1 || dim == TextureDimension::TEXTURE_2D || dim == TextureDimension::TEXTURE_3D, BRWL_CHAR_LITERAL("Multiple pixel rows require a 2d or 3d texture."));
 
 	valid = false;
 	this->dim = dim;
