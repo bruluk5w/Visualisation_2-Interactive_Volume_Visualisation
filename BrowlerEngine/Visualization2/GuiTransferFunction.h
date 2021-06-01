@@ -80,11 +80,24 @@ struct TransferFunction : public BaseTransferFunction
 	::ImGui::CtrlPointGroup controlPoints[numChannels()];
 	sampleT transferFunction[1 << 10];
 
+	TransferFunction() :
+		TransferFunction({ {}, {}, {} })
+	{ 
+	}
 
-	TransferFunction() : BaseTransferFunction(),
-		controlPoints(),
-		transferFunction {}
+	TransferFunction(std::initializer_list<std::initializer_list<::ImGui::CtrlPoint>> groups) : BaseTransferFunction(),
+		transferFunction { {} }
 	{
+		BRWL_CHECK(groups.size() >= numChannels(), BRWL_CHAR_LITERAL("One initializer list of control points has to be passed per channel."));
+		
+		const std::initializer_list<::ImGui::CtrlPoint>* group = groups.begin();
+
+		for (int i = 0; i < numChannels(); ++i)
+		{
+			new (controlPoints + i) ::ImGui::CtrlPointGroup(*group);
+			++group;
+		}
+
 		constexpr std::array<bool, numChannels()> dirtyFlags{ []() {
 			std::array<bool, numChannels()> res = {0};
 			for (int i = 0; i < numChannels(); ++i) { res[i] = true; }

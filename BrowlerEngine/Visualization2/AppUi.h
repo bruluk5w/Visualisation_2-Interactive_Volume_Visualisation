@@ -51,7 +51,7 @@ struct UIResult
 
 		BaseTransferFunction* array[ENUM_CLASS_TO_NUM(TransferFuncType::MAX)];
 
-		TransferFunction<RENDERER::SampleFormat::F32> refractionTansFunc;
+		TransferFunction<RENDERER::SampleFormat::F32> refractionTransFunc;
 		TransferFunction<RENDERER::SampleFormat::VEC4F32> particleColorTransFunc;
 		TransferFunction<RENDERER::SampleFormat::F32> opacityTransFunc;
 		TransferFunction<RENDERER::SampleFormat::VEC4F32> mediumColorTransFunc;

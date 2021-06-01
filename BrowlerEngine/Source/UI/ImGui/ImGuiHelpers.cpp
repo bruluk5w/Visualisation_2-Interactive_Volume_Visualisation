@@ -107,6 +107,22 @@ namespace ImGui
         return false;
     }
 
+    CtrlPointGroup::CtrlPointGroup(std::initializer_list<CtrlPoint> l) :
+        selected(-1),
+        points(l),
+        refs(l.size())
+    {
+        BRWL_CHECK(l.size() >= 2 || l.size() == 0, nullptr);
+
+        if (points.size() == 0) {
+            points.emplace_back(ImVec2{ 0, 1 });
+            points.emplace_back(ImVec2{ 1, 0 });
+            refs.resize(2);
+        }
+
+        std::iota(refs.begin(), refs.end(), 0);
+    }
+
 	bool CtrlPointGroup::update(ImGuiWindow* window, const bool isHovering, const ImRect& box, const ImVec2& mousePos, const float ctrlPointScale, const bool forceDisplayHandles)
     {
         const ImGuiIO& io = GetIO();

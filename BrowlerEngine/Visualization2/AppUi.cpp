@@ -41,12 +41,22 @@ UIResult::UIResult() :
 
 
 UIResult::TransferFunctionCollection::TransferFunctionCollection() :
-    refractionTansFunc(), 
-    particleColorTransFunc(), 
+    refractionTransFunc({
+        {
+            { {{0, 0.5f}}, {{1, 0.5f}} }
+        }
+    }),
+    particleColorTransFunc({
+        {
+            { {{0, 1.0f}}, {{1, 1.0f}} },
+            { {{0, 1.0f}}, {{1, 1.0f}} },
+            { {{0, 1.0f}}, {{1, 1.0f}} },
+        }
+    }),
     opacityTransFunc(), 
     mediumColorTransFunc(),
     array { 
-        &refractionTansFunc,
+        &refractionTransFunc,
         &particleColorTransFunc,
         &opacityTransFunc,
         &mediumColorTransFunc,

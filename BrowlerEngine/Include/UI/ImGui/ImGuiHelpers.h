@@ -53,10 +53,10 @@ namespace ImGui
 	struct CtrlPointGroup
     {
         CtrlPointGroup() :
-            selected(-1),
-            points{{ {{0, 1}}, {{1, 0}} }},
-            refs{0, 1}
+            CtrlPointGroup({ {{0, 1}}, {{1, 0}} })
         { }
+
+        CtrlPointGroup(std::initializer_list<CtrlPoint> l);
 
         CtrlPointGroup& operator=(const CtrlPointGroup& o) {
             selected = o.selected;
