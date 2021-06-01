@@ -245,7 +245,7 @@ void renderAppUI(UIResult& result, const UIResult& values)
                         bool ctrlPointsChanged[4] = { false };
 
                         thread_local int editChannelIdx = 0;
-                        editChannelIdx = ImMin(editChannelIdx, (int)resultTFunc->getNumChannels());
+                        editChannelIdx = ImMin(editChannelIdx, (int)resultTFunc->getNumChannels() - 1);
 
                         ImGui::PlotConfig conf{ };
                         conf.values.nPlots = numChannels;
