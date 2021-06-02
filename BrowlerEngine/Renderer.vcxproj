@@ -418,6 +418,7 @@ if not exist %compiled_folder% (
       </SubType>
     </ClInclude>
     <ClInclude Include="Include\Renderer\TextureManagerFwd.h" />
+    <ClInclude Include="Shaders\ShaderDefines.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Renderer\AppRenderer.cpp">

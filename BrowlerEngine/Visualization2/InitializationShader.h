@@ -17,9 +17,7 @@ public:
 #pragma pack(push, 1)
     struct ShaderConstants
     {
-        static const unsigned int threadGroupSizeX = 8;
-        static const unsigned int threadGroupSizeY = 8;
-        static const unsigned int num32BitValues = 26;
+        static const unsigned int num32BitValues = 35;
 
         Vec3 horizontalPlaneDirection; // normalized
         float padding0;
@@ -32,7 +30,12 @@ public:
         Vec3 lightDirection;    // Light direction relative to world space
         float padding4;
         Vec4 lightColor;        // Light color
-        Vec2 textureSizeWorldSpace; // 
+        Vec2 textureSizeWorldSpace; //
+        float padding5;
+        float padding6;
+        Vec3 bboxmin;   // extents of the volume data set
+        float padding7;
+        Vec3 bboxmax;   // extents of the volume data set
     };
 #pragma pack(pop)
 

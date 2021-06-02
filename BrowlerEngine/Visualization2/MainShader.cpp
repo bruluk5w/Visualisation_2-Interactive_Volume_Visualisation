@@ -513,6 +513,8 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
             initParams.lightDirection = Quaternion::fromTo(VEC3_FWD, -camPos) * data.light.coords; // relative to eye-origin vector, so that the light source stays in the same hemisphere when we move around then origin
             initParams.lightColor = data.light.color;
             initParams.textureSizeWorldSpace = viewingPlaneDimensions;
+            initParams.bboxmin = bbox.min;
+            initParams.bboxmax = bbox.max;
             
             // Initialize the first buffers
             initializationShader->draw(cmd, initParams, computeBuffers.get());
@@ -533,6 +535,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
                 propParams.deltaSlice = deltaSlice;
                 propParams.texelDim = viewingPlaneDimensions.x / DrawData::gatherTextureSize;
                 propParams.planeRight = right;
+                propParams.backgroundScale = 50;
                 propParams.planeDown = down;
                 propParams.topLeft = topLeft + deltaSlice * (numSlices - remainingSlices);
             }

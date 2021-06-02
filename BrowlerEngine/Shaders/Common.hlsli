@@ -1,9 +1,30 @@
+#include "ShaderDefines.h"
 
 float3 checkerBoard(float3 viewingRayposition, float backgroundScale)
 {
-    int3 idx = int3(viewingRayposition / backgroundScale) + 65536;
+    int3 idx = int3(viewingRayposition / backgroundScale + 65536) ;
     if (((idx.x & 0x1) ^ (idx.y & 0x1)) ^ (idx.z & 0x1))
         return float3(0.5, 0.5, 0.5);
     else
         return float3(0.01, 0.01, 0);
+}
+
+bool rayIntersectsVolume(float3 rayPos, float3 rayDir, float3 bboxmax, float3 bboxmin)
+{
+    float xdistancemax = bboxmax.x - rayPos.x;
+    // (xdistancemax * rayDir > 0) checks if they have the same preceding sign (pos/neg)
+    bool intersectsPositiveX = (xdistancemax * rayDir.x > 0) && all(abs((rayPos + rayDir * (xdistancemax / rayDir.x)).yz) <= bboxmax.yz);
+    float xdistancemin = bboxmin.x - rayPos.x;
+    bool intersectsNegativeX = (xdistancemin * rayDir.x > 0) && all(abs((rayPos + rayDir * (xdistancemin / rayDir.x)).yz) <= bboxmax.yz);
+    float ydistancemax = bboxmax.y - rayPos.y;
+    bool intersectsPositiveY = (ydistancemax * rayDir.y > 0) && all(abs((rayPos + rayDir * (ydistancemax / rayDir.y)).xz) <= bboxmax.xz);
+    float ydistancemin = bboxmin.y - rayPos.y;
+    bool intersectsNegativeY = (ydistancemin * rayDir.y > 0) && all(abs((rayPos + rayDir * (ydistancemin / rayDir.y)).xz) <= bboxmax.xz);
+    float zdistancemax = bboxmax.z - rayPos.z;
+    bool intersectsPositiveZ = (zdistancemax * rayDir.z > 0) && all(abs((rayPos + rayDir * (zdistancemax / rayDir.z)).xy) <= bboxmax.xy);
+    float zdistancemin = bboxmin.z - rayPos.z;
+    bool intersectsNegativeZ = (zdistancemin * rayDir.z > 0) && all(abs((rayPos + rayDir * (zdistancemin / rayDir.z)).xy) <= bboxmax.xy);
+    
+    return (intersectsNegativeX || intersectsNegativeY || intersectsNegativeZ ||
+            intersectsPositiveX || intersectsPositiveY || intersectsPositiveZ);
 }

@@ -19,8 +19,6 @@ public:
 #pragma pack(push, 1)
     struct DrawData
     {
-        static const unsigned int threadGroupSizeX = 16;
-        static const unsigned int threadGroupSizeY = 16;
         static const unsigned int constantCount = 23;
         Vec3 bboxmin; // extents of the volume data set
         float texDimToUV; // 1 / compute buffer dimensions
@@ -29,7 +27,7 @@ public:
         Vec3 deltaSlice; // normal vector of the slices with length equal to distance between slices
         float texelDim; // size of a texel on the slice plane
         Vec3 planeRight; // horizontal direction of the slices in positive uv direction (normalised)
-        float padding3;
+        float backgroundScale;
         Vec3 planeDown; // vertical direction of the slices in positive uv direction (normalised)
         float padding4;
         Vec3 topLeft; // top left corner point (front) of the viewing volume

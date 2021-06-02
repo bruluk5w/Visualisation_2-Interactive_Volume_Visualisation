@@ -11,6 +11,7 @@
 #include "Core/BrowlerEngine.h"
 #include "Core/Timer.h"
 
+#include "../Shaders/ShaderDefines.h"
 
 BRWL_RENDERER_NS
 
@@ -217,8 +218,8 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, Propagation
             cmd->SetComputeRootDescriptorTable(3, computeBuffers->getSourceSrvResourceDescriptorHandle(0).residentGpu); // read SRV
 
             cmd->Dispatch(
-                (unsigned int)std::ceil(computeBuffers->getWidth() / (float)DrawData::threadGroupSizeX),
-                (unsigned int)std::ceil(computeBuffers->getHeight() / (float)DrawData::threadGroupSizeY),
+                (unsigned int)std::ceil(computeBuffers->getWidth() / (float)THREAD_GROUP_SIZE_X),
+                (unsigned int)std::ceil(computeBuffers->getHeight() / (float)THREAD_GROUP_SIZE_Y),
                 1
             );
         }

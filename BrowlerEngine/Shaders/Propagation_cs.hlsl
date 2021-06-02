@@ -1,8 +1,5 @@
 #include "Common.hlsli"
 
-#define THREAD_GROUP_SIZE_X 16
-#define THREAD_GROUP_SIZE_Y 16
-
 cbuffer constants : register(b0)
 {
     float3 bboxmin;
@@ -12,6 +9,7 @@ cbuffer constants : register(b0)
     float3 deltaSlice;
     float texelDim; // size of a texel on the slice plane
     float3 planeRight; // normalized
+    float backgroundScale; // scale of the background checker board
     float3 planeDown; // normalized
     float3 topLeft; //topLeft of current slice
 };
@@ -97,25 +95,6 @@ float3 integrationTable(float previousScalarSample, float currentScalarSample, T
     return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).rgb * length(deltaSlice);
 }
 
-bool rayIntersectsVolume(float3 rayPos, float3 rayDir)
-{
-    float xdistancemax = bboxmax.x - rayPos.x;
-    // (xdistancemax * rayDir > 0) checks if they have the same preceding sign (pos/neg)
-    bool intersectsPositiveX = (xdistancemax * rayDir.x > 0) && all(abs((rayPos + rayDir * (xdistancemax / rayDir.x)).yz) <= bboxmax.yz);
-    float xdistancemin = bboxmin.x - rayPos.x;
-    bool intersectsNegativeX = (xdistancemin * rayDir.x > 0) && all(abs((rayPos + rayDir * (xdistancemin / rayDir.x)).yz) <= bboxmax.yz);
-    float ydistancemax = bboxmax.y - rayPos.y;
-    bool intersectsPositiveY = (ydistancemax * rayDir.y > 0) && all(abs((rayPos + rayDir * (ydistancemax / rayDir.y)).xz) <= bboxmax.xz);
-    float ydistancemin = bboxmin.y - rayPos.y;
-    bool intersectsNegativeY = (ydistancemin * rayDir.y > 0) && all(abs((rayPos + rayDir * (ydistancemin / rayDir.y)).xz) <= bboxmax.xz);
-    float zdistancemax = bboxmax.z - rayPos.z;
-    bool intersectsPositiveZ = (zdistancemax * rayDir.z > 0) && all(abs((rayPos + rayDir * (zdistancemax / rayDir.z)).xy) <= bboxmax.xy);
-    float zdistancemin = bboxmin.z - rayPos.z;
-    bool intersectsNegativeZ = (zdistancemin * rayDir.z > 0) && all(abs((rayPos + rayDir * (zdistancemin / rayDir.z)).xy) <= bboxmax.xy);
-    
-    return (intersectsNegativeX || intersectsNegativeY || intersectsNegativeZ || 
-            intersectsPositiveX || intersectsPositiveY || intersectsPositiveZ);
-}
 
 void reconstructVolumeGradient(float3 worldPos, out float3 gradient, out float3 refractionGradient)
 {
@@ -144,8 +123,10 @@ void reconstructVolumeGradient(float3 worldPos, out float3 gradient, out float3 
 
 float2 projectOnLightPlane(float3 worldVec)
 {
-    const float3 normalizedDeltaSlice = normalize(deltaSlice);
-    return worldVec - dot(worldVec, normalizedDeltaSlice) * normalizedDeltaSlice;
+    //const float3 normalizedDeltaSlice = normalize(deltaSlice);
+    //return (worldVec - dot(worldVec, normalizedDeltaSlice) * normalizedDeltaSlice);
+    return float2(dot(worldVec, planeRight), dot(worldVec, planeDown));
+
 }
 
 float calculateLightDirectionDerivative(float2 lightUV, Texture2D<float4> tex)
@@ -248,16 +229,13 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     
     float3 currentMediumColor = mediumBufferRead.Load(read_idx).xyz;
     
-    if (!rayIntersectsVolume(currentViewingRayPosition.xyz, currentViewingRayDirection))
+    if (!rayIntersectsVolume(currentViewingRayPosition.xyz, currentViewingRayDirection, bboxmax, bboxmin))
     {
         //float3 nextColor                = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * lightIntensity * lambertianTerm + specularLight);
-        float3 color = checkerBoard(currentViewingRayPosition.xyz, 10);
+        float3 color = checkerBoard(currentViewingRayPosition.xyz, backgroundScale);
         float lambertianTerm = max(dot(float3(0, 0, 1), lightDirection), 0);
-        colorBufferWrite[write_idx].xyz = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (color * lightIntensity * lambertianTerm);
-       
-        //colorBufferWrite[write_idx].xyz = currentColor.xyz * currentColor.w + (1 - currentColor.w) * checkerBoard(currentViewingRayDirection);
-        colorBufferWrite[write_idx].w = 1;
-        return;
+        colorBufferWrite[write_idx] = float4(currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (color * lightIntensity * lambertianTerm), 1);
+               return;
     }
     
     // reconstruct gradient of scalar field

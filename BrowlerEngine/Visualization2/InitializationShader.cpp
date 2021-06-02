@@ -4,6 +4,8 @@
 
 #include "ComputeBuffers.h"
 
+#include "../Shaders/ShaderDefines.h"
+
 BRWL_RENDERER_NS
 
 
@@ -99,8 +101,8 @@ void InitializationShader::draw(ID3D12GraphicsCommandList* cmd, const ShaderCons
     cmd->SetComputeRoot32BitConstants(0, ShaderConstants::num32BitValues, &constants, 0);
     cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetResourceDescriptorHandle(0).residentGpu);
    cmd->Dispatch(
-        (unsigned int)std::ceil(computeBuffers->getWidth() / (float)ShaderConstants::threadGroupSizeX),
-        (unsigned int)std::ceil(computeBuffers->getHeight() / (float)ShaderConstants::threadGroupSizeY),
+        (unsigned int)std::ceil(computeBuffers->getWidth() / (float)THREAD_GROUP_SIZE_X),
+        (unsigned int)std::ceil(computeBuffers->getHeight() / (float)THREAD_GROUP_SIZE_Y),
         1
     );
     
