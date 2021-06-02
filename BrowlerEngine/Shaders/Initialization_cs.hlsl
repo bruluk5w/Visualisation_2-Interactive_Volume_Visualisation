@@ -37,5 +37,6 @@ void main( uint3 DTid : SV_DispatchThreadID )
 
     const float3 pixelWorldSpace = topLeft + offset.x * horizontalPlaneDirection + offset.y * verticalPlaneDirection;
     viewingRayPositionBuffer[DTid.xy].xyz = pixelWorldSpace;
+    viewingRayPositionBuffer[DTid.xy].w = -1;
     viewingRayDirectionBuffer[DTid.xy].xyz = normalize(pixelWorldSpace - eye); // in world space
 }

@@ -9,8 +9,8 @@ cbuffer constants : register(b0)
     float texDimToUV;
     float3 bboxmax;
     float3 deltaSlice;
-    float3 planeRight;
-    float3 planeDown;
+    float3 planeRight; // normalized
+    float3 planeDown; // normalized
     float3 topLeft; //topLeft of current slice
 };
 
@@ -74,8 +74,8 @@ float3 getUVCoordinatesVolume(float3 worldCoord)
 
 void sampleLightTextures(float3 worldCoord, out float3 lightDirection, out float3 lightIntensity)
 {
-    const float3 offset = worldCoord - topLeft;
-    const float2 uv = float2(dot(offset, planeRight), dot(offset, planeDown)) * texDimToUV;
+    const float3 offset = (worldCoord - topLeft) * texDimToUV;
+    const float2 uv = float2(dot(offset, planeRight), dot(offset, planeDown)) ;
     lightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, uv, 0).xyz;
     lightIntensity = lightBufferRead.SampleLevel(lightSampler, uv, 0).xyz;
 }
@@ -227,8 +227,9 @@ void main ( uint3 DTid : SV_DispatchThreadID )
 
     // Sampling the volume
     // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/8 of the normalized range is utilized.
-    const float previousScalarSample = currentViewingRayPosition.w;
     const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentViewingRayPosition.xyz), 0) * 8;
+    // simulate repeat border behaviour if first value is not available
+    const float previousScalarSample = currentViewingRayPosition.w < 0 ? currentScalarSample : currentViewingRayPosition.w;
     
    
     float currentIndexOfRefraction = lut(currentScalarSample, refractionLut);
