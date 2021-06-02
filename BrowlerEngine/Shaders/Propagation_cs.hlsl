@@ -84,7 +84,7 @@ void sampleLightTextures(float3 worldCoord, out float3 lightDirection, out float
 
 float lut(float scalarSample, Texture2D<float> tex)
 {
-    return tex.SampleLevel(preintegrationSampler, float2(scalarSample, 0.5f), 0).r;
+    return tex.SampleLevel(preintegrationSampler, float2(scalarSample, 0.5f), 0).r * 0.01; // *0.05 because else refraction is too powerful
 }
 
 float integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float> tex)
@@ -160,13 +160,10 @@ float calculateLightDirectionDerivative(float2 lightUV, Texture2D<float4> tex)
     return abs(determinant(float2x2((right - left) * h, (bottom - top) * h))); // absolute value of jacobian
 }
 
-float3 phongSpecular(float3 lightDir, float3 viewingDir, float3 normal, float3 lightIntensity, float reflectivity)
+float3 blinnPhongSpecular(float3 lightDir, float3 viewDir, float3 normal, float3 lightIntensity, float reflectivity)
 {
-    lightDir = normalize(lightDir);
-    viewingDir = normalize(viewingDir);
-    float3 lightReflected = reflect(-lightDir, normal);
-    float specularAngle = max(dot(lightReflected, viewingDir), 0.00001);
-    return pow(specularAngle, reflectivity) * lightIntensity;
+    const float3 halfVector = normalize(lightDir + viewDir);
+    return pow(max(dot(normal, halfVector), 0.00001), reflectivity) * lightIntensity;
 }
 
 
@@ -260,10 +257,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float3 gradient;
     float3 refractionGradient;
     reconstructVolumeGradient(currentViewingRayPosition.xyz, gradient, refractionGradient);
-    
-    
-    
-
+   
     // Sampling the volume
     // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/8 of the normalized range is utilized.
     const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentViewingRayPosition.xyz), 0) * 8;
@@ -292,15 +286,13 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float3 specularLight = float3(0, 0, 0);
     if (lambertianTerm > 0)
     {
-        float reflectivity = 20 - 50 * abs(nextIndexOfRefraction - currentIndexOfRefraction);
-        // specularLight = phongSpecular(lightDirection, currentViewingRayDirection, gradient, lightIntensity, reflectivity);
+        //float reflectivity = 20 - 50 * abs(nextIndexOfRefraction - currentIndexOfRefraction);
+        specularLight = blinnPhongSpecular(lightDirection, currentViewingRayDirection, gradient, 1, 20) * 100 * saturate(nextIndexOfRefraction - currentIndexOfRefraction);
     }
     
     float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * lightIntensity * lambertianTerm + specularLight);
     float nextAlpha = currentColor.w + (1 - currentColor.w) * alpha;
     float3 nextMediumColor = currentMediumColor * (1 - medium);
-    
-   
     
     viewingRayPositionBufferWrite[write_idx] = float4(nextViewingRayPosition, currentScalarSample); // we also save the current scalar sample to save looking it up again in the next frame
     viewingRayDirectionBufferWrite[write_idx].xyz = nextViewingRayDirection; // has to be normalized
