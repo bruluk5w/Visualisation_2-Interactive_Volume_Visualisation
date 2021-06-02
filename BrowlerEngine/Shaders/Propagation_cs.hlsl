@@ -240,19 +240,26 @@ void main ( uint3 DTid : SV_DispatchThreadID )
         colorBufferWrite[write_idx] = currentColor;
         return;
     }
-    if (!rayIntersectsVolume(currentViewingRayPosition.xyz, currentViewingRayDirection))
-    {
-        colorBufferWrite[write_idx].xyz = currentColor.xyz * currentColor.w + (1 - currentColor.w) * checkerBoard(currentViewingRayDirection);
-        colorBufferWrite[write_idx].w = 1;
-        return;
-    }
-    
-    float3 currentMediumColor = mediumBufferRead.Load(read_idx).xyz;
     
     // Sampling light information
     float3 lightDirection;
     float3 lightIntensity;
     sampleLightTextures(currentViewingRayPosition.xyz, lightDirection, lightIntensity);
+    
+    float3 currentMediumColor = mediumBufferRead.Load(read_idx).xyz;
+    
+    if (!rayIntersectsVolume(currentViewingRayPosition.xyz, currentViewingRayDirection))
+    {
+        //float3 nextColor                = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * lightIntensity * lambertianTerm + specularLight);
+        float3 color = checkerBoard(currentViewingRayPosition.xyz, 10);
+        float lambertianTerm = max(dot(float3(0, 0, 1), lightDirection), 0);
+        colorBufferWrite[write_idx].xyz = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (color * lightIntensity * lambertianTerm);
+       
+        //colorBufferWrite[write_idx].xyz = currentColor.xyz * currentColor.w + (1 - currentColor.w) * checkerBoard(currentViewingRayDirection);
+        colorBufferWrite[write_idx].w = 1;
+        return;
+    }
+    
     // reconstruct gradient of scalar field
     float3 gradient;
     float3 refractionGradient;

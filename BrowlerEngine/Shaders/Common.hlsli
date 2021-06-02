@@ -1,9 +1,9 @@
 
-float3 checkerBoard(float3 viewingRayDirection)
+float3 checkerBoard(float3 viewingRayposition, float backgroundScale)
 {
-    int2 idx = 10 * (viewingRayDirection / viewingRayDirection.z).xy;
-    if ((idx.x & 0x1) ^ (idx.y & 0x1))
-        return float3(0.5, 0.5, 0.5) - (0.25 - abs(viewingRayDirection.z * 0.25));
+    int3 idx = int3(viewingRayposition / backgroundScale) + 65536;
+    if (((idx.x & 0x1) ^ (idx.y & 0x1)) ^ (idx.z & 0x1))
+        return float3(0.5, 0.5, 0.5);
     else
-        return float3(0.01, 0.01, 0) + (0.49 - abs(viewingRayDirection.z * 0.49));
+        return float3(0.01, 0.01, 0);
 }
