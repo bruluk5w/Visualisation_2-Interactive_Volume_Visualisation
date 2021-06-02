@@ -110,7 +110,7 @@ PropagationShader::PropagationShader(ID3D12Device* device) :
         // volume and preintergration sampler are static samplers since they never change
         D3D12_STATIC_SAMPLER_DESC staticSamplers[3];
         makeStaticSamplerDescription(staticSamplers[0], 0, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_SHADER_VISIBILITY_ALL);
-        makeStaticSamplerDescription(staticSamplers[1], 1, D3D12_TEXTURE_ADDRESS_MODE_BORDER, D3D12_SHADER_VISIBILITY_ALL);
+        makeStaticSamplerDescription(staticSamplers[1], 1, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_SHADER_VISIBILITY_ALL);
         makeStaticSamplerDescription(staticSamplers[2], 2, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_SHADER_VISIBILITY_ALL);
 
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
