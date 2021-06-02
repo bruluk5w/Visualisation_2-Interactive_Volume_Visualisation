@@ -24,7 +24,7 @@ public:
 
     // Sets the state for drawing the plane with the result texture.
     // We only set states, drawing is handled by MainShader since it holds the vertex buffer. 
-    void setupDraw(ID3D12GraphicsCommandList* cmd, const VsConstants& vsConstants, const PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle);
+    void setupDraw(ID3D12GraphicsCommandList* cmd, const VsConstants& vsConstants, const PAL::DescriptorHandle::ResidentHandles& colorBufferDescriptorHandle);
 
 private:
     ComPtr<ID3D12RootSignature> rootSignature;

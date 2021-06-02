@@ -145,7 +145,7 @@ ImposterShader::~ImposterShader()
     destroy();
 }
 
-void ImposterShader::setupDraw(ID3D12GraphicsCommandList* cmd, const ImposterShader::VsConstants& vsConstants, const PAL::DescriptorHandle::ResidentHandles& outColorBufferDescriptorHandle)
+void ImposterShader::setupDraw(ID3D12GraphicsCommandList* cmd, const ImposterShader::VsConstants& vsConstants, const PAL::DescriptorHandle::ResidentHandles& colorBufferDescriptorHandle)
 {
     SCOPED_GPU_EVENT(cmd, 0, 255, 0, "Imposter Shader");
 
@@ -156,7 +156,7 @@ void ImposterShader::setupDraw(ID3D12GraphicsCommandList* cmd, const ImposterSha
     cmd->SetGraphicsRoot32BitConstants(0, VsConstants::num32BitValues, &vsConstants, 0);
 
     // set color texture
-    cmd->SetGraphicsRootDescriptorTable(1, outColorBufferDescriptorHandle.residentGpu);
+    cmd->SetGraphicsRootDescriptorTable(1, colorBufferDescriptorHandle.residentGpu);
 }
 
 BRWL_RENDERER_NS_END
