@@ -125,7 +125,9 @@ void reconstructGradient(float3 worldPos, out float3 gradient, out float3 refrac
     const float front =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, 0, stepLength)), 0) * 8;
     const float back =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, 0, stepLength)), 0) * 8;
             
-    gradient = normalize(float3(right - left, bottom - top, back - front));
+    gradient = float3(right - left, bottom - top, back - front);
+    if (any(gradient))
+        gradient = normalize(gradient);
     
     const float leftIOR = lut(left, refractionLut);
     const float rightIOR = lut(right, refractionLut);
