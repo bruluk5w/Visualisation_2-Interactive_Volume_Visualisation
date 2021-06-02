@@ -29,7 +29,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     lightBuffer.GetDimensions(texDim.x, texDim.y); // we assume all textures to be of the same size
 
     lightBuffer[DTid.xy] = float4(lightColor.xyz, 1);
-    lightDirectionBuffer[DTid.xy].xyz = lightDirection; // directional light only for now
+    lightDirectionBuffer[DTid.xy].xyz = normalize(lightDirection); // directional light only for now
     colorBuffer[DTid.xy].xyzw = float4(0.f, 0.f, 0.f, 0.f); // starting with no color and fully transparent
     mediumBuffer[DTid.xy].xyzw = float4(1.f, 1.f, 1.f, 1.f); // starting with full color because subtractive color mixing
     const float2 pixelSize = textureSizeWorldSpace / (float2)texDim;
