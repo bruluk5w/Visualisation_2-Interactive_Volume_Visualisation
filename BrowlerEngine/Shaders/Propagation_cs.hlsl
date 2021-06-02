@@ -293,7 +293,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     if (lambertianTerm > 0)
     {
         float reflectivity = 20 - 50 * abs(nextIndexOfRefraction - currentIndexOfRefraction);
-       // specularLight = phongSpecular(lightDirection, currentViewingRayDirection, gradient, lightIntensity, reflectivity);
+        // specularLight = phongSpecular(lightDirection, currentViewingRayDirection, gradient, lightIntensity, reflectivity);
     }
     
     float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * lightIntensity * lambertianTerm + specularLight);
@@ -306,7 +306,5 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     viewingRayDirectionBufferWrite[write_idx].xyz = nextViewingRayDirection; // has to be normalized
     colorBufferWrite[write_idx].xyz = nextColor;
     colorBufferWrite[write_idx].w = nextAlpha;
-    //colorBufferWrite[write_idx].xyz = lightBufferRead.Load(read_idx).xyz + ambertianTerm;// * 
-    //colorBufferWrite[write_idx].w = 1;
     mediumBufferWrite[write_idx].xyz = nextMediumColor;
 }
