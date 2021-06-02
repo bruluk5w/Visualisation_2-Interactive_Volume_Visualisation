@@ -529,7 +529,9 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
                 propParams.bboxmin = bbox.min;
                 propParams.texDimToUV = 1.0f / DrawData::gatherTextureSize;
                 propParams.bboxmax = bbox.max;
+                propParams.worldDimToUV = 1.0f / viewingPlaneDimensions.x;
                 propParams.deltaSlice = deltaSlice;
+                propParams.texelDim = viewingPlaneDimensions.x / DrawData::gatherTextureSize;
                 propParams.planeRight = right;
                 propParams.planeDown = down;
                 propParams.topLeft = topLeft + deltaSlice * (numSlices - remainingSlices);

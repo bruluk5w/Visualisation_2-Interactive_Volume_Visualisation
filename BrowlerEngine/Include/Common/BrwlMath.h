@@ -340,6 +340,11 @@ namespace DirectX
 		return res;
 	}
 
+	inline ::BRWL::Vec4& operator+=(::BRWL::Vec4& lhs, const ::BRWL::Vec4& rhs) {
+		XMStoreFloat4(&lhs, XMVectorAdd(XMLoadFloat4(&lhs), XMLoadFloat4(&rhs)));
+		return lhs;
+	}
+
 	inline ::BRWL::Vec4 operator*(const ::BRWL::Vec4& lhs, const ::BRWL::Vec4& rhs)
 	{
 		::BRWL::Vec4 res;

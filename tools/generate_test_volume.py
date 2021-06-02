@@ -9,8 +9,8 @@ class Shape(Enum):
 
 
 SIZE_X = 128
-SIZE_Y = 64
-SIZE_Z = 32
+SIZE_Y = 128
+SIZE_Z = 128
 
 SHAPE = Shape.SPHERE
 
@@ -20,7 +20,7 @@ BIT_DEPTH = 10
 
 
 def main():
-    volume = np.ndarray((SIZE_Z, SIZE_Y, SIZE_X))
+    volume = np.ndarray((SIZE_Z, SIZE_Y, SIZE_X), dtype=np.float32)
     if SHAPE == Shape.SPHERE:
         make_sphere(volume)
     elif SHAPE == Shape.BOX:
@@ -51,9 +51,9 @@ def make_sphere(v: np.ndarray):
         z_dist = (z - center_z) / (SIZE_Z * 0.5)
         v[z, :, :] += z_dist * z_dist
 
-    np.sqrt(v, v)
-    np.subtract(1, v, v)
-    np.multiply(v, 1 << BIT_DEPTH, v)
+    np.sqrt(v, out=v)
+    np.subtract(1, v, out=v)
+    np.multiply(v, 1 << BIT_DEPTH, out=v)
 
 
 def make_box(v: np.ndarray):
@@ -75,8 +75,8 @@ def make_box(v: np.ndarray):
         mask = v[z, :, :] < z_dist
         v[z, :, :][mask] = z_dist
 
-    np.subtract(1, v, v)
-    np.multiply(v, 1 << BIT_DEPTH, v)
+    np.subtract(1, v, out=v)
+    np.multiply(v, 1 << BIT_DEPTH, out=v)
 
 
 if __name__ == '__main__':

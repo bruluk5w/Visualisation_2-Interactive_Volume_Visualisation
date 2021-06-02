@@ -6,9 +6,11 @@
 cbuffer constants : register(b0)
 {
     float3 bboxmin;
-    float texDimToUV;
+    float texDimToUV; // 1 / number of pixel per side of slice plane
     float3 bboxmax;
+    float worldDimToUV; // 1 / world space width of slice plane
     float3 deltaSlice;
+    float texelDim; // size of a texel on the slice plane
     float3 planeRight; // normalized
     float3 planeDown; // normalized
     float3 topLeft; //topLeft of current slice
@@ -39,32 +41,32 @@ Texture2D<float> opacityIntegTex : register(t4);
 Texture2D<float4> mediumIntegTex : register(t5);
 Texture3D<float> volumeTexture : register(t6);
 
-static const float PI = 3.14159265f;
+//static const float PI = 3.14159265f;
 
-// inputs are assumed to be normalized
-// fromIdxOfRefrac and toIdxOfRefrac assumed > 0 
-float4 cookTorrance(float3 normal, float3 view, float3 light, float fromIdxOfRefrac, float toIdxOfRefrac, float roughness)
-{
-    float3 halfVector = normalize(light + view);
-    float angleOfIncidence = dot(normal, light); // cos of the angle between normal and view
-    float angleOfReflection = dot(normal, view); // cos of the angle between normal and light
-    float normalDotHalf = dot(normal, halfVector);
-    float viewDotHalf = dot(view, halfVector);
-    // Compute the geometric term 
-    float G1 = (2.0f * normalDotHalf * angleOfIncidence) / viewDotHalf;
-    float G2 = (2.0f * normalDotHalf * angleOfReflection) / viewDotHalf;
-    //float  geometricAttenuation = min( 1.0f, max( 0.0f, min( G1, G2 ) ) );    
-    float geometricAttenuation = min(1.0f, min(G1, G2));
-    // Schlick's approximation of the fresnel term
-    float r0 = (fromIdxOfRefrac - toIdxOfRefrac) / (fromIdxOfRefrac + toIdxOfRefrac); ///reflection coefficient for light incoming parallel to normal
-    float fresnel = r0 + (1.f - r0) * pow(1.f - angleOfIncidence, 5.0f); // todo: mybe faster with 5 multiplications
-    // Roughness calculated with Beckmann distribution
-    float roughnessSq = roughness * roughness;
-    float normalDotHalfSq = normalDotHalf * normalDotHalf;
-    float distributionFactor = exp(-(1.f - normalDotHalfSq) / (roughnessSq * normalDotHalfSq)) / (PI * roughnessSq * normalDotHalfSq * normalDotHalfSq);
-    // final cook torrance spceular term 
-    return (distributionFactor * fresnel * geometricAttenuation) / (PI * angleOfReflection * angleOfIncidence);
-}
+//// inputs are assumed to be normalized
+//// fromIdxOfRefrac and toIdxOfRefrac assumed > 0 
+//float4 cookTorrance(float3 normal, float3 view, float3 light, float fromIdxOfRefrac, float toIdxOfRefrac, float roughness)
+//{
+//    float3 halfVector = normalize(light + view);
+//    float angleOfIncidence = dot(normal, light); // cos of the angle between normal and view
+//    float angleOfReflection = dot(normal, view); // cos of the angle between normal and light
+//    float normalDotHalf = dot(normal, halfVector);
+//    float viewDotHalf = dot(view, halfVector);
+//    // Compute the geometric term 
+//    float G1 = (2.0f * normalDotHalf * angleOfIncidence) / viewDotHalf;
+//    float G2 = (2.0f * normalDotHalf * angleOfReflection) / viewDotHalf;
+//    //float  geometricAttenuation = min( 1.0f, max( 0.0f, min( G1, G2 ) ) );    
+//    float geometricAttenuation = min(1.0f, min(G1, G2));
+//    // Schlick's approximation of the fresnel term
+//    float r0 = (fromIdxOfRefrac - toIdxOfRefrac) / (fromIdxOfRefrac + toIdxOfRefrac); ///reflection coefficient for light incoming parallel to normal
+//    float fresnel = r0 + (1.f - r0) * pow(1.f - angleOfIncidence, 5.0f); // todo: mybe faster with 5 multiplications
+//    // Roughness calculated with Beckmann distribution
+//    float roughnessSq = roughness * roughness;
+//    float normalDotHalfSq = normalDotHalf * normalDotHalf;
+//    float distributionFactor = exp(-(1.f - normalDotHalfSq) / (roughnessSq * normalDotHalfSq)) / (PI * roughnessSq * normalDotHalfSq * normalDotHalfSq);
+//    // final cook torrance spceular term 
+//    return (distributionFactor * fresnel * geometricAttenuation) / (PI * angleOfReflection * angleOfIncidence);
+//}
 
 
 float3 getUVCoordinatesVolume(float3 worldCoord)
@@ -74,8 +76,8 @@ float3 getUVCoordinatesVolume(float3 worldCoord)
 
 void sampleLightTextures(float3 worldCoord, out float3 lightDirection, out float3 lightIntensity)
 {
-    const float3 offset = (worldCoord - topLeft) * texDimToUV;
-    const float2 uv = float2(dot(offset, planeRight), dot(offset, planeDown)) ;
+    const float3 offset = (worldCoord - topLeft) * worldDimToUV;
+    const float2 uv = float2(dot(offset, planeRight), dot(offset, planeDown)) + 0.5f * texDimToUV; // + texDimToUV to sample in the center of the texel
     lightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, uv, 0).xyz;
     lightIntensity = lightBufferRead.SampleLevel(lightSampler, uv, 0).xyz;
 }
@@ -87,12 +89,12 @@ float lut(float scalarSample, Texture2D<float> tex)
 
 float integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float> tex)
 {
-    return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).r;
+    return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).r * length(deltaSlice);
 }
 
 float3 integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float4> tex)
 {
-    return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).rgb;
+    return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).rgb * length(deltaSlice);
 }
 
 bool rayIntersectsVolume(float3 rayPos, float3 rayDir)
@@ -115,9 +117,10 @@ bool rayIntersectsVolume(float3 rayPos, float3 rayDir)
             intersectsPositiveX || intersectsPositiveY || intersectsPositiveZ);
 }
 
-void reconstructGradient(float3 worldPos, out float3 gradient, out float3 refractionGradient)
+void reconstructVolumeGradient(float3 worldPos, out float3 gradient, out float3 refractionGradient)
 {
-    const float stepLength = 0.5;
+    const float stepLength = 1.0f;
+    const float h = 1.0f / (2.f * stepLength);
     const float left =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(stepLength, 0, 0)), 0) * 8;
     const float right =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(stepLength, 0, 0)), 0) * 8;
     const float top =     volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, stepLength, 0)), 0) * 8;
@@ -136,8 +139,25 @@ void reconstructGradient(float3 worldPos, out float3 gradient, out float3 refrac
     const float frontIOR = lut(front, refractionLut);
     const float backIOR = lut(back, refractionLut);
     
-    refractionGradient = float3(rightIOR - leftIOR, bottomIOR - topIOR, backIOR - frontIOR);
+    refractionGradient = float3(rightIOR - leftIOR, bottomIOR - topIOR, backIOR - frontIOR) * h;
+}
 
+float2 projectOnLightPlane(float3 worldVec)
+{
+    const float3 normalizedDeltaSlice = normalize(deltaSlice);
+    return worldVec - dot(worldVec, normalizedDeltaSlice) * normalizedDeltaSlice;
+}
+
+float calculateLightDirectionDerivative(float2 lightUV, Texture2D<float4> tex)
+{
+    const float stepLength = texDimToUV;
+    const float h = 1.0f / (2.f * stepLength);
+    const float2 left   = projectOnLightPlane(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV - float2(stepLength, 0), 0).xyz);
+    const float2 right  = projectOnLightPlane(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV + float2(stepLength, 0), 0).xyz);
+    const float2 top    = projectOnLightPlane(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV - float2(0, stepLength), 0).xyz);
+    const float2 bottom = projectOnLightPlane(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV + float2(0, stepLength), 0).xyz);
+    
+    return abs(determinant(float2x2((right - left) * h, (bottom - top) * h))); // absolute value of jacobian
 }
 
 float3 phongSpecular(float3 lightDir, float3 viewingDir, float3 normal, float3 lightIntensity, float reflectivity)
@@ -154,7 +174,7 @@ float3 phongSpecular(float3 lightDir, float3 viewingDir, float3 normal, float3 l
 void main ( uint3 DTid : SV_DispatchThreadID )
 
 {
-	const uint3 read_idx = int3(DTid.xy, 0);
+	const int3 read_idx = int3(DTid.xy, 0);
 	const uint2 write_idx = DTid.xy;
     const float sliceDepth = length(deltaSlice);
     
@@ -167,28 +187,46 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     
         const float3 currentLightDirection = lightDirectionBufferRead.Load(read_idx).xyz;
         const float3 currentLightIntensity = lightBufferRead.Load(read_idx).xyz;
-    
+        
         float len = dot(currentLightDirection, normalize(deltaSlice));
-        const float3 currentLightWorldPos = (float) DTid.x * planeRight + (float)DTid.y * planeDown + topLeft;
-        const float3 previousLightWorldPos = (currentLightWorldPos - currentLightDirection * length(deltaSlice) / len);
+        const float3 currentLightWorldPos = topLeft + (((float) DTid.x) * planeRight + ((float) DTid.y) * planeDown) * texelDim;
+        const float3 previousLightWorldPos = currentLightWorldPos - currentLightDirection * length(deltaSlice) / len;
     
-        float3 previousLightIntensity;
-        float3 previousLightDirection;
-        sampleLightTextures(previousLightWorldPos, previousLightDirection, previousLightIntensity);
+
+        const float3 currentOffset = (currentLightWorldPos - topLeft) * worldDimToUV;
+        const float2 currentLightUV = float2(dot(currentOffset, planeRight), dot(currentOffset, planeDown)) + 0.5f * texDimToUV; // todo: is this correct, shifts somehow the light texture to the bottom right
+        const float3 previousOffset = (previousLightWorldPos - topLeft) * worldDimToUV;
+        const float2 previousLightUV = float2(dot(previousOffset, planeRight), dot(previousOffset, planeDown)) + 0.5f * texDimToUV;
         
-        float intensityCorrection = 1; //S[i-1] / S[i]
+        // intensity correction
         
+        float previousS = 1; // calculateLightDirectionDerivative(previousLightUV, lightBufferRead); // jacobian of previous light texture
+        
+        // from sampleLightTextures(previousLightWorldPos, previousLightDirection, previousLightIntensity);
+        float3 previousLightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, previousLightUV, 0).xyz;
+        float3 previousLightIntensity = lightBufferRead.SampleLevel(lightSampler, previousLightUV, 0).xyz;
+        
+        // derivative of current light texture
+        // todo
+        float currentS = previousS;//calculateLightDirectionDerivative(previousLightUV, lightDirectionBufferRead);
+        float intensityCorrection = abs(currentS) < 0.000001 ? 1 : previousS / currentS;
+        
+        
+        // calculate new light intensity by attenuating and correcting with intensityCorrection
         const float previousScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(previousLightWorldPos), 0) * 8;
         const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentLightWorldPos), 0) * 8;
-        float alpha = integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex);
-        float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
-        
+        float alpha = saturate(integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex));
+        float3 medium = saturate(integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex));
         const float3 nextLightIntensity = previousLightIntensity * intensityCorrection * (1 - alpha) * (1 - medium);
-        const float3 nextLightDirection = currentLightDirection;
+
+        // refract light ray
+        float3 dummy;
+        float3 refractionGradient;
+        reconstructVolumeGradient(currentLightWorldPos, dummy, refractionGradient);
+        const float3 nextLightDirection = normalize(previousLightDirection + sliceDepth * refractionGradient);
         
         lightDirectionBufferWrite[write_idx].xyz = nextLightDirection;
         lightBufferWrite[write_idx].xyz = nextLightIntensity;
-        
     }
 
 
@@ -203,7 +241,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     if (currentColor.w >= 1)
     { // Would be sufficient to do it only once and write the second plane/layer into the next Buffer
         colorBufferWrite[write_idx] = currentColor;
-        return; 
+        return;
     }
     if (!rayIntersectsVolume(currentViewingRayPosition.xyz, currentViewingRayDirection))
     {
@@ -214,7 +252,6 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     
     float3 currentMediumColor = mediumBufferRead.Load(read_idx).xyz;
     
-    float3 diffuseLight = lightBufferRead.Load(read_idx).xyz; // Need to calculate values first
     // Sampling light information
     float3 lightDirection;
     float3 lightIntensity;
@@ -222,7 +259,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     // reconstruct gradient of scalar field
     float3 gradient;
     float3 refractionGradient;
-    reconstructGradient(currentViewingRayPosition.xyz, gradient, refractionGradient);
+    reconstructVolumeGradient(currentViewingRayPosition.xyz, gradient, refractionGradient);
     
     
     
@@ -244,23 +281,22 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     
     const float nextScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(nextViewingRayPosition), 0) * 8;
     
-    float3 color = integrationTable(previousScalarSample, currentScalarSample, particleColIntegTex);
-    float alpha = integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex);
-    float3 medium = integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex);
+    float3 color = saturate(integrationTable(previousScalarSample, currentScalarSample, particleColIntegTex));
+    float alpha = saturate(integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex));
+    float3 medium = saturate(integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex));
     
     float nextIndexOfRefraction = lut(nextScalarSample, refractionLut);
     
     // the lower reflectivity the more it reflects, therefore the higher the difference, the more is subtracted
     float lambertianTerm = max(dot(gradient, lightDirection), 0);
-    diffuseLight *= lambertianTerm;
     float3 specularLight = float3(0, 0, 0);
     if (lambertianTerm > 0)
     {
         float reflectivity = 20 - 50 * abs(nextIndexOfRefraction - currentIndexOfRefraction);
-        specularLight = phongSpecular(lightDirection, currentViewingRayDirection, gradient, lightIntensity, reflectivity);
+       // specularLight = phongSpecular(lightDirection, currentViewingRayDirection, gradient, lightIntensity, reflectivity);
     }
     
-    float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * diffuseLight + specularLight);
+    float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * lightIntensity * lambertianTerm + specularLight);
     float nextAlpha = currentColor.w + (1 - currentColor.w) * alpha;
     float3 nextMediumColor = currentMediumColor * (1 - medium);
     
@@ -270,5 +306,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     viewingRayDirectionBufferWrite[write_idx].xyz = nextViewingRayDirection; // has to be normalized
     colorBufferWrite[write_idx].xyz = nextColor;
     colorBufferWrite[write_idx].w = nextAlpha;
+    //colorBufferWrite[write_idx].xyz = lightBufferRead.Load(read_idx).xyz + ambertianTerm;// * 
+    //colorBufferWrite[write_idx].w = 1;
     mediumBufferWrite[write_idx].xyz = nextMediumColor;
 }

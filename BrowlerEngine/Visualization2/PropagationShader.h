@@ -25,9 +25,9 @@ public:
         Vec3 bboxmin; // extents of the volume data set
         float texDimToUV; // 1 / compute buffer dimensions
         Vec3 bboxmax; // extents of the volume data set
-        float padding1;
+        float worldDimToUV; // // 1 / world space width of texture
         Vec3 deltaSlice; // normal vector of the slices with length equal to distance between slices
-        float padding2;
+        float texelDim; // size of a texel on the slice plane
         Vec3 planeRight; // horizontal direction of the slices in positive uv direction (normalised)
         float padding3;
         Vec3 planeDown; // vertical direction of the slices in positive uv direction (normalised)
@@ -37,7 +37,7 @@ public:
 #pragma pack(pop)
     // propagates light and viewing rays through the volume and returns the amount of slices which was not yet able to process, returns also the last written 
     // color buffer via outColorBufferResource and outColorBufferDescriptorHandle
-    unsigned int draw(ID3D12GraphicsCommandList* cmd, const DrawData& data, ComputeBuffers* computeBuffers, 
+    unsigned int draw(ID3D12GraphicsCommandList* cmd, DrawData& data, ComputeBuffers* computeBuffers, 
         PitCollection& pitCollection, TextureHandle& volumeTexture, unsigned int remainingSlices);
 
 private:

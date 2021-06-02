@@ -168,7 +168,7 @@ PropagationShader::~PropagationShader()
     destroy();
 }
 
-unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const PropagationShader::DrawData& data, ComputeBuffers* computeBuffers, 
+unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, PropagationShader::DrawData& data, ComputeBuffers* computeBuffers, 
     PitCollection& pitCollection, TextureHandle& volumeTexture, unsigned int remainingSlices)
 {
     SCOPED_GPU_EVENT(cmd, 0, 255, 0, "Propagation Compute Shader");
@@ -193,9 +193,6 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
     cmd->SetPipelineState(pipelineState.Get());
     cmd->SetComputeRootSignature(rootSignature.Get());
 
-    // Constants
-    cmd->SetComputeRoot32BitConstants(0, data.constantCount, &data, 0);
-
     // Set preintegration tables
     for (int i = 0; i < ENUM_CLASS_TO_NUM(PitTex::MAX); ++i)
     {
@@ -210,6 +207,10 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, const Propa
         computeBuffers->beforeComputeUse(cmd);
         
         {
+
+            // Constants
+            data.topLeft += data.deltaSlice;
+            cmd->SetComputeRoot32BitConstants(0, data.constantCount, &data, 0);
             static_assert(ComputeBuffers::srvReadBufferOffset == 0, "If buffer offset is not 0 then code below would have to be updated because we assume two contiguous ranges in source resouces, one for SRVs and one for UAVs ");
             cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetResourceDescriptorHandle(0).residentGpu); // write UAV
             cmd->SetComputeRootDescriptorTable(2, computeBuffers->getSourceUavResourceDescriptorHandle(ComputeBuffers::numSrvReadBuffers).residentGpu); // read UAV
