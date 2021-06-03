@@ -82,7 +82,7 @@ void sampleLightTextures(float3 worldCoord, out float3 lightDirection, out float
 
 float lut(float scalarSample, Texture2D<float> tex)
 {
-    return tex.SampleLevel(preintegrationSampler, float2(scalarSample, 0.5f), 0).r * 0.01; // *0.05 because else refraction is too powerful
+    return tex.SampleLevel(preintegrationSampler, float2(scalarSample, 0.5f), 0).r * 0.1; // * 0.1 because else refraction is too powerful
 }
 
 float integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float> tex)
@@ -121,6 +121,8 @@ void reconstructVolumeGradient(float3 worldPos, out float3 gradient, out float3 
     refractionGradient = float3(rightIOR - leftIOR, bottomIOR - topIOR, backIOR - frontIOR) * h;
 }
 
+
+
 float2 projectOnLightPlane(float3 worldVec)
 {
     //const float3 normalizedDeltaSlice = normalize(deltaSlice);
@@ -129,28 +131,69 @@ float2 projectOnLightPlane(float3 worldVec)
 
 }
 
-float calculateLightDirectionDerivative(float2 lightUV, Texture2D<float4> tex)
-{
-    const float stepLength = texDimToUV;
-    const float h = 1.0f / (2.f * stepLength);
-    const float2 left   = projectOnLightPlane(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV - float2(stepLength, 0), 0).xyz);
-    const float2 right  = projectOnLightPlane(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV + float2(stepLength, 0), 0).xyz);
-    const float2 top    = projectOnLightPlane(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV - float2(0, stepLength), 0).xyz);
-    const float2 bottom = projectOnLightPlane(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV + float2(0, stepLength), 0).xyz);
+//float calculateLightDirectionDerivative(float2 lightUV, Texture2D<float4> tex)
+//{
+//    const float stepLength = texDimToUV; // one pixel
+//    const float h = 1.0f / (2.f * stepLength);
+//    // normalize because linear interpolation
+//    const float2 left   = projectOnLightPlane(normalize(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV - float2(stepLength, 0), 0).xyz));
+//    const float2 right  = projectOnLightPlane(normalize(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV + float2(stepLength, 0), 0).xyz));
+//    const float2 top    = projectOnLightPlane(normalize(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV - float2(0, stepLength), 0).xyz));
+//    const float2 bottom = projectOnLightPlane(normalize(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV + float2(0, stepLength), 0).xyz));
     
-    return abs(determinant(float2x2((right - left) * h, (bottom - top) * h))); // absolute value of jacobian
+//    return abs(determinant(float2x2((right - left) * h, (bottom - top) * h))); // absolute value of jacobian
+//}
+
+float quadrilateralArea(float3 a, float3 b, float3 c, float3 d)
+{
+    //float3 normalizedDiagonal = c - a;
+    //if (any(normalizedDiagonal))
+    //    normalizedDiagonal = normalize(normalizedDiagonal);
+    //else
+    //    return 0;
+    
+    //return 0.5f * (
+    //    length(b - (a + normalizedDiagonal * dot(normalizedDiagonal, b - a))) +
+    //    length(d - (a + normalizedDiagonal * dot(normalizedDiagonal, d - a)))
+    //);
+    return (length(cross(b - a, d - a)) + length(cross(b - c, d - c))) * 0.5f;
+
 }
 
-float3 blinnPhongSpecular(float3 lightDir, float3 viewDir, float3 normal, float3 lightIntensity, float reflectivity)
+groupshared float3 sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * THREAD_GROUP_SIZE_Y];
+
+float calculateLightDirectionDerivativeFromSharedData(uint2 groupIdx, uint2 dtId)
 {
-    const float3 halfVector = normalize(lightDir + viewDir);
-    return pow(max(dot(normal, halfVector), 0.00001), reflectivity) * lightIntensity;
+    const uint2 offset = groupIdx & 1u;
+    const uint2 topL = groupIdx - offset;
+    const uint2 topRight = topL + uint2(1, 0);
+    const uint2 bottomLeft = topL + uint2(0, 1);
+    const uint2 bottomRight = topL + uint2(1, 1);
+   
+    const float3 topLeftDir = -sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * topL.y + topL.x];
+    const float3 topRightDir = -sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * topRight.y + topRight.x];
+    const float3 bottomLeftDir = -sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * bottomLeft.y + bottomLeft.x];
+    const float3 bottomRightDir = -sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * bottomRight.y + bottomRight.x];
+    float2 base = dtId - offset;
+    float3 p = topLeft + (base.x * planeRight + base.y * planeDown) * texelDim; // world pos
+    return texelDim * texelDim / quadrilateralArea(
+        p + topLeftDir,
+        p + texelDim * planeDown + bottomLeftDir,
+        p + texelDim * planeDown + texelDim * planeRight + bottomRightDir,
+        p + texelDim * planeRight + topRightDir
+    );
+    
+    //const float2 top    = (topLeft    + topRight)    * 0.5f;
+    //const float2 bottom = (bottomLeft + bottomRight) * 0.5f;
+    //const float2 left   = (topLeft    + bottomLeft)  * 0.5f;
+    //const float2 right  = (topRight   + bottomRight)  * 0.5f;
+    
+    //return abs(determinant(float2x2(right - left, bottom - top))); // absolute value of jacobian
 }
 
 
 [numthreads(THREAD_GROUP_SIZE_X, THREAD_GROUP_SIZE_Y, 1)]
-void main ( uint3 DTid : SV_DispatchThreadID )
-
+void main(uint3 DTid : SV_DispatchThreadID, uint3 threadID : SV_GroupThreadID)
 {
 	const int3 read_idx = int3(DTid.xy, 0);
 	const uint2 write_idx = DTid.xy;
@@ -163,47 +206,52 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     {
     
         const float3 currentLightDirection = lightDirectionBufferRead.Load(read_idx).xyz;
-        const float3 currentLightIntensity = lightBufferRead.Load(read_idx).xyz;
+        //const float3 currentLightIntensity = lightBufferRead.Load(read_idx).xyz;
         
         float len = dot(currentLightDirection, normalize(deltaSlice));
         const float3 currentLightWorldPos = topLeft + (((float) DTid.x) * planeRight + ((float) DTid.y) * planeDown) * texelDim;
         const float3 previousLightWorldPos = currentLightWorldPos - currentLightDirection * length(deltaSlice) / len;
     
 
-        const float3 currentOffset = (currentLightWorldPos - topLeft) * worldDimToUV;
-        const float2 currentLightUV = float2(dot(currentOffset, planeRight), dot(currentOffset, planeDown)) + 0.5f * texDimToUV; // todo: is this correct, shifts somehow the light texture to the bottom right
+        //const float3 currentOffset = (currentLightWorldPos - topLeft) * worldDimToUV;
+        //const float2 currentLightUV = float2(dot(currentOffset, planeRight), dot(currentOffset, planeDown)) + 0.5f * texDimToUV; // todo: is this correct, shifts somehow the light texture to the bottom right
         const float3 previousOffset = (previousLightWorldPos - topLeft) * worldDimToUV;
         const float2 previousLightUV = float2(dot(previousOffset, planeRight), dot(previousOffset, planeDown)) + 0.5f * texDimToUV;
         
-        // intensity correction
-        
-        float previousS = 1; //calculateLightDirectionDerivative(previousLightUV, lightBufferRead); // jacobian of previous light texture
-        
-        // from sampleLightTextures(previousLightWorldPos, previousLightDirection, previousLightIntensity);
         float3 previousLightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, previousLightUV, 0).xyz;
-        float3 previousLightIntensity = lightBufferRead.SampleLevel(lightSampler, previousLightUV, 0).xyz;
+        // refract light ray
+        float3 refractionGradient; float3 _;
+        reconstructVolumeGradient(currentLightWorldPos, _, refractionGradient);
+        const float3 nextLightDirection = normalize(previousLightDirection + sliceDepth * refractionGradient);
+        // write new data to shared memory
+        sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * threadID.y + threadID.x] = nextLightDirection;
         
-        // derivative of current light texture
-        // todo
-        float currentS = previousS;//calculateLightDirectionDerivative(previousLightUV, lightDirectionBufferRead);
-        float intensityCorrection = abs(currentS) < 0.000001 ? 1 : previousS / currentS;
+        lightDirectionBufferWrite[write_idx].xyz = nextLightDirection;
+
         
-        
-        // calculate new light intensity by attenuating and correcting with intensityCorrection
+        // prepare data for calculating new light intensity by attenuating and correcting with intensityCorrection
         const float previousScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(previousLightWorldPos), 0) * 8;
         const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentLightWorldPos), 0) * 8;
         float alpha = saturate(integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex));
         float3 medium = saturate(integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex));
+        float3 previousLightIntensity = lightBufferRead.SampleLevel(lightSampler, previousLightUV, 0).xyz;
+        
+        // intensity correction
+        //float previousS = calculateLightDirectionDerivative(previousLightUV, lightBufferRead); // jacobian of previous light texture
+        // derivative of current light texture
+        GroupMemoryBarrier();
+        float intensityCorrection = calculateLightDirectionDerivativeFromSharedData(threadID.xy, DTid.xy);
+
+        ////float intensityCorrection = abs(currentS) < 0.000001 ? 1 : previousS / currentS;
+
+        // calculate new light intensity by attenuating and correcting with intensityCorrection
         const float3 nextLightIntensity = previousLightIntensity * intensityCorrection * (1 - alpha) * (1 - medium);
 
-        // refract light ray
-        float3 _;
-        float3 refractionGradient;
-        reconstructVolumeGradient(currentLightWorldPos, _, refractionGradient);
-        const float3 nextLightDirection = normalize(previousLightDirection + sliceDepth * refractionGradient);
-        
-        lightDirectionBufferWrite[write_idx].xyz = nextLightDirection;
+
         lightBufferWrite[write_idx].xyz = nextLightIntensity;
+        
+        //colorBufferWrite[write_idx].x = currentS;
+        //colorBufferWrite[write_idx].yzw = float4(0, 0, 0, 1).yzw;
     }
 
 

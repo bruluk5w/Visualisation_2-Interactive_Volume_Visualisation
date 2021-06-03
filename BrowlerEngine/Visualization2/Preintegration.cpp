@@ -50,9 +50,6 @@ namespace
 template<SampleFormat S, template<SampleFormat> typename T>
 void makePreintegrationTable(T<S>& image, typename T<S>::sampleT* transferFunc, unsigned int lenFunc)
 {
-	// TODO: fix 10 bit preintegration texture
-	if (SampleFormat::VEC4F32 == S && lenFunc > 512)
-		return;
 
 	checkSize<S>(image, lenFunc);
 	const size_t yStep = image.getSizeX();

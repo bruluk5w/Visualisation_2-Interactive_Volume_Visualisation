@@ -28,3 +28,10 @@ bool rayIntersectsVolume(float3 rayPos, float3 rayDir, float3 bboxmax, float3 bb
     return (intersectsNegativeX || intersectsNegativeY || intersectsNegativeZ ||
             intersectsPositiveX || intersectsPositiveY || intersectsPositiveZ);
 }
+
+float3 blinnPhongSpecular(float3 lightDir, float3 viewDir, float3 normal, float3 lightIntensity, float reflectivity)
+{
+    const float3 halfVector = normalize(lightDir + viewDir);
+    return pow(max(dot(normal, halfVector), 0.00001), reflectivity) * lightIntensity;
+}
+
