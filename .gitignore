@@ -1,5 +1,6 @@
 #Data Sets Folder
 BrowlerEngine/Assets/DataSets/*
+!BrowlerEngine/Assets/DataSets/sphere.dat
 
 *.tmp
 
