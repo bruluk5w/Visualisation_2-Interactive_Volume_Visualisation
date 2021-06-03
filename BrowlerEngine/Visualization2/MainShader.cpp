@@ -454,15 +454,20 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
     const BBox& bbox = dataSet->getBoundingBox();
     BBox viewingVolume = bbox.getOBB(viewingVolumeOrientation);
     viewingVolume.makeMaxSquareXY(); // make it a square along z axis
-    const Vec3 viewingVolumeDimensions = viewingVolume.dim();
-
-    const Mat4 viewingPlaneModelMatrix =
-        makeAffineTransform({ 0, 0, -0.5f * viewingVolumeDimensions.z }, VEC3_ZERO, viewingVolumeDimensions) * viewingVolumeOrientation;
+    Vec3 viewingVolumeDimensions = viewingVolume.dim();
+    // the nearest plane in texture space
+    const float planeOffsetNear = bbox.getClosestPlaneFromDirection(camPos);
+    const Vec2 visibleRect = cam->getVisibleRectangle(length(camPos) - planeOffsetNear); // the viewport rectangle size in worldspace on viewing plane
+    const float visibleQuadSize = Utils::min(visibleRect.x, visibleRect.y);
+    if (false) {
+        viewingVolumeDimensions.x = visibleQuadSize;
+        viewingVolumeDimensions.y = visibleQuadSize;
+    }
+    const Mat4 viewingPlaneModelMatrix = makeAffineTransform({ 0, 0, -0.5f * viewingVolumeDimensions.z }, VEC3_ZERO, viewingVolumeDimensions) * viewingVolumeOrientation;
 
     const Vec2 viewingPlaneDimensions(viewingVolumeDimensions.x, viewingVolumeDimensions.y);
 
-    // the nearest plane in texture space
-    const float planeOffsetNear = bbox.getClosestPlaneFromDirection(camPos);
+
     // the farthes plane in texture space
     const float planeOffsetFar = -bbox.getClosestPlaneFromDirection(-camPos);
     const float planeStackThickness = planeOffsetNear - planeOffsetFar;

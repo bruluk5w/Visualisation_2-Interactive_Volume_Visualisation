@@ -19,6 +19,13 @@ void Camera::resize(int viewportWidth, int viewportHeight)
 	projectionDirty = true;
 }
 
+Vec2 Camera::getVisibleRectangle(float distance) const
+{
+
+	float height = 2.0f * std::tan(fovY * 0.5f) * distance;
+	return { height * aspect(), height };
+}
+
 bool Camera::updateMatrices(bool force)
 {
 	if (force)
@@ -53,7 +60,7 @@ bool Camera::updateMatrices(bool force)
 
 	if (projectionDirty)
 	{
-		projectionMatrix = makePerspective(fovY, (float)width / (float)height, near, far);
+		projectionMatrix = makePerspective(fovY, aspect(), near, far);
 		inverseProjectionMatrix = inverse(projectionMatrix);
 		viewProjectionMatrix = viewMatrix * projectionMatrix;
 		projectionDirty = false;

@@ -37,6 +37,8 @@ public:
 
 	float getFarPlane() const { return far; }
 
+	float aspect() const { return  (float)width / (float)height; }
+
 	const Mat4& getViewMatrix(bool forceUpdate = false) { updateMatrices(forceUpdate); return viewMatrix; }
 	Mat4 getViewMatrixCopy(bool forceUpdate = false) { updateMatrices(forceUpdate); return viewMatrix; }
 
@@ -48,6 +50,8 @@ public:
 
 	const Mat4& getInverseViewProjectionMatrix(bool forceUpdate = false) { updateInverseMatrix(forceUpdate); return inverseViewProjectionMatrix; }
 	Mat4 getInverseViewProjectionMatrixCopy(bool forceUpdate = false) { updateInverseMatrix(forceUpdate); return inverseViewProjectionMatrix; }
+
+	Vec2 getVisibleRectangle(float distance) const; //!< returns the world space dimensions of the rectangle visible at a given distance to the camera
 
 	uint64_t cameraHash() {
 		lastGlobalTransformHash = globalTransformHash();
@@ -67,7 +71,7 @@ private:
 	bool updateMatrices(bool force);
 	void updateInverseMatrix(bool force);
 
-	float fovY;
+	float fovY; //!< in rad
 	float near;
 	float far;
 	int width;
