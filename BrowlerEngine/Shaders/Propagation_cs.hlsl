@@ -162,7 +162,6 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     
     {
     
-    
         const float3 currentLightDirection = lightDirectionBufferRead.Load(read_idx).xyz;
         const float3 currentLightIntensity = lightBufferRead.Load(read_idx).xyz;
         
@@ -178,7 +177,7 @@ void main ( uint3 DTid : SV_DispatchThreadID )
         
         // intensity correction
         
-        float previousS = 1; // calculateLightDirectionDerivative(previousLightUV, lightBufferRead); // jacobian of previous light texture
+        float previousS = 1; //calculateLightDirectionDerivative(previousLightUV, lightBufferRead); // jacobian of previous light texture
         
         // from sampleLightTextures(previousLightWorldPos, previousLightDirection, previousLightIntensity);
         float3 previousLightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, previousLightUV, 0).xyz;
@@ -198,9 +197,9 @@ void main ( uint3 DTid : SV_DispatchThreadID )
         const float3 nextLightIntensity = previousLightIntensity * intensityCorrection * (1 - alpha) * (1 - medium);
 
         // refract light ray
-        float3 dummy;
+        float3 _;
         float3 refractionGradient;
-        reconstructVolumeGradient(currentLightWorldPos, dummy, refractionGradient);
+        reconstructVolumeGradient(currentLightWorldPos, _, refractionGradient);
         const float3 nextLightDirection = normalize(previousLightDirection + sliceDepth * refractionGradient);
         
         lightDirectionBufferWrite[write_idx].xyz = nextLightDirection;
@@ -227,15 +226,21 @@ void main ( uint3 DTid : SV_DispatchThreadID )
     float3 lightIntensity;
     sampleLightTextures(currentViewingRayPosition.xyz, lightDirection, lightIntensity);
     
-    float3 currentMediumColor = mediumBufferRead.Load(read_idx).xyz;
+    const float3 currentMediumColor = mediumBufferRead.Load(read_idx).xyz;
     
     if (!rayIntersectsVolume(currentViewingRayPosition.xyz, currentViewingRayDirection, bboxmax, bboxmin))
     {
-        //float3 nextColor                = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * lightIntensity * lambertianTerm + specularLight);
-        float3 color = checkerBoard(currentViewingRayPosition.xyz, backgroundScale);
-        float lambertianTerm = max(dot(float3(0, 0, 1), lightDirection), 0);
+        // calculate normal of the wall that we hit
+        float3 invBackgroundNormal = abs(currentViewingRayPosition.xyz) - abs(bboxmax);
+        if (invBackgroundNormal.x >= invBackgroundNormal.y && invBackgroundNormal.x >= invBackgroundNormal.z) invBackgroundNormal = float3(1, 0, 0);
+        else if(invBackgroundNormal.y >= invBackgroundNormal.z) invBackgroundNormal = float3(0, 1, 0);
+        else invBackgroundNormal = float3(0, 0, 1);
+        invBackgroundNormal *= sign(currentViewingRayPosition.xyz);
+        
+        const float3 color = checkerBoard(currentViewingRayPosition.xyz, backgroundScale) ;
+        const float lambertianTerm = max(dot(invBackgroundNormal, lightDirection), 0);
         colorBufferWrite[write_idx] = float4(currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (color * lightIntensity * lambertianTerm), 1);
-               return;
+        return;
     }
     
     // reconstruct gradient of scalar field

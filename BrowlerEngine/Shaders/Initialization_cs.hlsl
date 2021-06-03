@@ -48,7 +48,8 @@ void main( uint3 DTid : SV_DispatchThreadID )
     if (rayIntersectsVolume(pixelWorldSpace, viewingRayDirection, bboxmax, bboxmin))
     {
         colorBuffer[DTid.xy] = float4(0.f, 0.f, 0.f, 0.f); // starting with no color and fully transparent
-    } else
+    }
+    else
     {
         colorBuffer[DTid.xy] = float4(0.5f, 0.5f, 0.5f, 1.f); // starting with solid color
     }
