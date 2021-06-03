@@ -16,7 +16,7 @@ SHAPE = Shape.SPHERE
 
 OUTPUT = r'D:\repos\browler_engine\BrowlerEngine\Assets\DataSets\Sphere.dat'
 
-BIT_DEPTH = 10
+BIT_DEPTH = 12
 
 
 def main():

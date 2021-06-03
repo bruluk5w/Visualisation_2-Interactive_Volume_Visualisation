@@ -19,7 +19,7 @@ Visualization2Renderer::Visualization2Renderer() :
     dataSetHandle(BaseTextureHandle::Invalid),
     pitCollection(),
     assetPathMutex(),
-    assetPath(BRWL_CHAR_LITERAL("./Assets/DataSets/stagbeetle832x832x494.dat")),
+    assetPath(BRWL_CHAR_LITERAL("./Assets/DataSets/sphere.dat")),
     mainShader(),
     initialized(false),
     hasViewChanged(true),
