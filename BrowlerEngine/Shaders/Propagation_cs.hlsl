@@ -39,33 +39,6 @@ Texture2D<float> opacityIntegTex : register(t4);
 Texture2D<float4> mediumIntegTex : register(t5);
 Texture3D<float> volumeTexture : register(t6);
 
-//static const float PI = 3.14159265f;
-
-//// inputs are assumed to be normalized
-//// fromIdxOfRefrac and toIdxOfRefrac assumed > 0 
-//float4 cookTorrance(float3 normal, float3 view, float3 light, float fromIdxOfRefrac, float toIdxOfRefrac, float roughness)
-//{
-//    float3 halfVector = normalize(light + view);
-//    float angleOfIncidence = dot(normal, light); // cos of the angle between normal and view
-//    float angleOfReflection = dot(normal, view); // cos of the angle between normal and light
-//    float normalDotHalf = dot(normal, halfVector);
-//    float viewDotHalf = dot(view, halfVector);
-//    // Compute the geometric term 
-//    float G1 = (2.0f * normalDotHalf * angleOfIncidence) / viewDotHalf;
-//    float G2 = (2.0f * normalDotHalf * angleOfReflection) / viewDotHalf;
-//    //float  geometricAttenuation = min( 1.0f, max( 0.0f, min( G1, G2 ) ) );    
-//    float geometricAttenuation = min(1.0f, min(G1, G2));
-//    // Schlick's approximation of the fresnel term
-//    float r0 = (fromIdxOfRefrac - toIdxOfRefrac) / (fromIdxOfRefrac + toIdxOfRefrac); ///reflection coefficient for light incoming parallel to normal
-//    float fresnel = r0 + (1.f - r0) * pow(1.f - angleOfIncidence, 5.0f); // todo: mybe faster with 5 multiplications
-//    // Roughness calculated with Beckmann distribution
-//    float roughnessSq = roughness * roughness;
-//    float normalDotHalfSq = normalDotHalf * normalDotHalf;
-//    float distributionFactor = exp(-(1.f - normalDotHalfSq) / (roughnessSq * normalDotHalfSq)) / (PI * roughnessSq * normalDotHalfSq * normalDotHalfSq);
-//    // final cook torrance spceular term 
-//    return (distributionFactor * fresnel * geometricAttenuation) / (PI * angleOfReflection * angleOfIncidence);
-//}
-
 
 float3 getUVCoordinatesVolume(float3 worldCoord)
 {
@@ -95,100 +68,99 @@ float3 integrationTable(float previousScalarSample, float currentScalarSample, T
     return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).rgb * length(deltaSlice);
 }
 
-
-void reconstructVolumeGradient(float3 worldPos, out float3 gradient, out float3 refractionGradient)
+void reconstructVolumeGradientBase(float3 worldPos, out float3 leftTopFront, out float3 rightBottomBack)
 {
     const float stepLength = 1.0f;
     const float h = 1.0f / (2.f * stepLength);
-    const float left =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(stepLength, 0, 0)), 0) * 8;
-    const float right =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(stepLength, 0, 0)), 0) * 8;
-    const float top =     volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, stepLength, 0)), 0) * 8;
-    const float bottom =  volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, stepLength, 0)), 0) * 8;
-    const float front =   volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, 0, stepLength)), 0) * 8;
-    const float back =    volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, 0, stepLength)), 0) * 8;
-            
-    gradient = float3(right - left, bottom - top, back - front);
+    leftTopFront = h * float3(
+        volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(stepLength, 0, 0)), 0) * 8,
+        volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, stepLength, 0)), 0) * 8,
+        volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos - float3(0, 0, stepLength)), 0) * 8);
+    
+    rightBottomBack = h * float3(
+        volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(stepLength, 0, 0)), 0) * 8,
+        volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, stepLength, 0)), 0) * 8,
+        volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, 0, stepLength)), 0) * 8);
+}
+
+//float3 reconstructVolumeGradient(float3 worldPos)
+//{
+//    float3 leftTopFront;
+//    float3 rightBottomBack;
+//    reconstructVolumeGradientBase(worldPos, leftTopFront, rightBottomBack);
+
+//    float3 gradient = rightBottomBack - leftTopFront;
+//    if (any(gradient))
+//        gradient = normalize(gradient);
+    
+//    return gradient;
+//}
+
+void reconstructVolumeAndRefractionGradient(float3 worldPos, out float3 gradient, out float3 refractionGradient)
+{
+    float3 leftTopFront;
+    float3 rightBottomBack;
+    reconstructVolumeGradientBase(worldPos, leftTopFront, rightBottomBack);
+
+    gradient = rightBottomBack - leftTopFront;
     if (any(gradient))
         gradient = normalize(gradient);
+        
+    const float leftIOR = lut(leftTopFront.x, refractionLut);
+    const float rightIOR = lut(rightBottomBack.x, refractionLut);
+    const float topIOR = lut(leftTopFront.y, refractionLut);
+    const float bottomIOR = lut(rightBottomBack.y, refractionLut);
+    const float frontIOR = lut(leftTopFront.z, refractionLut);
+    const float backIOR = lut(rightBottomBack.z, refractionLut);
     
-    const float leftIOR = lut(left, refractionLut);
-    const float rightIOR = lut(right, refractionLut);
-    const float topIOR = lut(top, refractionLut);
-    const float bottomIOR = lut(bottom, refractionLut);
-    const float frontIOR = lut(front, refractionLut);
-    const float backIOR = lut(back, refractionLut);
+    refractionGradient = float3(rightIOR - leftIOR, bottomIOR - topIOR, backIOR - frontIOR);
+}
+
+float3 reconstructRefractionGradient(float3 worldPos)
+{
+    float3 leftTopFront;
+    float3 rightBottomBack;
+    reconstructVolumeGradientBase(worldPos, leftTopFront, rightBottomBack);
+        
+    const float leftIOR = lut(leftTopFront.x, refractionLut);
+    const float rightIOR = lut(rightBottomBack.x, refractionLut);
+    const float topIOR = lut(leftTopFront.y, refractionLut);
+    const float bottomIOR = lut(rightBottomBack.y, refractionLut);
+    const float frontIOR = lut(leftTopFront.z, refractionLut);
+    const float backIOR = lut(rightBottomBack.z, refractionLut);
     
-    refractionGradient = float3(rightIOR - leftIOR, bottomIOR - topIOR, backIOR - frontIOR) * h;
+    return float3(rightIOR - leftIOR, bottomIOR - topIOR, backIOR - frontIOR);
 }
 
 
 
 float2 projectOnLightPlane(float3 worldVec)
 {
-    //const float3 normalizedDeltaSlice = normalize(deltaSlice);
-    //return (worldVec - dot(worldVec, normalizedDeltaSlice) * normalizedDeltaSlice);
     return float2(dot(worldVec, planeRight), dot(worldVec, planeDown));
-
 }
 
-//float calculateLightDirectionDerivative(float2 lightUV, Texture2D<float4> tex)
-//{
-//    const float stepLength = texDimToUV; // one pixel
-//    const float h = 1.0f / (2.f * stepLength);
-//    // normalize because linear interpolation
-//    const float2 left   = projectOnLightPlane(normalize(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV - float2(stepLength, 0), 0).xyz));
-//    const float2 right  = projectOnLightPlane(normalize(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV + float2(stepLength, 0), 0).xyz));
-//    const float2 top    = projectOnLightPlane(normalize(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV - float2(0, stepLength), 0).xyz));
-//    const float2 bottom = projectOnLightPlane(normalize(lightDirectionBufferRead.SampleLevel(lightSampler, lightUV + float2(0, stepLength), 0).xyz));
-    
-//    return abs(determinant(float2x2((right - left) * h, (bottom - top) * h))); // absolute value of jacobian
-//}
 
-float quadrilateralArea(float3 a, float3 b, float3 c, float3 d)
-{
-    //float3 normalizedDiagonal = c - a;
-    //if (any(normalizedDiagonal))
-    //    normalizedDiagonal = normalize(normalizedDiagonal);
-    //else
-    //    return 0;
-    
-    //return 0.5f * (
-    //    length(b - (a + normalizedDiagonal * dot(normalizedDiagonal, b - a))) +
-    //    length(d - (a + normalizedDiagonal * dot(normalizedDiagonal, d - a)))
-    //);
-    return (length(cross(b - a, d - a)) + length(cross(b - c, d - c))) * 0.5f;
-
-}
-
+// holds fresh light directions
 groupshared float3 sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * THREAD_GROUP_SIZE_Y];
 
-float calculateLightDirectionDerivativeFromSharedData(uint2 groupIdx, uint2 dtId)
+float calculateIntensityCorrectionFromSharedData(uint2 groupIdx, uint2 dtId)
 {
     const uint2 offset = groupIdx & 1u;
     const uint2 topL = groupIdx - offset;
-    const uint2 topRight = topL + uint2(1, 0);
-    const uint2 bottomLeft = topL + uint2(0, 1);
-    const uint2 bottomRight = topL + uint2(1, 1);
+    const uint2 topR = topL + uint2(1, 0);
+    const uint2 bottomL = topL + uint2(0, 1);
+    const uint2 bottomR = topL + uint2(1, 1);
    
-    const float3 topLeftDir = -sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * topL.y + topL.x];
-    const float3 topRightDir = -sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * topRight.y + topRight.x];
-    const float3 bottomLeftDir = -sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * bottomLeft.y + bottomLeft.x];
-    const float3 bottomRightDir = -sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * bottomRight.y + bottomRight.x];
-    float2 base = dtId - offset;
-    float3 p = topLeft + (base.x * planeRight + base.y * planeDown) * texelDim; // world pos
+    const float3 texelDown = texelDim * planeDown;
+    const float3 texelRight = texelDim * planeRight;
+    const float2 base = dtId - offset;
+    const float3 p = topLeft + (base.x * planeRight + base.y * planeDown) * texelDim; // world pos
     return texelDim * texelDim / quadrilateralArea(
-        p + topLeftDir,
-        p + texelDim * planeDown + bottomLeftDir,
-        p + texelDim * planeDown + texelDim * planeRight + bottomRightDir,
-        p + texelDim * planeRight + topRightDir
+        p - sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, topL.y   , topL.x)],
+        p - sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, bottomL.y, bottomL.x)] + texelDown,
+        p - sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, bottomR.y, bottomR.x)] + texelDown + texelRight,
+        p - sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, topR.y   , topR.x)]    + texelRight 
     );
-    
-    //const float2 top    = (topLeft    + topRight)    * 0.5f;
-    //const float2 bottom = (bottomLeft + bottomRight) * 0.5f;
-    //const float2 left   = (topLeft    + bottomLeft)  * 0.5f;
-    //const float2 right  = (topRight   + bottomRight)  * 0.5f;
-    
-    //return abs(determinant(float2x2(right - left, bottom - top))); // absolute value of jacobian
 }
 
 
@@ -212,23 +184,17 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 threadID : SV_GroupThreadID)
         const float3 currentLightWorldPos = topLeft + (((float) DTid.x) * planeRight + ((float) DTid.y) * planeDown) * texelDim;
         const float3 previousLightWorldPos = currentLightWorldPos - currentLightDirection * length(deltaSlice) / len;
     
-
-        //const float3 currentOffset = (currentLightWorldPos - topLeft) * worldDimToUV;
-        //const float2 currentLightUV = float2(dot(currentOffset, planeRight), dot(currentOffset, planeDown)) + 0.5f * texDimToUV; // todo: is this correct, shifts somehow the light texture to the bottom right
         const float3 previousOffset = (previousLightWorldPos - topLeft) * worldDimToUV;
         const float2 previousLightUV = float2(dot(previousOffset, planeRight), dot(previousOffset, planeDown)) + 0.5f * texDimToUV;
-        
-        float3 previousLightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, previousLightUV, 0).xyz;
+        const float3 previousLightDirection = lightDirectionBufferRead.SampleLevel(lightSampler, previousLightUV, 0).xyz;
         // refract light ray
-        float3 refractionGradient; float3 _;
-        reconstructVolumeGradient(currentLightWorldPos, _, refractionGradient);
+        float3 refractionGradient = reconstructRefractionGradient(currentLightWorldPos);
         const float3 nextLightDirection = normalize(previousLightDirection + sliceDepth * refractionGradient);
         // write new data to shared memory
         sharedCurrentLightDirections[THREAD_GROUP_SIZE_X * threadID.y + threadID.x] = nextLightDirection;
         
         lightDirectionBufferWrite[write_idx].xyz = nextLightDirection;
 
-        
         // prepare data for calculating new light intensity by attenuating and correcting with intensityCorrection
         const float previousScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(previousLightWorldPos), 0) * 8;
         const float currentScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(currentLightWorldPos), 0) * 8;
@@ -237,21 +203,11 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 threadID : SV_GroupThreadID)
         float3 previousLightIntensity = lightBufferRead.SampleLevel(lightSampler, previousLightUV, 0).xyz;
         
         // intensity correction
-        //float previousS = calculateLightDirectionDerivative(previousLightUV, lightBufferRead); // jacobian of previous light texture
-        // derivative of current light texture
         GroupMemoryBarrier();
-        float intensityCorrection = calculateLightDirectionDerivativeFromSharedData(threadID.xy, DTid.xy);
-
-        ////float intensityCorrection = abs(currentS) < 0.000001 ? 1 : previousS / currentS;
+        const float intensityCorrection = calculateIntensityCorrectionFromSharedData(threadID.xy, DTid.xy);
 
         // calculate new light intensity by attenuating and correcting with intensityCorrection
-        const float3 nextLightIntensity = previousLightIntensity * intensityCorrection * (1 - alpha) * (1 - medium);
-
-
-        lightBufferWrite[write_idx].xyz = nextLightIntensity;
-        
-        //colorBufferWrite[write_idx].x = currentS;
-        //colorBufferWrite[write_idx].yzw = float4(0, 0, 0, 1).yzw;
+        lightBufferWrite[write_idx].xyz = previousLightIntensity * intensityCorrection * (1 - alpha) * (1 - medium);;
     }
 
 
@@ -294,7 +250,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 threadID : SV_GroupThreadID)
     // reconstruct gradient of scalar field
     float3 gradient;
     float3 refractionGradient;
-    reconstructVolumeGradient(currentViewingRayPosition.xyz, gradient, refractionGradient);
+    reconstructVolumeAndRefractionGradient(currentViewingRayPosition.xyz, gradient, refractionGradient);
    
     // Sampling the volume
     // We need to multiply the values sampled from the volume because we assume only 12 bits out of 16 are used. Else only use 1/8 of the normalized range is utilized.
@@ -309,31 +265,30 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 threadID : SV_GroupThreadID)
     // Advance viewing ray in world space
     float len = dot(currentViewingRayDirection, normalize(deltaSlice));
     const float3 nextViewingRayPosition = currentViewingRayPosition.xyz + currentViewingRayDirection * length(deltaSlice) / len;
-    const float3 nextViewingRayDirection = currentViewingRayDirection + sliceDepth * refractionGradient;
+    const float3 nextViewingRayDirection = normalize(currentViewingRayDirection + sliceDepth * refractionGradient);
     
     const float nextScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(nextViewingRayPosition), 0) * 8;
     
-    float3 color = saturate(integrationTable(previousScalarSample, currentScalarSample, particleColIntegTex));
-    float alpha = saturate(integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex));
+    float3 color  = saturate(integrationTable(previousScalarSample, currentScalarSample, particleColIntegTex));
+    float  alpha  = saturate(integrationTable(previousScalarSample, currentScalarSample, opacityIntegTex));
     float3 medium = saturate(integrationTable(previousScalarSample, currentScalarSample, mediumIntegTex));
     
     float nextIndexOfRefraction = lut(nextScalarSample, refractionLut);
     
     // the lower reflectivity the more it reflects, therefore the higher the difference, the more is subtracted
-    float lambertianTerm = max(dot(gradient, lightDirection), 0);
+    const float lambertianTerm = max(dot(gradient, lightDirection), 0);
     float3 specularLight = float3(0, 0, 0);
     if (lambertianTerm > 0)
     {
-        //float reflectivity = 20 - 50 * abs(nextIndexOfRefraction - currentIndexOfRefraction);
         specularLight = blinnPhongSpecular(lightDirection, currentViewingRayDirection, gradient, 1, 20) * 100 * saturate(nextIndexOfRefraction - currentIndexOfRefraction);
     }
     
-    float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * lightIntensity * lambertianTerm + specularLight);
-    float nextAlpha = currentColor.w + (1 - currentColor.w) * alpha;
-    float3 nextMediumColor = currentMediumColor * (1 - medium);
+    const float3 nextColor = currentColor.xyz + (1 - currentColor.w) * currentMediumColor * (alpha * color * lightIntensity * lambertianTerm + specularLight);
+    const float nextAlpha = currentColor.w + (1 - currentColor.w) * alpha;
+    const float3 nextMediumColor = currentMediumColor * (1 - medium);
     
     viewingRayPositionBufferWrite[write_idx] = float4(nextViewingRayPosition, currentScalarSample); // we also save the current scalar sample to save looking it up again in the next frame
-    viewingRayDirectionBufferWrite[write_idx].xyz = nextViewingRayDirection; // has to be normalized
+    viewingRayDirectionBufferWrite[write_idx].xyz = nextViewingRayDirection; 
     colorBufferWrite[write_idx].xyz = nextColor;
     colorBufferWrite[write_idx].w = nextAlpha;
     mediumBufferWrite[write_idx].xyz = nextMediumColor;

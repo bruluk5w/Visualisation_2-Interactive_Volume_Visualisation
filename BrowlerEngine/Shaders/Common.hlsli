@@ -35,3 +35,8 @@ float3 blinnPhongSpecular(float3 lightDir, float3 viewDir, float3 normal, float3
     return pow(max(dot(normal, halfVector), 0.00001), reflectivity) * lightIntensity;
 }
 
+float quadrilateralArea(float3 a, float3 b, float3 c, float3 d)
+{
+    return (length(cross(b - a, d - a)) + length(cross(b - c, d - c))) * 0.5f;
+}
+
