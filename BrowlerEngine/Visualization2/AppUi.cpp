@@ -28,7 +28,7 @@ UIResult::UIResult() :
         1.0f, // numSlicesPerVoxel
         false, // vsync
         false, // freeCamMovement
-        true, // drawAssetBoundaries
+        false, // drawAssetBoundaries
         false, // drawViewingVolumeBoundaries
         false, // drawOrthographicXRay
     },
