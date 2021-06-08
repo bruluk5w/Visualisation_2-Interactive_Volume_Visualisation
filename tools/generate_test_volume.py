@@ -1,6 +1,7 @@
 from enum import Enum
 import numpy as np
 import struct
+from common import BIT_DEPTH, rescale
 
 
 class Shape(Enum):
@@ -15,8 +16,6 @@ SIZE_Z = 128
 SHAPE = Shape.SPHERE
 
 OUTPUT = r'D:\repos\browler_engine\BrowlerEngine\Assets\DataSets\Sphere.dat'
-
-BIT_DEPTH = 12
 
 
 def main():
@@ -53,7 +52,7 @@ def make_sphere(v: np.ndarray):
 
     np.sqrt(v, out=v)
     np.subtract(1, v, out=v)
-    np.multiply(v, 1 << BIT_DEPTH, out=v)
+    rescale(v)
 
 
 def make_box(v: np.ndarray):
@@ -76,7 +75,7 @@ def make_box(v: np.ndarray):
         v[z, :, :][mask] = z_dist
 
     np.subtract(1, v, out=v)
-    np.multiply(v, 1 << BIT_DEPTH, out=v)
+    rescale(v)
 
 
 if __name__ == '__main__':

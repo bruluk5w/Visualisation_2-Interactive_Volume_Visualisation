@@ -23,7 +23,7 @@ class Visualization2Renderer : public AppRenderer
 {
 public:
 	Visualization2Renderer();
-	void setFilePath(const BRWL_CHAR* file) { std::scoped_lock(assetPathMutex); assetPath = file; }
+	void setFilePath(const BRWL_CHAR* file) { std::scoped_lock(assetPathMutex); assetPath = file; assetPathUpdated = true; }
 
 protected:
 	virtual bool init(Renderer* renderer) override;
@@ -48,7 +48,8 @@ protected:
 
 	// The main data set
 	std::mutex assetPathMutex;
-	BRWL_STR assetPath; // set from different thread
+	BRWL_STR assetPath;    // set from different thread
+	bool assetPathUpdated; // 
 
 	BaseTextureHandle dataSetHandle;
 	PitCollection pitCollection;

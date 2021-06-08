@@ -20,6 +20,7 @@ Visualization2Renderer::Visualization2Renderer() :
     pitCollection(),
     assetPathMutex(),
     assetPath(BRWL_CHAR_LITERAL("./Assets/DataSets/sphere.dat")),
+    assetPathUpdated(true),
     mainShader(),
     initialized(false),
     hasViewChanged(true),
@@ -86,10 +87,12 @@ bool Visualization2Renderer::ReloadVolumeAsset(BRWL::Renderer::Renderer* r)
     {
         std::scoped_lock(assetPathMutex);
         file = assetPath.c_str();
+        needsRefresh |= assetPathUpdated;
+        assetPathUpdated = false;
     }
 
     needsRefresh |= BRWL_STRCMP(file.c_str(), dataSet->getSourcePath()) != 0;
-
+ 
     if (needsRefresh)
     {
         {
