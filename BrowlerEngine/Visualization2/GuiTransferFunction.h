@@ -5,6 +5,7 @@
 #include "Common/Spline.h"
 
 #include <array>
+#include <fstream>
 
 
 BRWL_NS
@@ -26,6 +27,8 @@ struct BaseTransferFunction
 	virtual ::ImGui::CtrlPointGroup* getCtrlPointGroup(uint8_t channelIdx) = 0;
 	virtual const float* getData() const = 0;
 	virtual float* getData() = 0;
+	virtual void save(std::ofstream* output) = 0;
+	virtual void load(std::ifstream* input) = 0;
 
 	virtual void updateFunction(const bool* dirtyFlag) = 0;
 
@@ -161,6 +164,30 @@ struct TransferFunction : public BaseTransferFunction
 			return &transferFunction[0].x;
 		else
 			return transferFunction;
+	}
+
+	virtual void save(std::ofstream* output) override {
+		uint8_t nChannels = numChannels();
+		output->write((char*)&nChannels, sizeof(nChannels));
+		for (int i = 0; i < numChannels(); ++i)
+		{
+			controlPoints[i].save(output);
+		}
+	}
+
+	virtual void load(std::ifstream* input) override {
+		uint8_t nChannels;
+		input->read((char*)&nChannels, sizeof(nChannels));
+		BRWL_EXCEPTION(nChannels == numChannels(), BRWL_CHAR_LITERAL("Invalid number of channels in transfer function file."));
+		for (int i = 0; i < numChannels(); ++i)
+		{
+			controlPoints[i].load(input);
+		}
+		bool dirty[numChannels()];
+		for (int i = 0; i < numChannels(); ++i) {
+			dirty[i] = true;
+		}
+		updateFunction(dirty);
 	}
 
 	// dirtyFlag indicates which functions should be updated, must pass as many bools as there are channels

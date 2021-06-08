@@ -3,6 +3,9 @@
 #include "UI/ImGui/imgui.h"
 #include "UI/ImGui/imgui_plot.h"
 
+#include <fstream>
+#include <filesystem>
+
 
 BRWL_NS
 
@@ -35,7 +38,7 @@ UIResult::UIResult() :
     transferFunctions(),
     light{
         {0.f, 0.f, 1.f}, // coords
-        {1.f, 1.f, 1.f, 1.f} // color
+        {1.8f, 1.8f, 1.8f, 1.f} // color
     }
 { }
 
@@ -69,6 +72,36 @@ UIResult::TransferFunctionCollection::TransferFunctionCollection() :
     }
 { }
 
+namespace {
+    static const char* transferFunctionSavePath = "./Assets/tf";
+    static const char* transferFunctionSavePathTemplate = "./Assets/tf/%s";
+    
+    static std::vector<std::string> tfFiles(0);
+
+    void refreshTfFiles() {
+        tfFiles.clear();
+        std::string path = "/path/to/directory";
+        char buf[512];
+        for (const auto& entry : std::filesystem::directory_iterator(transferFunctionSavePath))
+        {
+            //ImTextStrToUtf8(buf, sizeof(buf), entry.path().string().c_str(), entry.path().string().end())
+            tfFiles.emplace_back(entry.path().string());
+        }
+    }
+}
+
+
+
+void setupAppUI()
+{
+    BRWL_EXCEPTION(std::filesystem::is_directory("./Assets"), BRWL_CHAR_LITERAL("Asset directory not found."));
+    if (!std::filesystem::is_directory(transferFunctionSavePath)) {
+        bool created = std::filesystem::create_directory(transferFunctionSavePath);
+        BRWL_EXCEPTION(created, BRWL_CHAR_LITERAL("Failed to create asset subfolder for transfer functions"));
+    }
+
+    refreshTfFiles();
+}
 
 using namespace ImGui;
 
@@ -82,6 +115,7 @@ using namespace ImGui;
 
 #define SLIDER_FIX(id, numLines) ImGui::BeginChild(#id, ImVec2(ImGui::GetWindowWidth(), ImGui::GetTextLineHeightWithSpacing() * numLines), false);
 #define SLIDER_FIX_END() EndChild();
+
 
 void drawHints(const UIResult& values);
 
@@ -110,16 +144,16 @@ void renderAppUI(UIResult& result, const UIResult& values)
     {
         Begin("Settings", &showSettings);
         // work around for slider bug where slider is activated when clicking on the combo box above
-        SLIDER_FIX(9, 2)
+        SLIDER_FIX(20, 2)
             ENUM_SELECT("GUI Font: ", values.settings.font, result.settings.font, UIResult::Settings, Font, fontNames);
         SLIDER_FIX_END()
-        SLIDER_FIX(0, 2)
+        SLIDER_FIX(30, 2)
             Text("Font Size:");
             SliderFloat("", &result.settings.fontSize, 5, 40);
             result.settings.fontSize = Utils::clamp(result.settings.fontSize, 5.f, 40.f);
         SLIDER_FIX_END();
 
-        SLIDER_FIX(1, 2)
+        SLIDER_FIX(40, 2)
             Text("Number of slices per voxel:");
             ::ImGui::InputFloat("", &result.settings.numSlicesPerVoxel, 0.01f, 2.f, "%0.2f");
             SliderFloat("", &result.settings.numSlicesPerVoxel, 0.01f, 2.f, "%0.2f");
@@ -316,6 +350,78 @@ void renderAppUI(UIResult& result, const UIResult& values)
 
                 ImGui::EndTabBar();
             }
+            // save transfer functions
+            thread_local char* tfError = nullptr;
+            thread_local char tfName[512];
+            InputText("Save Name", tfName, IM_ARRAYSIZE(tfName));
+            // remove non alphanumeric chars and allow underscore
+            *std::remove_if(std::begin(tfName), std::end(tfName), [](const char c) { return !(std::isalnum(c) || c == '_'); }) = '\0';
+            if (Button("Save"))
+            {
+                tfError = nullptr;
+                char path[512];
+                ImFormatString(path, IM_ARRAYSIZE(path), transferFunctionSavePathTemplate, tfName);
+                std::ofstream output(path, std::ios::binary);
+                if (output) {
+                    for (int i = 0; i < ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::MAX); i++)
+                    {
+                        result.transferFunctions.array[i]->save(&output);
+                    }
+                }
+                else
+                {
+                    tfError = "Could not save transfer function to file.";
+                }
+            } SameLine();
+
+            if (Button("Refresh Load List"))
+            {
+                refreshTfFiles();
+            }
+
+            thread_local int selectedTf = -1;
+            selectedTf = ImMin(selectedTf, (int)tfFiles.size() - 1);
+            SLIDER_FIX(5, 2)
+            if (BeginCombo("", "Select Transfer Function"))
+            {
+                for (int i = 0; i < tfFiles.size(); ++i)
+                {
+                    PushID((void*)(intptr_t)i);
+                    if (Selectable(tfFiles[i].c_str()))
+                    {
+                        tfError = nullptr;
+                        selectedTf = i;
+                        char path[512];
+                        ImFormatString(path, IM_ARRAYSIZE(path), transferFunctionSavePathTemplate, tfName);
+                        std::ifstream input(path, std::ios::binary);
+                        if (input) {
+                            for (int i = 0; i < ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::MAX); i++)
+                            {
+                                result.transferFunctions.array[i]->load(&input);
+                            }
+                        }
+                        else
+                        {
+                            tfError = "Could not load transfer function from file.";
+                        }
+
+                        PopID();
+                        break;
+                    }
+
+                    PopID();
+
+
+                }
+
+                EndCombo();
+            }
+            SLIDER_FIX_END();
+
+            if (tfError)
+            {
+                TextColored(ImVec4(1, 0, 0, 1), tfError);
+            }
 
             // remember Y position for window fit
             menuSpaceY = ImGui::GetCursorPosY();
@@ -329,14 +435,13 @@ void renderAppUI(UIResult& result, const UIResult& values)
     {
         Begin("Light Settings", &showLightSettings);
         Text("Light direction (relative to camera):");
-        SLIDER_FIX(10, 1)
+        SLIDER_FIX(6, 1)
             SliderFloat3("", &result.light.coords.x, -1, 1);
             result.light.coords.z = BRWL::Utils::max(result.light.coords.z, 0.1f);
         SLIDER_FIX_END()
         Text("Light Color:");
         float col[4]{ values.light.color.x, values.light.color.y, values.light.color.z };
         ColorEdit4("", col, ImGuiColorEditFlags_HDR);
-        //Vec3 hue = Vec3(Utils::clamp(col[0], 0.f, 1.f), Utils::clamp(col[1], 0.f, 1.f), Utils::clamp(col[2], 0.f, 1.f));
         result.light.color = Vec4(col[0], col[1], col[2], Utils::max(0.f, col[3]));
         End();
     }

@@ -72,6 +72,8 @@ struct UIResult
 	unsigned int remainingSlices;
 };
 
+void setupAppUI();
+
 void renderAppUI(UIResult& result, const UIResult& values);
 
 BRWL_NS_END

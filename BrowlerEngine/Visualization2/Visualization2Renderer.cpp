@@ -71,6 +71,8 @@ bool Visualization2Renderer::init(Renderer* r)
 
     hasViewChanged = initialized = true;
 
+    setupAppUI();
+
     return initialized;
 }
 

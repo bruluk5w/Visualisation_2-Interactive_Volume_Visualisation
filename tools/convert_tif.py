@@ -17,9 +17,9 @@ OUT_EXT = r'.dat'
 
 DATASET_NAME = r'VHF-Head'
 
-xy = 0.02148 / 0.04715
 SAMPLE_DIM = (1, 1, 1)  # x, y, z
 ROTATE_X = 1
+ROTATE_Y = 2
 
 
 class DATA_SET_TYPE(Enum):
@@ -46,8 +46,6 @@ def load_dicom_list(file_list):
     return arr
 
 
-
-
 load_functions = {
     DATA_SET_TYPE.TIFF_SLICES: load_tiff_list,
     DATA_SET_TYPE.DICOM_SLICES: load_dicom_list,
@@ -55,7 +53,7 @@ load_functions = {
 
 
 def main():
-    folder = os.path.join(SRC_PATH, DATASET_NAME);
+    folder = os.path.join(SRC_PATH, DATASET_NAME)
     assert os.path.isdir(folder)
     for dirpath, dirnames, filenames in os.walk(folder):
 
@@ -86,6 +84,9 @@ def main():
 
         if ROTATE_X:
             res = np.rot90(res, ROTATE_X, (0, 1))
+
+        if ROTATE_Y:
+            res = np.rot90(res, ROTATE_Y, (0, 2))
 
         out_path = os.path.join(OUT_PATH, DATASET_NAME + OUT_EXT)
         with open(out_path, 'wb') as out:

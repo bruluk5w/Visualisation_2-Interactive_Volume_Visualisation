@@ -40,7 +40,6 @@
   <ItemGroup>
     <ClCompile Include="Source\UI\ImGui\imgui.cpp" />
     <ClCompile Include="Source\UI\ImGui\ImGuiHelpers.cpp" />
-    <ClCompile Include="Source\UI\ImGui\imgui_demo.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_draw.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_plot.cpp" />
     <ClCompile Include="Source\UI\ImGui\imgui_widgets.cpp" />

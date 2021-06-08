@@ -1483,7 +1483,7 @@ bool ImGui::BeginCombo(const char* label, const char* preview_value, ImGuiComboF
         return false;
 
     bool hovered, held;
-    bool pressed = ButtonBehavior(frame_bb, id, &hovered, &held);
+    bool pressed = ButtonBehavior(frame_bb, id, &hovered, &held, ImGuiButtonFlags_PressedOnClick);
     bool popup_open = IsPopupOpen(id);
 
     const ImU32 frame_col = GetColorU32(hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);

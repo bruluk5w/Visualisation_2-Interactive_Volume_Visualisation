@@ -1,6 +1,7 @@
 #include "ImGui/ImGuiHelpers.h"
 
 #include <numeric>
+#include <fstream>
 
 namespace ImGui
 {
@@ -120,6 +121,39 @@ namespace ImGui
             refs.resize(2);
         }
 
+        std::iota(refs.begin(), refs.end(), 0);
+    }
+
+    void CtrlPointGroup::save(std::ofstream* output)
+    {
+        sortRefs();
+        const size_t size = refs.size();
+        output->write((const char*)&size, sizeof(size));
+        for (size_t i = 0; i < refs.size(); ++i)
+        {
+            const size_t ref = refs[i];
+            const CtrlPoint& pt = points[ref];
+            output->write((const char *)&pt.pt, sizeof(pt.pt));
+        }
+    }
+
+    void CtrlPointGroup::load(std::ifstream* input)
+    {
+        size_t size;
+        input->read((char*)&size, sizeof(size));
+        IM_ASSERT(size < 1000);  // we will not use more control points, if so, then just increase the limit
+        points.clear();
+        points.reserve(size);
+        for (size_t i = 0; i < size; ++i)
+        {
+            ImVec2 vec;
+            input->read((char*)&vec, sizeof(vec));
+            vec.y = 1 - vec.y;
+            points.emplace_back(vec);
+        }
+
+        refs.clear();
+        refs.resize(points.size());
         std::iota(refs.begin(), refs.end(), 0);
     }
 

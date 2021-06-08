@@ -68,6 +68,8 @@ namespace ImGui
 
         //! Returns true if the control point positions have changed
         bool update(ImGuiWindow* window, const bool isHovering, const ImRect& box, const ImVec2& mousePos, const float ctrlPointScale, const bool forceDisplayHandles = false);
+        void save(std::ofstream* output);
+        void load(std::ifstream* input);
 
         void sortRefs();
         void removeDuplicates();
