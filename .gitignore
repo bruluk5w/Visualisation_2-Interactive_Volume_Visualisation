@@ -1,6 +1,7 @@
 #Data Sets Folder
-BrowlerEngine/Assets/DataSets/*
+BrowlerEngine/Assets/*
 !BrowlerEngine/Assets/DataSets/sphere.dat
+!BrowlerEngine/Assets/Fonts/*
 
 *.tmp
 
