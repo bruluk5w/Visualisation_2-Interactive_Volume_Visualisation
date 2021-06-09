@@ -29,7 +29,7 @@ public:
         Vec3 planeRight; // horizontal direction of the slices in positive uv direction (normalised)
         float backgroundScale;
         Vec3 planeDown; // vertical direction of the slices in positive uv direction (normalised)
-        float padding4;
+        float sliceDepth; // length(deltaSlice)
         Vec3 topLeft; // top left corner point (front) of the viewing volume
     };
 #pragma pack(pop)

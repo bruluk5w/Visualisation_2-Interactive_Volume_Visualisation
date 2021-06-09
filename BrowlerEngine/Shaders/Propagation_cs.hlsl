@@ -11,6 +11,7 @@ cbuffer constants : register(b0)
     float3 planeRight; // normalized
     float backgroundScale; // scale of the background checker board
     float3 planeDown; // normalized
+    float sliceDepth; // length(deltaSlice)
     float3 topLeft; //topLeft of current slice
 };
 
@@ -60,12 +61,12 @@ float lut(float scalarSample, Texture2D<float> tex)
 
 float integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float> tex)
 {
-    return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).r * length(deltaSlice);
+    return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).r * sliceDepth;
 }
 
 float3 integrationTable(float previousScalarSample, float currentScalarSample, Texture2D<float4> tex)
 {
-    return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).rgb * length(deltaSlice);
+    return tex.SampleLevel(preintegrationSampler, float2(previousScalarSample, currentScalarSample), 0).rgb * sliceDepth;
 }
 
 void reconstructVolumeGradientBase(float3 worldPos, out float3 leftTopFront, out float3 rightBottomBack)
@@ -83,18 +84,6 @@ void reconstructVolumeGradientBase(float3 worldPos, out float3 leftTopFront, out
         volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(worldPos + float3(0, 0, stepLength)), 0) * 8);
 }
 
-//float3 reconstructVolumeGradient(float3 worldPos)
-//{
-//    float3 leftTopFront;
-//    float3 rightBottomBack;
-//    reconstructVolumeGradientBase(worldPos, leftTopFront, rightBottomBack);
-
-//    float3 gradient = rightBottomBack - leftTopFront;
-//    if (any(gradient))
-//        gradient = normalize(gradient);
-    
-//    return gradient;
-//}
 
 void reconstructVolumeAndRefractionGradient(float3 worldPos, out float3 gradient, out float3 refractionGradient)
 {
@@ -156,10 +145,10 @@ float calculateIntensityCorrectionFromSharedData(uint2 groupIdx, uint2 dtId)
     const float2 base = dtId - offset;
     const float3 p = topLeft + (base.x * planeRight + base.y * planeDown) * texelDim; // world pos
     return texelDim * texelDim / quadrilateralArea(
-        p - length(deltaSlice) * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, topL.y, topL.x)],
-        p - length(deltaSlice) * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, bottomL.y, bottomL.x)] + texelDown,
-        p - length(deltaSlice) * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, bottomR.y, bottomR.x)] + texelDown + texelRight,
-        p - length(deltaSlice) * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, topR.y, topR.x)] + texelRight
+        p - sliceDepth * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, topL.y, topL.x)],
+        p - sliceDepth * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, bottomL.y, bottomL.x)] + texelDown,
+        p - sliceDepth * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, bottomR.y, bottomR.x)] + texelDown + texelRight,
+        p - sliceDepth * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, topR.y, topR.x)] + texelRight
     );
 }
 
@@ -169,7 +158,6 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 threadID : SV_GroupThreadID)
 {
 	const int3 read_idx = int3(DTid.xy, 0);
 	const uint2 write_idx = DTid.xy;
-    const float sliceDepth = length(deltaSlice);
     
     /*
      *    Light Propagation
@@ -182,7 +170,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 threadID : SV_GroupThreadID)
         
         float len = dot(currentLightDirection, normalize(deltaSlice));
         const float3 currentLightWorldPos = topLeft + (((float) DTid.x) * planeRight + ((float) DTid.y) * planeDown) * texelDim;
-        const float3 previousLightWorldPos = currentLightWorldPos - currentLightDirection * length(deltaSlice) / len;
+        const float3 previousLightWorldPos = currentLightWorldPos - currentLightDirection * sliceDepth / len;
     
         const float3 previousOffset = (previousLightWorldPos - topLeft) * worldDimToUV;
         const float2 previousLightUV = float2(dot(previousOffset, planeRight), dot(previousOffset, planeDown)) + 0.5f * texDimToUV;
@@ -264,7 +252,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 threadID : SV_GroupThreadID)
     
     // Advance viewing ray in world space
     float len = dot(currentViewingRayDirection, normalize(deltaSlice));
-    const float3 nextViewingRayPosition = currentViewingRayPosition.xyz + currentViewingRayDirection * length(deltaSlice) / len;
+    const float3 nextViewingRayPosition = currentViewingRayPosition.xyz + currentViewingRayDirection * sliceDepth / len;
     const float3 nextViewingRayDirection = normalize(currentViewingRayDirection + sliceDepth * refractionGradient);
     
     const float nextScalarSample = volumeTexture.SampleLevel(volumeSampler, getUVCoordinatesVolume(nextViewingRayPosition), 0) * 8;

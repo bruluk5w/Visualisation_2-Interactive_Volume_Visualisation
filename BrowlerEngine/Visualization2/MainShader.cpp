@@ -542,6 +542,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
                 propParams.planeRight = right;
                 propParams.backgroundScale = 50;
                 propParams.planeDown = down;
+                propParams.sliceDepth = length(deltaSlice);
                 propParams.topLeft = topLeft + deltaSlice * (numSlices - remainingSlices);
             }
 
