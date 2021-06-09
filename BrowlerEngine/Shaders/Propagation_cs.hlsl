@@ -6,12 +6,12 @@ cbuffer constants : register(b0)
     float texDimToUV; // 1 / number of pixel per side of slice plane
     float3 bboxmax;
     float worldDimToUV; // 1 / world space width of slice plane
-    float3 deltaSlice;
+    float3 sliceNormal; // normal vector of the slices
     float texelDim; // size of a texel on the slice plane
     float3 planeRight; // normalized
     float backgroundScale; // scale of the background checker board
     float3 planeDown; // normalized
-    float sliceDepth; // length(deltaSlice)
+    float sliceDepth; // distance between two slices
     float3 topLeft; //topLeft of current slice
 };
 
@@ -168,7 +168,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 threadID : SV_GroupThreadID)
         const float3 currentLightDirection = lightDirectionBufferRead.Load(read_idx).xyz;
         //const float3 currentLightIntensity = lightBufferRead.Load(read_idx).xyz;
         
-        float len = dot(currentLightDirection, normalize(deltaSlice));
+        float len = dot(currentLightDirection, sliceNormal);
         const float3 currentLightWorldPos = topLeft + (((float) DTid.x) * planeRight + ((float) DTid.y) * planeDown) * texelDim;
         const float3 previousLightWorldPos = currentLightWorldPos - currentLightDirection * sliceDepth / len;
     
@@ -251,7 +251,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 threadID : SV_GroupThreadID)
 
     
     // Advance viewing ray in world space
-    float len = dot(currentViewingRayDirection, normalize(deltaSlice));
+    float len = dot(currentViewingRayDirection, sliceNormal);
     const float3 nextViewingRayPosition = currentViewingRayPosition.xyz + currentViewingRayDirection * sliceDepth / len;
     const float3 nextViewingRayDirection = normalize(currentViewingRayDirection + sliceDepth * refractionGradient);
     

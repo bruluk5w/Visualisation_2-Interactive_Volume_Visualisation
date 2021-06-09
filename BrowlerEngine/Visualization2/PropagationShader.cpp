@@ -180,7 +180,7 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, Propagation
         return 0;
 
     const float targetDt = 1.0f / 60.f;
-    const float currentDt = engine->time->getDeltaTime();
+    const float currentDt = engine->time->getDeltaTimeF();
     // adjust slices per invocation to framerate
     if (currentDt < targetDt - 0.02f * targetDt)
     {
@@ -210,7 +210,7 @@ unsigned int PropagationShader::draw(ID3D12GraphicsCommandList* cmd, Propagation
         {
 
             // Constants
-            data.topLeft += data.deltaSlice;
+            data.topLeft += data.sliceNormal * data.sliceDepth;
             cmd->SetComputeRoot32BitConstants(0, data.constantCount, &data, 0);
             static_assert(ComputeBuffers::srvReadBufferOffset == 0, "If buffer offset is not 0 then code below would have to be updated because we assume two contiguous ranges in source resouces, one for SRVs and one for UAVs ");
             cmd->SetComputeRootDescriptorTable(1, computeBuffers->getTargetResourceDescriptorHandle(0).residentGpu); // write UAV

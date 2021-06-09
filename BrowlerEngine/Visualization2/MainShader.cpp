@@ -474,25 +474,25 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
     BRWL_CHECK(planeStackThickness > 0, nullptr);
     const float numSlices = planeStackThickness * data.numSlicesPerVoxel + 2; // 1 plane per voxel is a very good resolution; + 2 for render even one slice past the end for environment lookup 
     // position offset from prevous to next plane
-    const float sliceWidth = 1.0f / data.numSlicesPerVoxel;
-    const Vec3 deltaSlice = normalized(-camPos) * sliceWidth;
+    const float sliceDepth = 1.0f / data.numSlicesPerVoxel;
+    const Vec3 sliceNormal = normalized(-camPos);
 
-    if (engine->input->isKeyDown(Key::F1))
-    {
-        const Vec3 fwd = camRot.forward();
-        BRWL_CHAR buf[100];
-        BRWL_SNPRINTF(buf, countof(buf),
-            BRWL_CHAR_LITERAL("Camera Transform: Position:%.2f | %.2f | %.2f, Look Direction: %.2f | %.2f | %.2f"),
-            camPos.x, camPos.y, camPos.z, fwd.x, fwd.y, fwd.z);
-        engine->logger->info(buf);
-    }
+    //if (engine->input->isKeyDown(Key::F1))
+    //{
+    //    const Vec3 fwd = camRot.forward();
+    //    BRWL_CHAR buf[100];
+    //    BRWL_SNPRINTF(buf, countof(buf),
+    //        BRWL_CHAR_LITERAL("Camera Transform: Position:%.2f | %.2f | %.2f, Look Direction: %.2f | %.2f | %.2f"),
+    //        camPos.x, camPos.y, camPos.z, fwd.x, fwd.y, fwd.z);
+    //    engine->logger->info(buf);
+    //}
 
-    if (engine->input->isKeyDown(Key::F2))
-    {
-        BRWL_CHAR buf[100];
-        BRWL_SNPRINTF(buf, countof(buf), BRWL_CHAR_LITERAL("%.5f | %.5f | %.5f"), deltaSlice.x, deltaSlice.y, deltaSlice.z);
-        engine->logger->info(buf);
-    }
+    //if (engine->input->isKeyDown(Key::F2))
+    //{
+    //    BRWL_CHAR buf[100];
+    //    BRWL_SNPRINTF(buf, countof(buf), BRWL_CHAR_LITERAL("%.5f | %.5f | %.5f"), sliceNormal.x, sliceNormal.y, sliceNormal.z);
+    //    engine->logger->info(buf);
+    //}
 
     // Progressively scan the volume if we have to
     bool hasComputeBuffers = computeBuffers->isResident();
@@ -537,13 +537,13 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
                 propParams.texDimToUV = 1.0f / DrawData::gatherTextureSize;
                 propParams.bboxmax = bbox.max;
                 propParams.worldDimToUV = 1.0f / viewingPlaneDimensions.x;
-                propParams.deltaSlice = deltaSlice;
+                propParams.sliceNormal = sliceNormal;
                 propParams.texelDim = viewingPlaneDimensions.x / DrawData::gatherTextureSize;
                 propParams.planeRight = right;
                 propParams.backgroundScale = 50;
                 propParams.planeDown = down;
-                propParams.sliceDepth = length(deltaSlice);
-                propParams.topLeft = topLeft + deltaSlice * (numSlices - remainingSlices);
+                propParams.sliceDepth = sliceDepth;
+                propParams.topLeft = topLeft + sliceNormal * ((numSlices - remainingSlices) * sliceDepth);
             }
 
             remainingSlices = propagationShader->draw(cmd, propParams, computeBuffers.get(), data.pitCollection, data.volumeTexturehandle, remainingSlices);
@@ -595,7 +595,7 @@ void MainShader::draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, Main
         PsConstants psConstants;
         memset(&psConstants, 0, sizeof(psConstants));
         psConstants.numSlices = numSlices;
-        psConstants.deltaSlice = deltaSlice / sliceWidth;
+        psConstants.deltaSlice = sliceNormal * sliceDepth;
 
         cmd->SetGraphicsRoot32BitConstants(1, 7, &psConstants, 0);
 

@@ -24,12 +24,12 @@ public:
         float texDimToUV; // 1 / compute buffer dimensions
         Vec3 bboxmax; // extents of the volume data set
         float worldDimToUV; // // 1 / world space width of texture
-        Vec3 deltaSlice; // normal vector of the slices with length equal to distance between slices
+        Vec3 sliceNormal; // normal vector of the slices
         float texelDim; // size of a texel on the slice plane
         Vec3 planeRight; // horizontal direction of the slices in positive uv direction (normalised)
         float backgroundScale;
         Vec3 planeDown; // vertical direction of the slices in positive uv direction (normalised)
-        float sliceDepth; // length(deltaSlice)
+        float sliceDepth; // distance between two slices
         Vec3 topLeft; // top left corner point (front) of the viewing volume
     };
 #pragma pack(pop)
