@@ -156,10 +156,10 @@ float calculateIntensityCorrectionFromSharedData(uint2 groupIdx, uint2 dtId)
     const float2 base = dtId - offset;
     const float3 p = topLeft + (base.x * planeRight + base.y * planeDown) * texelDim; // world pos
     return texelDim * texelDim / quadrilateralArea(
-        p - sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, topL.y   , topL.x)],
-        p - sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, bottomL.y, bottomL.x)] + texelDown,
-        p - sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, bottomR.y, bottomR.x)] + texelDown + texelRight,
-        p - sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, topR.y   , topR.x)]    + texelRight 
+        p - length(deltaSlice) * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, topL.y, topL.x)],
+        p - length(deltaSlice) * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, bottomL.y, bottomL.x)] + texelDown,
+        p - length(deltaSlice) * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, bottomR.y, bottomR.x)] + texelDown + texelRight,
+        p - length(deltaSlice) * sharedCurrentLightDirections[mad(THREAD_GROUP_SIZE_X, topR.y, topR.x)] + texelRight
     );
 }
 
