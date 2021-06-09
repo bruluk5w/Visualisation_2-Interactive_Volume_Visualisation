@@ -392,7 +392,8 @@ void renderAppUI(UIResult& result, const UIResult& values)
                         tfError = nullptr;
                         selectedTf = i;
                         char path[512];
-                        ImFormatString(path, IM_ARRAYSIZE(path), transferFunctionSavePathTemplate, tfName);
+                        ImStrncpy(path, transferFunctionSavePathTemplate, strlen(transferFunctionSavePathTemplate));
+                        ImFormatString(path, IM_ARRAYSIZE(path), tfFiles[i].c_str());
                         std::ifstream input(path, std::ios::binary);
                         if (input) {
                             for (int i = 0; i < ENUM_CLASS_TO_NUM(UIResult::TransferFuncType::MAX); i++)
